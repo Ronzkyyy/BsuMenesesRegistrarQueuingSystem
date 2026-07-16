@@ -68,7 +68,10 @@ const refreshContent = async () => {
     // Fail silent - this is a non-critical decorative panel on a live public screen;
     // the core "now serving" content must never be blocked or hidden by this failing.
   }
-  if (currentIndex.value >= mediaItems.value.length) {
+  if (mediaItems.value.length === 0) {
+    if (rotationTimer) clearTimeout(rotationTimer)
+    currentIndex.value = 0
+  } else if (currentIndex.value >= mediaItems.value.length) {
     currentIndex.value = 0
   }
   if (!hadItems && mediaItems.value.length > 0) {
