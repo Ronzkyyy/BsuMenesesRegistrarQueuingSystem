@@ -167,13 +167,25 @@ const openCreateModal = () => {
 const createUser = async () => {
   if (!newUserForm.value.username || !newUserForm.value.full_name || !newUserForm.value.password) return
 
+  if (newUserForm.value.username.length < 3) {
+    createError.value = 'Username must be at least 3 characters.'
+    return
+  }
+  if (newUserForm.value.password.length < 8) {
+    createError.value = 'Password must be at least 8 characters.'
+    return
+  }
+
   actionLoading.value = true
   createError.value = ''
   try {
     await queueStore.createUser(newUserForm.value)
     showCreateModal.value = false
   } catch (err) {
-    createError.value = err.response?.data?.detail || 'Failed to create user'
+    const detail = err.response?.data?.detail
+    createError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to create user'
   } finally {
     actionLoading.value = false
   }
