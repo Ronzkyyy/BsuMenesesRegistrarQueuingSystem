@@ -93,6 +93,8 @@
       </div>
     </main>
 
+    <MediaAnnouncementPanel />
+
     <footer class="text-center py-4 text-xs text-white/30 border-t border-white/10">
       Bulacan State University - Meneses Campus &middot; Registrar Queue Management System
       <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-2 align-middle animate-pulse"></span>
@@ -104,6 +106,7 @@
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
+import MediaAnnouncementPanel from '@/components/MediaAnnouncementPanel.vue'
 
 const queueStore = useQueueStore()
 
