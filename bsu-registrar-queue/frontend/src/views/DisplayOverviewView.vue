@@ -123,12 +123,12 @@ const initialize = async () => {
   error.value = null
   try {
     await queueStore.fetchNowServingOverview()
-    queueStore.startPollingNowServingOverview()
   } catch (err) {
     error.value = 'Unable to reach the server. Retrying automatically…'
   } finally {
     loading.value = false
   }
+  queueStore.startPollingNowServingOverview()
 }
 
 const toggleFullscreen = () => {
