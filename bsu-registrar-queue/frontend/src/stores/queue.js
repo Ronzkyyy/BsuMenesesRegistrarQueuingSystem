@@ -51,6 +51,12 @@ export const useQueueStore = defineStore('queue', {
     // Users
     users: [],
 
+    // Media & Announcements
+    mediaItems: [],
+    activeMediaItems: [],
+    announcements: [],
+    activeAnnouncements: [],
+
     // UI State
     loading: false,
     error: null,
@@ -202,6 +208,150 @@ export const useQueueStore = defineStore('queue', {
         throw err
       } finally {
         this.loading = false
+      }
+    },
+
+    // ============ MEDIA ACTIONS ============
+
+    async fetchMediaItems() {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/media')
+        this.mediaItems = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch media items'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createMediaItem(data) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post('/media', data)
+        this.mediaItems.push(response.data)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to create media item'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateMediaItem(itemId, data) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.patch(`/media/${itemId}`, data)
+        const idx = this.mediaItems.findIndex(m => m.id === itemId)
+        if (idx !== -1) this.mediaItems[idx] = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to update media item'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteMediaItem(itemId) {
+      this.loading = true
+      this.error = null
+      try {
+        await api.delete(`/media/${itemId}`)
+        this.mediaItems = this.mediaItems.filter(m => m.id !== itemId)
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to delete media item'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchActiveMediaItems() {
+      try {
+        const response = await api.get('/media/active')
+        this.activeMediaItems = response.data
+        return response.data
+      } catch (err) {
+        throw err
+      }
+    },
+
+    // ============ ANNOUNCEMENT ACTIONS ============
+
+    async fetchAnnouncements() {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/announcements')
+        this.announcements = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch announcements'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createAnnouncement(data) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post('/announcements', data)
+        this.announcements.push(response.data)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to create announcement'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateAnnouncement(itemId, data) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.patch(`/announcements/${itemId}`, data)
+        const idx = this.announcements.findIndex(a => a.id === itemId)
+        if (idx !== -1) this.announcements[idx] = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to update announcement'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteAnnouncement(itemId) {
+      this.loading = true
+      this.error = null
+      try {
+        await api.delete(`/announcements/${itemId}`)
+        this.announcements = this.announcements.filter(a => a.id !== itemId)
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to delete announcement'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchActiveAnnouncements() {
+      try {
+        const response = await api.get('/announcements/active')
+        this.activeAnnouncements = response.data
+        return response.data
+      } catch (err) {
+        throw err
       }
     },
 
