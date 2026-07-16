@@ -1,7 +1,7 @@
 """
 Authentication endpoints for registrar staff
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -25,6 +25,7 @@ router = APIRouter()
 @router.post("/login", response_model=Token)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
+    portal: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
     """Staff login endpoint - returns JWT token"""
@@ -41,6 +42,12 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user account"
+        )
+
+    if portal == "admin" and user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account does not have Admin portal access."
         )
 
     access_token_expires = timedelta(minutes=30)
