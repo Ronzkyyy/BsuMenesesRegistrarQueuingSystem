@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useQueueStore } from '../stores/queue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -7,6 +8,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: () => import('../views/HomeView.vue')
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView.vue')
     },
     {
       path: '/queues',
@@ -21,7 +27,8 @@ const router = createRouter({
     {
       path: '/admin',
       name: 'admin',
-      component: () => import('../views/AdminView.vue')
+      component: () => import('../views/AdminView.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/display',
@@ -34,6 +41,15 @@ const router = createRouter({
       component: () => import('../views/DisplayBoardView.vue')
     }
   ]
+})
+
+router.beforeEach((to) => {
+  if (to.meta.requiresAuth) {
+    const queueStore = useQueueStore()
+    if (!queueStore.isAuthenticated) {
+      return { name: 'login' }
+    }
+  }
 })
 
 export default router
