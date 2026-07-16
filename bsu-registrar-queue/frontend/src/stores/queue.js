@@ -44,6 +44,12 @@ export const useQueueStore = defineStore('queue', {
     token: localStorage.getItem(TOKEN_KEY) || null,
     currentUser: null,
 
+    // Dashboard
+    dashboardSummary: null,
+
+    // Users
+    users: [],
+
     // UI State
     loading: false,
     error: null,
@@ -117,6 +123,85 @@ export const useQueueStore = defineStore('queue', {
       this.currentUser = null
       localStorage.removeItem(TOKEN_KEY)
       this.stopPolling()
+    },
+
+    // ============ DASHBOARD ACTIONS ============
+
+    async fetchDashboardSummary() {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/queues/dashboard-summary')
+        this.dashboardSummary = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch dashboard summary'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // ============ USER MANAGEMENT ACTIONS ============
+
+    async fetchUsers() {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/auth/users')
+        this.users = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch users'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createUser(userData) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post('/auth/register', userData)
+        this.users.push(response.data)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to create user'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async activateUser(userId) {
+      this.loading = true
+      this.error = null
+      try {
+        await api.patch(`/auth/users/${userId}/activate`)
+        const idx = this.users.findIndex(u => u.id === userId)
+        if (idx !== -1) this.users[idx].is_active = true
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to activate user'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deactivateUser(userId) {
+      this.loading = true
+      this.error = null
+      try {
+        await api.patch(`/auth/users/${userId}/deactivate`)
+        const idx = this.users.findIndex(u => u.id === userId)
+        if (idx !== -1) this.users[idx].is_active = false
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to deactivate user'
+        throw err
+      } finally {
+        this.loading = false
+      }
     },
 
     // ============ QUEUE ACTIONS ============
