@@ -36,6 +36,11 @@ const router = createRouter({
       component: () => import('../views/DisplayIndexView.vue')
     },
     {
+      path: '/display/overview',
+      name: 'display-overview',
+      component: () => import('../views/DisplayOverviewView.vue')
+    },
+    {
       path: '/display/:id',
       name: 'display-board',
       component: () => import('../views/DisplayBoardView.vue')

@@ -34,6 +34,7 @@ export const useQueueStore = defineStore('queue', {
     queueTickets: [],
     queueDisplay: [],
     servingTicket: null,
+    nowServingOverview: [],
 
     // Students
     currentStudent: null,
@@ -334,6 +335,17 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    async fetchNowServingOverview() {
+      try {
+        const response = await api.get('/tickets/now-serving-overview')
+        this.nowServingOverview = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch now-serving overview'
+        throw err
+      }
+    },
+
     async serveNextTicket(queueId) {
       this.loading = true
       this.error = null
@@ -512,6 +524,14 @@ export const useQueueStore = defineStore('queue', {
         this.fetchQueueDisplay(queueId).catch(() => {})
       }, interval)
       this.fetchQueueDisplay(queueId).catch(() => {})
+    },
+
+    startPollingNowServingOverview(interval = 4000) {
+      this.stopPolling()
+      this.pollingInterval = setInterval(() => {
+        this.fetchNowServingOverview().catch(() => {})
+      }, interval)
+      this.fetchNowServingOverview().catch(() => {})
     },
 
     startPollingQueueTickets(queueId, interval = 10000) {

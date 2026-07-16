@@ -19,6 +19,23 @@
         </p>
       </div>
 
+      <router-link
+        to="/display/overview"
+        target="_blank"
+        class="flex items-center justify-between bg-bsu-primary rounded-xl shadow-sm p-5 mb-6 text-white hover:bg-pink-800 transition-colors"
+      >
+        <div>
+          <h3 class="text-lg font-bold">All Queues Overview</h3>
+          <p class="text-sm text-pink-100">See every active queue's "Now Serving" ticket on one screen</p>
+        </div>
+        <span class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-white text-bsu-primary">
+          Open Board
+          <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </span>
+      </router-link>
+
       <!-- Loading State -->
       <div v-if="loading" class="flex justify-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-bsu-primary border-t-transparent"></div>
