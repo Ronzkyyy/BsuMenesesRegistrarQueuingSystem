@@ -3,7 +3,7 @@ Announcement model for display-board ticker
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AnnouncementBase(BaseModel):
@@ -20,6 +20,13 @@ class AnnouncementUpdate(BaseModel):
     text: Optional[str] = Field(default=None, min_length=1, max_length=500)
     display_order: Optional[int] = None
     is_active: Optional[bool] = None
+
+    @field_validator("text")
+    @classmethod
+    def reject_explicit_null(cls, v):
+        if v is None:
+            raise ValueError("This field cannot be set to null")
+        return v
 
 
 class Announcement(AnnouncementBase):

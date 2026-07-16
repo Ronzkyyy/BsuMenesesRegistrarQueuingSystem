@@ -3,7 +3,7 @@ Media item model for display-board media playlist
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
@@ -30,6 +30,13 @@ class MediaItemUpdate(BaseModel):
     display_duration_seconds: Optional[int] = Field(default=None, ge=1, le=300)
     display_order: Optional[int] = None
     is_active: Optional[bool] = None
+
+    @field_validator("media_type", "url")
+    @classmethod
+    def reject_explicit_null(cls, v):
+        if v is None:
+            raise ValueError("This field cannot be set to null")
+        return v
 
 
 class MediaItem(MediaItemBase):
