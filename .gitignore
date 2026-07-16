@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Backend env / local db
+backend/.env
+bsu-registrar-queue/backend/.env
+*.db
+bsu_queue.db
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+
+# Claude superpowers scratch
+.superpowers/

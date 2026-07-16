@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for BSU theme */
+:root {
+  --bsu-primary: #ec2f7e;
+  --bsu-gold: #f59e0b;
+}
+
+.btn-primary {
+  @apply bg-bsu-primary hover:bg-pink-800 text-white font-semibold py-2 px-4 rounded;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded;
+}

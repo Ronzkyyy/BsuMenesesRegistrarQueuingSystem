@@ -1,0 +1,655 @@
+<title>Queue Counter Revision — Screen Mockups</title>
+<style>
+  :root {
+    --page-bg: #fbf7f8;
+    --page-bg-alt: #f3e9ec;
+    --surface: #ffffff;
+    --ink: #241019;
+    --ink-soft: #6b4a56;
+    --border: #ecd8de;
+    --accent: #be185d;
+    --accent-dark: #831843;
+    --accent-soft: #fbe4ec;
+    --gold: #f59e0b;
+    --gold-soft: #fef3d9;
+    --success: #15803d;
+    --success-soft: #e3f5e9;
+    --caution: #c2410c;
+    --caution-soft: #fdead9;
+    --danger: #b91c1c;
+    --danger-soft: #fbe4e4;
+    --face-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --face-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, "Roboto Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-bg: #170b10;
+      --page-bg-alt: #1e1017;
+      --surface: #241019;
+      --ink: #f7ecf0;
+      --ink-soft: #c9a9b4;
+      --border: #3d2029;
+      --accent: #ec4899;
+      --accent-dark: #f472b6;
+      --accent-soft: #3a1522;
+      --gold: #fbbf24;
+      --gold-soft: #3a2a10;
+      --success: #4ade80;
+      --success-soft: #123322;
+      --caution: #fb923c;
+      --caution-soft: #3a2210;
+      --danger: #f87171;
+      --danger-soft: #3a1414;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #170b10;
+    --page-bg-alt: #1e1017;
+    --surface: #241019;
+    --ink: #f7ecf0;
+    --ink-soft: #c9a9b4;
+    --border: #3d2029;
+    --accent: #ec4899;
+    --accent-dark: #f472b6;
+    --accent-soft: #3a1522;
+    --gold: #fbbf24;
+    --gold-soft: #3a2a10;
+    --success: #4ade80;
+    --success-soft: #123322;
+    --caution: #fb923c;
+    --caution-soft: #3a2210;
+    --danger: #f87171;
+    --danger-soft: #3a1414;
+  }
+  :root[data-theme="light"] {
+    --page-bg: #fbf7f8;
+    --page-bg-alt: #f3e9ec;
+    --surface: #ffffff;
+    --ink: #241019;
+    --ink-soft: #6b4a56;
+    --border: #ecd8de;
+    --accent: #be185d;
+    --accent-dark: #831843;
+    --accent-soft: #fbe4ec;
+    --gold: #f59e0b;
+    --gold-soft: #fef3d9;
+    --success: #15803d;
+    --success-soft: #e3f5e9;
+    --caution: #c2410c;
+    --caution-soft: #fdead9;
+    --danger: #b91c1c;
+    --danger-soft: #fbe4e4;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-family: var(--face-sans);
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  /* ---------- Intro ---------- */
+  .intro {
+    max-width: 640px;
+    margin-bottom: 64px;
+  }
+  .eyebrow {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-size: clamp(28px, 4vw, 38px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .intro p {
+    color: var(--ink-soft);
+    font-size: 15.5px;
+    margin: 0;
+  }
+  .legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .legend .chip { margin: 0; }
+
+  /* ---------- Section shell ---------- */
+  section.screen { margin-bottom: 88px; }
+  .screen-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .screen-head h2 {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .screen-head .tag {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-family: var(--face-mono);
+  }
+  .screen-note {
+    font-size: 14px;
+    color: var(--ink-soft);
+    max-width: 620px;
+    margin: 6px 0 0;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 100px;
+    background: var(--accent);
+    color: #fff;
+  }
+  .chip::before { content: "＋"; font-size: 11px; }
+
+  /* =========================================================
+     DISPLAY BOARD — fixed dark "departure board" world
+     ========================================================= */
+  .tv-frame {
+    background: #050308;
+    border-radius: 22px;
+    padding: 22px 22px 30px;
+    box-shadow: 0 40px 80px -30px rgba(0,0,0,0.55);
+  }
+  .tv-screen {
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(190,24,93,0.18), transparent 55%),
+      #0c0710;
+    border-radius: 10px;
+    color: #f7ecf0;
+    font-family: var(--face-sans);
+    padding: 28px 34px 34px;
+    position: relative;
+    overflow: hidden;
+  }
+  .tv-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(247,236,240,0.1);
+    margin-bottom: 30px;
+  }
+  .tv-brand { display: flex; align-items: center; gap: 14px; }
+  .tv-mark {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(150deg, var(--gold), #b45309);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--face-mono);
+    font-weight: 700;
+    font-size: 13px;
+    color: #1a0f16;
+    flex-shrink: 0;
+  }
+  .tv-brand-text .campus { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #c9a9b4; }
+  .tv-brand-text .queue-name { font-size: 17px; font-weight: 700; margin-top: 2px; }
+  .tv-right { display: flex; align-items: center; gap: 18px; }
+  .tv-clock { text-align: right; font-family: var(--face-mono); }
+  .tv-clock .time { font-size: 19px; font-weight: 600; }
+  .tv-clock .date { font-size: 11px; color: #c9a9b4; }
+  .sound-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(245,158,11,0.14);
+    border: 1px solid rgba(245,158,11,0.4);
+    color: var(--gold);
+    font-size: 12px; font-weight: 700;
+    padding: 7px 12px;
+    border-radius: 100px;
+    font-family: var(--face-sans);
+  }
+  .sound-btn svg { width: 14px; height: 14px; }
+
+  .tv-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #8f6a76;
+    text-align: center;
+    margin: 0 0 22px;
+  }
+
+  .serving-row { display: flex; justify-content: center; margin-bottom: 42px; }
+  .serving-card { position: relative; text-align: center; }
+  .recalled-badge {
+    position: absolute;
+    top: -14px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--gold);
+    color: #1a0f16;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 100px;
+    white-space: nowrap;
+    box-shadow: 0 6px 16px -4px rgba(245,158,11,0.6);
+  }
+  .flap-set { display: flex; gap: 8px; }
+  .flap {
+    width: 84px; height: 118px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #241019, #170b10);
+    border: 1px solid #3d2233;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--face-mono);
+    font-weight: 700;
+    font-size: 68px;
+    color: #fde68a;
+    text-shadow: 0 0 22px rgba(253,230,138,0.35);
+    position: relative;
+  }
+  .flap::after {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 50%;
+    height: 1px; background: rgba(0,0,0,0.5);
+  }
+  .serving-sub { margin-top: 14px; font-size: 12px; color: #c9a9b4; font-family: var(--face-mono); }
+
+  .waiting-block { border-top: 1px solid rgba(247,236,240,0.1); padding-top: 24px; }
+  .waiting-tiles { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .w-tile {
+    width: 78px;
+    padding: 12px 0 10px;
+    border-radius: 10px;
+    text-align: center;
+    background: rgba(247,236,240,0.05);
+    border: 1px solid rgba(247,236,240,0.1);
+  }
+  .w-tile.next {
+    background: rgba(245,158,11,0.14);
+    border-color: rgba(245,158,11,0.45);
+  }
+  .w-tile .num { font-family: var(--face-mono); font-weight: 700; font-size: 26px; }
+  .w-tile.next .num { color: var(--gold); }
+  .w-tile .meta { font-size: 10px; color: #a8828d; margin-top: 3px; }
+  .w-tile.next .meta { color: #e3a95f; font-weight: 700; }
+  .w-tile.more { display: flex; align-items: center; justify-content: center; color: #8f6a76; font-size: 12px; }
+
+  .tv-footer {
+    margin-top: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #6b4a56;
+  }
+  .pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+
+  /* Priority-lane header variant strip */
+  .variant-strip {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #0c0710;
+    border-radius: 10px;
+    padding: 16px 22px;
+    color: #f7ecf0;
+  }
+  .variant-strip .tv-brand { flex: 1; }
+  .lane-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-soft);
+    color: var(--gold);
+    font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 5px 11px; border-radius: 100px;
+    border: 1px solid rgba(245,158,11,0.35);
+  }
+  .strip-caption { font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; }
+
+  /* =========================================================
+     COUNTER INTERFACE — light point-of-service world
+     ========================================================= */
+  .app-frame {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 30px 60px -32px rgba(36,16,25,0.28);
+    overflow: hidden;
+  }
+  .app-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px;
+    background: var(--accent);
+    color: #fff;
+  }
+  .app-bar-left { display: flex; align-items: center; gap: 14px; }
+  .app-bar h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .app-bar .sub { font-size: 11.5px; opacity: 0.8; }
+  .q-select {
+    background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+  }
+  .app-bar-right { display: flex; align-items: center; gap: 14px; font-size: 12.5px; opacity: 0.92; }
+  .app-bar-right a { color: #fff; text-decoration: none; font-weight: 600; border-bottom: 1px dashed rgba(255,255,255,0.5); }
+
+  .app-body {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 22px;
+    padding: 24px;
+    background: var(--page-bg-alt);
+  }
+  @media (max-width: 760px) { .app-body { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card + .card { margin-top: 18px; }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .card-head h4 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .serving-panel { text-align: center; padding: 28px 20px 24px; }
+  .serving-num {
+    font-family: var(--face-mono);
+    font-weight: 700;
+    font-size: 64px;
+    letter-spacing: -0.02em;
+    color: var(--accent-dark);
+    line-height: 1;
+  }
+  .badge-row { display: flex; justify-content: center; gap: 8px; margin: 12px 0 4px; }
+  .pill {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 100px;
+  }
+  .pill.priority { background: var(--gold-soft); color: #92400e; }
+  .pill.lane { background: var(--accent-soft); color: var(--accent-dark); }
+  .purpose { color: var(--ink-soft); font-size: 13.5px; margin-top: 10px; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 22px; }
+  .btn {
+    flex: 1;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 11px 14px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    font-family: var(--face-sans);
+  }
+  .btn.complete { background: var(--success); color: #fff; }
+  .btn.skip { background: var(--caution-soft); color: var(--caution); border-color: color-mix(in srgb, var(--caution) 35%, transparent); }
+  .btn.noshow { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+
+  .skip-list { display: flex; flex-direction: column; gap: 10px; }
+  .skip-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--gold-soft);
+    border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+    border-radius: 9px;
+  }
+  .skip-row .who { display: flex; flex-direction: column; }
+  .skip-row .num { font-family: var(--face-mono); font-weight: 700; font-size: 15px; }
+  .skip-row .times { font-size: 11px; color: var(--ink-soft); }
+  .recall-btn {
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 13px;
+    border-radius: 7px;
+    border: none;
+  }
+  .empty-hint { font-size: 12.5px; color: var(--ink-soft); }
+
+  .walkin-form { display: flex; flex-direction: column; gap: 10px; }
+  .walkin-search { display: flex; gap: 8px; }
+  .walkin-search input {
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--page-bg);
+    color: var(--ink);
+    font-size: 13px;
+    font-family: var(--face-sans);
+  }
+  .walkin-search button {
+    background: var(--ink);
+    color: var(--surface);
+    border: none;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .walkin-hint { font-size: 12px; color: var(--ink-soft); }
+
+  .idle-note {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--ink-soft);
+    margin-top: 14px;
+    justify-content: center;
+  }
+  .idle-note .btn.serve-next {
+    background: var(--accent-soft); color: var(--accent-dark);
+    padding: 6px 12px; border-radius: 100px; font-size: 12px; flex: none;
+  }
+
+  footer.colophon {
+    max-width: 640px;
+    margin: 0 auto;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="intro">
+    <p class="eyebrow">BSU Registrar Queue System — revision mockup</p>
+    <h1>Two screens, two jobs</h1>
+    <p>The display board is signage — read from across a waiting area, at a glance, by someone who isn't watching it closely. The counter interface is a work tool — operated all day by one staff member who needs every action within a click. The mockups below show both after the skip/recall, auto-advance, walk-in, and priority-lane additions.</p>
+    <div class="legend"><span class="chip">New</span> marks what this revision adds</div>
+  </div>
+
+  <!-- ============ DISPLAY BOARD ============ -->
+  <section class="screen">
+    <div class="screen-head">
+      <h2>Public display board</h2>
+      <span class="tag">DisplayBoardView.vue — /display/:id</span>
+    </div>
+    <p class="screen-note">Wall-mounted TV in the waiting area. Numbers are set in tabular monospace, split-flap style — the same visual lineage as an airport departure board, which is exactly what this is.</p>
+
+    <div class="tv-frame">
+      <div class="tv-screen">
+        <div class="tv-topbar">
+          <div class="tv-brand">
+            <div class="tv-mark">BSU</div>
+            <div class="tv-brand-text">
+              <div class="campus">Meneses Campus · Registrar</div>
+              <div class="queue-name">Document Request</div>
+            </div>
+          </div>
+          <div class="tv-right">
+            <span class="sound-btn chip" style="background:rgba(245,158,11,0.14); border-color:rgba(245,158,11,0.4); color:var(--gold);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M19 8a6 6 0 0 1 0 8"/></svg>
+              Sound On
+            </span>
+            <div class="tv-clock">
+              <div class="time">2:41:07 PM</div>
+              <div class="date">Friday, July 10, 2026</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="tv-label">Now Serving</p>
+        <div class="serving-row">
+          <div class="serving-card">
+            <span class="recalled-badge chip" style="background:var(--gold); color:#1a0f16;">Recalled</span>
+            <div class="flap-set">
+              <div class="flap">0</div>
+              <div class="flap">4</div>
+              <div class="flap">7</div>
+            </div>
+            <p class="serving-sub">was skipped once · called back to the counter</p>
+          </div>
+        </div>
+
+        <div class="waiting-block">
+          <p class="tv-label" style="margin-bottom:16px;">Waiting · 7</p>
+          <div class="waiting-tiles">
+            <div class="w-tile next"><div class="num">048</div><div class="meta">Up Next</div></div>
+            <div class="w-tile"><div class="num">051</div><div class="meta">~6 min</div></div>
+            <div class="w-tile"><div class="num">052</div><div class="meta">~9 min</div></div>
+            <div class="w-tile"><div class="num">053</div><div class="meta">~12 min</div></div>
+            <div class="w-tile"><div class="num">054</div><div class="meta">~15 min</div></div>
+            <div class="w-tile more">+3 more</div>
+          </div>
+        </div>
+
+        <div class="tv-footer"><span class="pulse-dot"></span> Bulacan State University – Meneses Campus · Registrar Queue Management System</div>
+      </div>
+    </div>
+
+    <div class="variant-strip">
+      <div class="tv-brand">
+        <div class="tv-mark" style="background:linear-gradient(150deg,#ec4899,#831843); color:#fff;">BSU</div>
+        <div class="tv-brand-text">
+          <div class="campus">Meneses Campus · Registrar</div>
+          <div class="queue-name">Enrollment — PWD / Senior Lane</div>
+        </div>
+      </div>
+      <span class="lane-badge chip" style="background:transparent; border:1px solid rgba(245,158,11,0.4);">Priority Lane</span>
+    </div>
+    <p class="strip-caption">Priority-lane queues are ordinary queues with a flag — same board, same layout, just a badge in the header so it reads unmistakably as the express window.</p>
+  </section>
+
+  <!-- ============ COUNTER INTERFACE ============ -->
+  <section class="screen">
+    <div class="screen-head">
+      <h2>Staff counter interface</h2>
+      <span class="tag">CounterView.vue — /counter</span>
+    </div>
+    <p class="screen-note">What one staff member sees while working a line: who's up, what they need, and one click each for complete, skip, or recall.</p>
+
+    <div class="app-frame">
+      <div class="app-bar">
+        <div class="app-bar-left">
+          <h3>Registrar Counter</h3>
+          <select class="q-select"><option>Document Request</option></select>
+        </div>
+        <div class="app-bar-right">
+          <span>J. Santos · Staff</span>
+          <a href="#">Admin Dashboard ↗</a>
+        </div>
+      </div>
+
+      <div class="app-body">
+        <div class="col-main">
+          <div class="card serving-panel">
+            <div class="card-head" style="justify-content:center;"><h4>Currently Serving</h4></div>
+            <div class="serving-num">047</div>
+            <div class="badge-row">
+              <span class="pill priority">Priority · Scholar</span>
+            </div>
+            <p class="purpose">Maria Dela Cruz · 2022-04178 — Requesting: Transcript of Records (2 copies)</p>
+            <div class="btn-row">
+              <button class="btn complete">✓ Complete</button>
+              <button class="btn skip chip" style="justify-content:center;">Skip</button>
+              <button class="btn noshow">No-show</button>
+            </div>
+            <p class="idle-note">Complete and Skip both call the next number automatically — no separate "Serve Next" click needed mid-line.</p>
+          </div>
+        </div>
+
+        <div class="col-side">
+          <div class="card">
+            <div class="card-head">
+              <h4>Previously Skipped</h4>
+              <span class="chip">New</span>
+            </div>
+            <div class="skip-list">
+              <div class="skip-row">
+                <div class="who"><span class="num">#041</span><span class="times">skipped once · missing Form 137</span></div>
+                <button class="recall-btn">Recall</button>
+              </div>
+              <div class="skip-row">
+                <div class="who"><span class="num">#039</span><span class="times">skipped 2× · getting documents</span></div>
+                <button class="recall-btn">Recall</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h4>Register Walk-in</h4>
+              <span class="chip">New</span>
+            </div>
+            <div class="walkin-form">
+              <div class="walkin-search">
+                <input type="text" placeholder="Student ID, e.g. 2023-00512" />
+                <button>Search</button>
+              </div>
+              <p class="walkin-hint">Not in the system yet? You'll be able to register them on the spot, then issue their ticket — for students at the desk without a self-service ticket.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    Mockup only — static HTML, not the implementation. See <code>2026-07-10-queue-counter-revision-design.md</code> for the full spec.
+  </footer>
+
+</div>
