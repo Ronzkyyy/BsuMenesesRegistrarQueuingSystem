@@ -32,6 +32,14 @@
             Queue Management
           </router-link>
           <router-link
+            v-if="['admin', 'registrar'].includes(queueStore.currentUser?.role)"
+            to="/admin/media"
+            class="block px-3 py-2 rounded-md text-sm font-medium"
+            :class="route.path === '/admin/media' ? 'bg-bsu-primary/10 text-bsu-primary' : 'text-gray-700 hover:bg-gray-100'"
+          >
+            Media & Announcements
+          </router-link>
+          <router-link
             v-if="queueStore.currentUser?.role === 'admin'"
             to="/admin/users"
             class="block px-3 py-2 rounded-md text-sm font-medium"

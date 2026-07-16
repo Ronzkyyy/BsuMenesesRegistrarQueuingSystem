@@ -40,6 +40,12 @@ const router = createRouter({
           component: () => import('../views/QueueManagementView.vue')
         },
         {
+          path: 'media',
+          name: 'admin-media',
+          component: () => import('../views/MediaAnnouncementsView.vue'),
+          meta: { requiresRegistrarOrAdmin: true }
+        },
+        {
           path: 'users',
           name: 'admin-users',
           component: () => import('../views/UserManagementView.vue'),
@@ -81,6 +87,19 @@ router.beforeEach(async (to) => {
       }
     }
     if (queueStore.currentUser?.role !== 'admin') {
+      return { name: 'admin-dashboard' }
+    }
+  }
+
+  if (to.meta.requiresRegistrarOrAdmin) {
+    if (!queueStore.currentUser) {
+      try {
+        await queueStore.fetchCurrentUser()
+      } catch (err) {
+        return { name: 'login' }
+      }
+    }
+    if (!['admin', 'registrar'].includes(queueStore.currentUser?.role)) {
       return { name: 'admin-dashboard' }
     }
   }
