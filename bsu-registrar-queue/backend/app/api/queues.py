@@ -48,6 +48,16 @@ def list_active_queues(
     return service.get_active_queues()
 
 
+@router.get("/dashboard-summary")
+def get_dashboard_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+):
+    """Get aggregate stats for the admin dashboard overview"""
+    service = QueueService(db)
+    return service.get_dashboard_summary()
+
+
 @router.get("/{queue_id}", response_model=Queue)
 def get_queue(
     queue_id: int,

@@ -3,7 +3,7 @@ Queue service - business logic for queue management
 """
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..db_models import QueueDB, QueueDBStatus, QueueDBType
 from ..models.queue import Queue, QueueCreate, QueueStatus
@@ -130,6 +130,57 @@ class QueueService:
             "cancelled": cancelled,
             "no_show": no_show,
             "current_ticket_number": queue.current_ticket_number,
+        }
+
+    def get_dashboard_summary(self) -> dict:
+        """Aggregate stats for the admin dashboard overview"""
+        from ..db_models import TicketDB, TicketDBStatus, UserDB
+        from sqlalchemy import func
+
+        users_count = self.db.query(func.count(UserDB.id)).scalar()
+        queues_count = self.db.query(func.count(QueueDB.id)).scalar()
+        active_queues_count = self.db.query(func.count(QueueDB.id)).filter(
+            QueueDB.status == QueueDBStatus.ACTIVE
+        ).scalar()
+
+        waiting_count = self.db.query(func.count(TicketDB.id)).filter(
+            TicketDB.status == TicketDBStatus.WAITING
+        ).scalar()
+        serving_count = self.db.query(func.count(TicketDB.id)).filter(
+            TicketDB.status == TicketDBStatus.SERVING
+        ).scalar()
+
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        status_rows = self.db.query(
+            TicketDB.status, func.count(TicketDB.id)
+        ).filter(
+            TicketDB.created_at >= today_start
+        ).group_by(TicketDB.status).all()
+        tickets_today_by_status = {status.value: 0 for status in TicketDBStatus}
+        for status, count in status_rows:
+            tickets_today_by_status[status.value] = count
+
+        queue_rows = self.db.query(
+            TicketDB.queue_id, QueueDB.name, func.count(TicketDB.id)
+        ).join(QueueDB, TicketDB.queue_id == QueueDB.id).filter(
+            TicketDB.created_at >= today_start
+        ).group_by(TicketDB.queue_id, QueueDB.name).all()
+        tickets_today_by_queue = [
+            {"queue_id": queue_id, "queue_name": queue_name, "count": count}
+            for queue_id, queue_name, count in queue_rows
+        ]
+
+        return {
+            "users_count": users_count,
+            "queues_count": queues_count,
+            "active_queues_count": active_queues_count,
+            "waiting_count": waiting_count,
+            "serving_count": serving_count,
+            "completed_today_count": tickets_today_by_status["completed"],
+            "no_shows_today_count": tickets_today_by_status["no_show"],
+            "tickets_today_by_queue": tickets_today_by_queue,
+            "tickets_today_by_status": tickets_today_by_status,
         }
 
     def _to_queue(self, db_queue: QueueDB) -> Queue:

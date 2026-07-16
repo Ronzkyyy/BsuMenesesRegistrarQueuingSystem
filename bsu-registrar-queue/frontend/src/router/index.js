@@ -26,9 +26,26 @@ const router = createRouter({
     },
     {
       path: '/admin',
-      name: 'admin',
-      component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true }
+      component: () => import('../components/AdminLayout.vue'),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'admin-dashboard',
+          component: () => import('../views/DashboardView.vue')
+        },
+        {
+          path: 'queues',
+          name: 'admin-queues',
+          component: () => import('../views/QueueManagementView.vue')
+        },
+        {
+          path: 'users',
+          name: 'admin-users',
+          component: () => import('../views/UserManagementView.vue'),
+          meta: { requiresAdmin: true }
+        }
+      ]
     },
     {
       path: '/display',
@@ -48,11 +65,23 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to) => {
-  if (to.meta.requiresAuth) {
-    const queueStore = useQueueStore()
-    if (!queueStore.isAuthenticated) {
-      return { name: 'login' }
+router.beforeEach(async (to) => {
+  const queueStore = useQueueStore()
+
+  if (to.meta.requiresAuth && !queueStore.isAuthenticated) {
+    return { name: 'login' }
+  }
+
+  if (to.meta.requiresAdmin) {
+    if (!queueStore.currentUser) {
+      try {
+        await queueStore.fetchCurrentUser()
+      } catch (err) {
+        return { name: 'login' }
+      }
+    }
+    if (queueStore.currentUser?.role !== 'admin') {
+      return { name: 'admin-dashboard' }
     }
   }
 })
