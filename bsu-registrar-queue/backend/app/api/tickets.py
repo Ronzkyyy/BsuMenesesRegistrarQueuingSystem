@@ -142,6 +142,15 @@ def get_queue_display(
     return service.get_queue_display(queue_id)
 
 
+@router.get("/now-serving-overview")
+def get_now_serving_overview(
+    db: Session = Depends(get_db)
+):
+    """Get now-serving/waiting summary for every active queue (public display endpoint)"""
+    service = TicketService(db)
+    return service.get_now_serving_overview()
+
+
 @router.post("/queue/{queue_id}/next", response_model=Ticket)
 def serve_next_ticket(
     queue_id: int,

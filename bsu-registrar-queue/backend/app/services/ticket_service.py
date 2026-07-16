@@ -408,6 +408,40 @@ class TicketService:
             ))
         return result
 
+    def get_now_serving_overview(self) -> List[dict]:
+        """Aggregate now-serving/waiting summary for every active queue"""
+        active_queues = self.db.query(QueueDB).filter(
+            QueueDB.status == QueueDBStatus.ACTIVE
+        ).all()
+
+        result = []
+        for queue in active_queues:
+            serving_tickets = self.db.query(TicketDB).filter(
+                TicketDB.queue_id == queue.id,
+                TicketDB.status == TicketDBStatus.SERVING
+            ).order_by(TicketDB.position).all()
+
+            next_waiting = self.db.query(TicketDB).filter(
+                TicketDB.queue_id == queue.id,
+                TicketDB.status == TicketDBStatus.WAITING
+            ).order_by(TicketDB.position).first()
+
+            waiting_count = self.db.query(func.count(TicketDB.id)).filter(
+                TicketDB.queue_id == queue.id,
+                TicketDB.status == TicketDBStatus.WAITING
+            ).scalar()
+
+            result.append({
+                "queue_id": queue.id,
+                "queue_name": queue.name,
+                "queue_type": queue.queue_type.value,
+                "serving_ticket_numbers": [t.ticket_number for t in serving_tickets],
+                "next_ticket_number": next_waiting.ticket_number if next_waiting else None,
+                "waiting_count": waiting_count,
+            })
+
+        return result
+
     def _to_ticket(self, db_ticket: TicketDB, student: StudentDB = None, queue: QueueDB = None) -> Ticket:
         """Convert DB model to Pydantic model"""
         return Ticket(
