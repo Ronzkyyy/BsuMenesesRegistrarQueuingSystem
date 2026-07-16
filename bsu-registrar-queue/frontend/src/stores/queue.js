@@ -78,13 +78,14 @@ export const useQueueStore = defineStore('queue', {
   actions: {
     // ============ AUTH ACTIONS ============
 
-    async login(username, password) {
+    async login(username, password, portal = null) {
       this.loading = true
       this.error = null
       try {
         const form = new URLSearchParams()
         form.append('username', username)
         form.append('password', password)
+        if (portal) form.append('portal', portal)
         const response = await api.post('/auth/login', form, {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })

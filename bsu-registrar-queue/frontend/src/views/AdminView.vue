@@ -17,64 +17,8 @@
     </AppHeader>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-      <!-- Login Form (if not authenticated) -->
-      <div v-if="!queueStore.isAuthenticated" class="max-w-md mx-auto">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div class="bg-bsu-primary/5 border-b border-bsu-primary/10 p-6">
-            <h2 class="text-2xl font-bold text-gray-900">Staff Login</h2>
-            <p class="mt-1 text-gray-600">Access the registrar dashboard</p>
-          </div>
-          <div class="p-6">
-            <form @submit.prevent="handleLogin" class="space-y-4">
-              <div>
-                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  v-model="loginForm.username"
-                  type="text"
-                  required
-                  autocomplete="username"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary"
-                  placeholder="Enter your username"
-                />
-              </div>
-
-              <div>
-                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  v-model="loginForm.password"
-                  type="password"
-                  required
-                  autocomplete="current-password"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary"
-                  placeholder="Enter your password"
-                />
-              </div>
-
-              <button
-                type="submit"
-                :disabled="loading"
-                class="w-full py-2 px-4 text-sm font-medium text-white bg-bsu-primary rounded-md hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
-              >
-                <span v-if="!loading">Login</span>
-                <span v-else>Logging in...</span>
-              </button>
-            </form>
-
-            <div v-if="loginError" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p class="text-sm text-red-700">{{ loginError }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Dashboard Content (if authenticated) -->
-      <div v-else>
+      <!-- Dashboard Content -->
+      <div>
         <div class="mb-8">
           <h2 class="text-3xl font-bold text-gray-900">Staff Dashboard</h2>
           <p class="mt-2 text-gray-600">Manage queues and serve tickets</p>
@@ -439,6 +383,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQueueStore } from '@/stores/queue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
@@ -446,10 +391,10 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import { getQueueIcon, formatQueueType } from '@/components/icons/QueueIcons'
 
 const queueStore = useQueueStore()
+const router = useRouter()
 
 // State
 const loading = ref(false)
-const loginError = ref('')
 const dashboardError = ref('')
 const createQueueError = ref('')
 const showCreateQueueModal = ref(false)
@@ -467,12 +412,6 @@ const stats = ref({
   waitingTickets: 0,
   completedToday: 0,
   noShows: 0,
-})
-
-// Login form
-const loginForm = ref({
-  username: '',
-  password: '',
 })
 
 // Create queue form
@@ -493,27 +432,13 @@ const queueTypeOptions = [
   { value: 'others', label: 'Others' },
 ]
 
-// Login handler
-const handleLogin = async () => {
-  loading.value = true
-  loginError.value = ''
-
-  try {
-    await queueStore.login(loginForm.value.username, loginForm.value.password)
-    await fetchDashboardData()
-  } catch (err) {
-    loginError.value = err.response?.data?.detail || 'Login failed. Please check your credentials.'
-  } finally {
-    loading.value = false
-  }
-}
-
 const logout = () => {
   queueStore.logout()
   queues.value = []
   selectedQueueId.value = null
   queueDisplay.value = []
   servingTicket.value = null
+  router.push('/login')
 }
 
 // Fetch dashboard data
@@ -690,6 +615,7 @@ onMounted(async () => {
     } catch (err) {
       // Token expired or invalid - force re-login
       queueStore.logout()
+      router.push('/login')
     }
   }
 
