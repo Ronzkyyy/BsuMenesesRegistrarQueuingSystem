@@ -279,6 +279,7 @@ export const useQueueStore = defineStore('queue', {
         this.activeMediaItems = response.data
         return response.data
       } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch active media items'
         throw err
       }
     },
@@ -351,6 +352,7 @@ export const useQueueStore = defineStore('queue', {
         this.activeAnnouncements = response.data
         return response.data
       } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch active announcements'
         throw err
       }
     },
