@@ -109,6 +109,10 @@
             </div>
 
             <div class="p-6">
+              <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p class="text-sm text-red-700">{{ error }}</p>
+              </div>
+
               <!-- Active Ticket Display -->
               <div v-if="hasActiveTicket && myTicket">
                 <div class="text-center mb-6">

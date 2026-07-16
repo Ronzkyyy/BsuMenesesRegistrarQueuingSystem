@@ -1,15 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 flex flex-col">
-    <AppHeader subtitle="Registrar Queue Management System">
-      <template #actions>
-        <router-link
-          to="/admin"
-          class="hidden md:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-bsu-primary bg-bsu-gold hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bsu-gold"
-        >
-          Admin Dashboard
-        </router-link>
-      </template>
-    </AppHeader>
+    <AppHeader subtitle="Registrar Queue Management System" />
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
       <!-- Hero Section -->
