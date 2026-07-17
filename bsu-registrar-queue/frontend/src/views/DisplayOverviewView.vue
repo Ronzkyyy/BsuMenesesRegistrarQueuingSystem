@@ -1,34 +1,34 @@
 <template>
-  <div class="min-h-screen bg-gray-950 text-white flex flex-col">
+  <div class="h-screen overflow-hidden bg-gray-950 text-white flex flex-col">
     <!-- Top bar -->
-    <header class="flex items-center justify-between px-8 py-5 border-b border-white/10">
-      <div class="flex items-center space-x-4">
-        <svg class="w-9 h-9 text-bsu-gold" fill="currentColor" viewBox="0 0 24 24">
+    <header class="flex items-center justify-between px-6 py-2 border-b border-white/10 shrink-0">
+      <div class="flex items-center space-x-3">
+        <svg class="w-6 h-6 text-bsu-gold" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
         </svg>
         <div>
-          <h1 class="text-lg font-bold leading-tight">BSU Meneses Campus</h1>
-          <p class="text-sm text-white/50">All Queues Overview</p>
+          <h1 class="text-sm font-bold leading-tight">BSU Meneses Campus</h1>
+          <p class="text-xs text-white/50">All Queues Overview</p>
         </div>
       </div>
-      <div class="flex items-center space-x-6">
+      <div class="flex items-center space-x-4">
         <div class="text-right">
-          <p class="text-2xl font-bold tabular-nums">{{ clockTime }}</p>
+          <p class="text-lg font-bold tabular-nums leading-tight">{{ clockTime }}</p>
           <p class="text-xs text-white/50">{{ clockDate }}</p>
         </div>
         <button
           @click="toggleFullscreen"
-          class="p-2 rounded-md border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors"
+          class="p-1.5 rounded-md border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors"
           title="Toggle fullscreen"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
           </svg>
         </button>
       </div>
     </header>
 
-    <main class="flex-1 px-8 py-10">
+    <main class="flex-1 min-h-0 px-6 py-2 flex flex-col overflow-hidden">
       <!-- Loading -->
       <div v-if="loading && overview.length === 0" class="flex flex-col items-center justify-center h-full text-white/60">
         <div class="animate-spin rounded-full h-16 w-16 border-4 border-bsu-primary-light border-t-transparent mb-4"></div>
@@ -55,47 +55,50 @@
       </div>
 
       <!-- Grid -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        v-else
+        class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr gap-3"
+      >
         <div
           v-for="q in overview"
           :key="q.queue_id"
-          class="bg-white/5 border border-white/10 rounded-2xl p-6 text-center"
+          class="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col items-center justify-center text-center min-h-0"
         >
-          <h2 class="text-sm font-semibold tracking-[0.2em] text-white/40 uppercase mb-4">{{ q.queue_name }}</h2>
+          <h2 class="text-[clamp(0.65rem,1.4vh,0.9rem)] font-semibold tracking-[0.2em] text-white/40 uppercase mb-2">{{ q.queue_name }}</h2>
 
-          <div class="mb-4">
-            <p class="text-xs uppercase tracking-wide text-white/30 mb-2">Now Serving</p>
+          <div class="mb-2">
+            <p class="text-[clamp(0.55rem,1vh,0.7rem)] uppercase tracking-wide text-white/30 mb-1">Now Serving</p>
             <div v-if="q.serving_ticket_numbers.length > 0" class="flex flex-wrap justify-center gap-2">
               <span
                 v-for="num in q.serving_ticket_numbers"
                 :key="num"
-                class="inline-block bg-bsu-primary rounded-xl px-5 py-3 text-3xl font-extrabold tabular-nums"
+                class="inline-block bg-bsu-primary rounded-xl px-4 py-2 text-[clamp(1.25rem,4.5vh,2.5rem)] font-extrabold tabular-nums"
               >
                 {{ num }}
               </span>
             </div>
-            <span v-else class="inline-block bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-3xl font-extrabold text-white/20">
+            <span v-else class="inline-block bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[clamp(1.25rem,4.5vh,2.5rem)] font-extrabold text-white/20">
               --
             </span>
           </div>
 
-          <div class="flex items-center justify-center space-x-6 text-sm">
+          <div class="flex items-center justify-center space-x-4 text-[clamp(0.65rem,1.3vh,0.875rem)]">
             <div>
               <p class="text-white/30">Waiting</p>
-              <p class="text-lg font-bold tabular-nums">{{ q.waiting_count }}</p>
+              <p class="font-bold tabular-nums">{{ q.waiting_count }}</p>
             </div>
             <div>
               <p class="text-white/30">Next</p>
-              <p class="text-lg font-bold tabular-nums">{{ q.next_ticket_number ?? '--' }}</p>
+              <p class="font-bold tabular-nums">{{ q.next_ticket_number ?? '--' }}</p>
             </div>
           </div>
         </div>
       </div>
     </main>
 
-    <MediaAnnouncementPanel />
+    <MediaAnnouncementPanel :media-max-height-vh="26" class="shrink-0" />
 
-    <footer class="text-center py-4 text-xs text-white/30 border-t border-white/10">
+    <footer class="text-center py-1.5 text-xs text-white/30 border-t border-white/10 shrink-0">
       Bulacan State University - Meneses Campus &middot; Registrar Queue Management System
       <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-2 align-middle animate-pulse"></span>
     </footer>

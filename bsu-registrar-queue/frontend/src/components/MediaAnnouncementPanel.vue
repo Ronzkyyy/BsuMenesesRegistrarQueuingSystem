@@ -1,8 +1,11 @@
 <template>
   <div>
     <!-- Media Panel -->
-    <section v-if="mediaItems.length > 0 && currentItem" class="mt-10 max-w-5xl mx-auto px-8">
-      <div class="rounded-2xl overflow-hidden border border-white/10 bg-black aspect-video flex items-center justify-center">
+    <section v-if="mediaItems.length > 0 && currentItem" class="mt-2 px-8 flex justify-center">
+      <div
+        class="max-w-full aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center"
+        :style="mediaBoxStyle"
+      >
         <img
           v-if="currentItem.media_type === 'image'"
           :src="currentItem.url"
@@ -21,8 +24,8 @@
     </section>
 
     <!-- Announcement Ticker -->
-    <div v-if="tickerText" class="mt-6 bg-bsu-gold text-gray-900 overflow-hidden py-2">
-      <div class="whitespace-nowrap inline-block animate-marquee font-semibold px-4">
+    <div v-if="tickerText" class="mt-2 bg-bsu-gold text-gray-900 overflow-hidden py-1.5">
+      <div class="whitespace-nowrap inline-block animate-marquee font-semibold px-4 text-sm">
         {{ tickerText }}
       </div>
     </div>
@@ -33,7 +36,19 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useQueueStore } from '@/stores/queue'
 
+const props = defineProps({
+  // Caps the media box's height as a fraction of the viewport, so the same
+  // panel can sit comfortably under a single-queue board (more room) or the
+  // denser all-queues overview grid (less room) without either scrolling.
+  mediaMaxHeightVh: {
+    type: Number,
+    default: 45,
+  },
+})
+
 const queueStore = useQueueStore()
+
+const mediaBoxStyle = computed(() => ({ height: `calc(${props.mediaMaxHeightVh}vh - 3rem)` }))
 
 const currentIndex = ref(0)
 let rotationTimer = null
