@@ -284,6 +284,26 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    async uploadMediaFile(file) {
+      this.loading = true
+      this.error = null
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.post('/media/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 60000,
+        })
+        return response.data
+      } catch (err) {
+        const detail = err.response?.data?.detail
+        this.error = Array.isArray(detail) ? detail.map((d) => d.msg).join('; ') : detail || 'Failed to upload file'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     // ============ ANNOUNCEMENT ACTIONS ============
 
     async fetchAnnouncements() {
