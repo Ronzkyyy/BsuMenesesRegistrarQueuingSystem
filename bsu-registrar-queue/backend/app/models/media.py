@@ -12,9 +12,15 @@ class MediaType(str, Enum):
     VIDEO = "video"
 
 
+class MediaSource(str, Enum):
+    UPLOAD = "upload"
+    LINK = "link"
+
+
 class MediaItemBase(BaseModel):
     media_type: MediaType
     url: str
+    source: MediaSource = MediaSource.LINK
     display_duration_seconds: int = Field(default=10, ge=1, le=300)
     display_order: int = 0
     is_active: bool = True
@@ -27,11 +33,12 @@ class MediaItemCreate(MediaItemBase):
 class MediaItemUpdate(BaseModel):
     media_type: Optional[MediaType] = None
     url: Optional[str] = None
+    source: Optional[MediaSource] = None
     display_duration_seconds: Optional[int] = Field(default=None, ge=1, le=300)
     display_order: Optional[int] = None
     is_active: Optional[bool] = None
 
-    @field_validator("media_type", "url")
+    @field_validator("media_type", "url", "source")
     @classmethod
     def reject_explicit_null(cls, v):
         if v is None:
@@ -46,3 +53,8 @@ class MediaItem(MediaItemBase):
 
     class Config:
         from_attributes = True
+
+
+class MediaUploadResponse(BaseModel):
+    url: str
+    media_type: MediaType

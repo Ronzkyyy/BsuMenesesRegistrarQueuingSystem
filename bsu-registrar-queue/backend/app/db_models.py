@@ -147,12 +147,18 @@ class MediaDBType(str, enum.Enum):
     VIDEO = "video"
 
 
+class MediaDBSource(str, enum.Enum):
+    UPLOAD = "upload"
+    LINK = "link"
+
+
 class MediaItemDB(Base):
     __tablename__ = "media_items"
 
     id = Column(Integer, primary_key=True, index=True)
     media_type = Column(Enum(MediaDBType), nullable=False)
     url = Column(String, nullable=False)
+    source = Column(Enum(MediaDBSource), default=MediaDBSource.LINK, nullable=False)
     display_duration_seconds = Column(Integer, default=10)
     display_order = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)

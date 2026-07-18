@@ -1,19 +1,27 @@
 """
 Media item management endpoints (display-board playlist)
 """
-from fastapi import APIRouter, Depends, HTTPException
+import uuid
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 
 from ..core.database import get_db
 from ..core.security import require_role
 from ..db_models import UserRole
-from ..models.media import MediaItem, MediaItemCreate, MediaItemUpdate
+from ..models.media import MediaItem, MediaItemCreate, MediaItemUpdate, MediaUploadResponse
 from ..models.user import User
 from ..services.media_service import MediaService
 
 
 router = APIRouter()
+
+UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "media"
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".webm", ".ogg"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+MAX_VIDEO_SIZE = 50 * 1024 * 1024
 
 
 @router.get("/active", response_model=List[MediaItem])
@@ -23,6 +31,46 @@ def list_active_media(
     """List active media items for the display boards (public endpoint)"""
     service = MediaService(db)
     return service.get_active()
+
+
+@router.post("/upload", response_model=MediaUploadResponse)
+async def upload_media_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+):
+    """Upload an image or video file for use as a media item (admin/registrar only)"""
+    extension = Path(file.filename or "").suffix.lower()
+
+    if extension in ALLOWED_IMAGE_EXTENSIONS:
+        media_type = "image"
+        max_size = MAX_IMAGE_SIZE
+    elif extension in ALLOWED_VIDEO_EXTENSIONS:
+        media_type = "video"
+        max_size = MAX_VIDEO_SIZE
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unsupported file type '{extension}'. Allowed: "
+                f"images ({', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}), "
+                f"videos ({', '.join(sorted(ALLOWED_VIDEO_EXTENSIONS))})"
+            )
+        )
+
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size for {media_type} is {max_size // (1024 * 1024)}MB"
+        )
+
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4()}{extension}"
+    file_path = UPLOAD_DIR / filename
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    return MediaUploadResponse(url=f"/api/uploads/media/{filename}", media_type=media_type)
 
 
 @router.get("", response_model=List[MediaItem])
