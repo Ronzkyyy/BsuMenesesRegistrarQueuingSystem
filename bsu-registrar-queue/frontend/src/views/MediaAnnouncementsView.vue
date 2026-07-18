@@ -311,6 +311,7 @@ const showMediaModal = ref(false)
 const editingMediaId = ref(null)
 const mediaMode = ref('link')
 const selectedFile = ref(null)
+const editingOriginalSource = ref(null)
 const mediaForm = ref({
   media_type: 'image',
   url: '',
@@ -357,6 +358,7 @@ const openCreateMediaModal = () => {
   editingMediaId.value = null
   mediaMode.value = 'link'
   selectedFile.value = null
+  editingOriginalSource.value = null
   mediaForm.value = { media_type: 'image', url: '', display_duration_seconds: 10, display_order: 0 }
   showMediaModal.value = true
 }
@@ -366,6 +368,7 @@ const openEditMediaModal = (item) => {
   editingMediaId.value = item.id
   mediaMode.value = item.source === 'upload' ? 'upload' : 'link'
   selectedFile.value = null
+  editingOriginalSource.value = item.source
   mediaForm.value = {
     media_type: item.media_type,
     url: item.url,
@@ -377,7 +380,7 @@ const openEditMediaModal = (item) => {
 
 const saveMedia = async () => {
   if (mediaMode.value === 'link' && !mediaForm.value.url) return
-  if (mediaMode.value === 'upload' && !editingMediaId.value && !selectedFile.value) {
+  if (mediaMode.value === 'upload' && editingOriginalSource.value !== 'upload' && !selectedFile.value) {
     mediaModalError.value = 'Please choose a file to upload.'
     return
   }
