@@ -155,11 +155,34 @@ const loadQueues = async () => {
 
 const updateQueueDisplay = async () => {
   if (!selectedQueueId.value) return
+  const targetQueueId = selectedQueueId.value
+
   try {
-    await queueStore.fetchQueueDisplay(selectedQueueId.value)
-    queueDisplay.value = queueStore.queueDisplay
+    await queueStore.fetchQueueDisplay(targetQueueId)
+    if (selectedQueueId.value === targetQueueId) {
+      queueDisplay.value = queueStore.queueDisplay
+    }
   } catch (err) {
-    queueDisplay.value = []
+    if (selectedQueueId.value === targetQueueId) {
+      queueDisplay.value = []
+    }
+  }
+
+  try {
+    await queueStore.fetchQueueTickets(targetQueueId, 'serving')
+    if (selectedQueueId.value !== targetQueueId) return
+    const stillServing = queueStore.queueTickets[0] || null
+    if (stillServing) {
+      if (!servingTicket.value || servingTicket.value.id !== stillServing.id) {
+        servingTicket.value = stillServing
+      }
+    } else if (servingTicket.value) {
+      servingTicket.value = null
+    }
+  } catch (err) {
+    // Leave servingTicket as-is if this lookup fails - the waiting-list
+    // display above still updates, just without reconciling who's
+    // currently being served.
   }
 }
 
