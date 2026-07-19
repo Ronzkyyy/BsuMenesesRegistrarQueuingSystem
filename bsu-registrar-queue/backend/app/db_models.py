@@ -116,6 +116,7 @@ class TicketDB(Base):
     estimated_wait_time_minutes = Column(Integer)
     served_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
+    called_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

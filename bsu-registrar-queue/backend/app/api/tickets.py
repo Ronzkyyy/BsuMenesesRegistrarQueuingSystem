@@ -99,6 +99,20 @@ def serve_ticket(
     return ticket
 
 
+@router.post("/{ticket_id}/call", response_model=Ticket)
+def call_ticket(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+):
+    """Record that staff called this ticket again (does not change status)"""
+    service = TicketService(db)
+    ticket = service.call_ticket(ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return ticket
+
+
 @router.post("/{ticket_id}/no-show", response_model=Ticket)
 def mark_no_show(
     ticket_id: int,

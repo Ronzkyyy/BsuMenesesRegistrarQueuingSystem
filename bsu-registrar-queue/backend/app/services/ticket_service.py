@@ -274,6 +274,22 @@ class TicketService:
 
         return self._to_ticket(ticket, student, queue)
 
+    def call_ticket(self, ticket_id: int) -> Optional[Ticket]:
+        """Record that staff called this ticket again (does not change status)"""
+        ticket = self.db.query(TicketDB).filter(TicketDB.id == ticket_id).first()
+        if not ticket:
+            return None
+
+        ticket.called_at = datetime.now()
+        ticket.updated_at = datetime.now()
+        self.db.commit()
+        self.db.refresh(ticket)
+
+        student = self.db.query(StudentDB).filter(StudentDB.id == ticket.student_id).first()
+        queue = self.db.query(QueueDB).filter(QueueDB.id == ticket.queue_id).first()
+
+        return self._to_ticket(ticket, student, queue)
+
     def mark_no_show(self, ticket_id: int) -> Optional[Ticket]:
         """Mark ticket as no-show after timeout"""
         ticket = self.db.query(TicketDB).filter(TicketDB.id == ticket_id).first()
@@ -403,7 +419,9 @@ class TicketService:
                 queue_name=queue.name if queue else "Unknown",
                 position=ticket.position,
                 status=TicketStatus(ticket.status.value),
+                priority=PydanticPriorityLevel(ticket.priority.value),
                 estimated_wait_time_minutes=ticket.estimated_wait_time_minutes,
+                called_at=ticket.called_at,
                 created_at=ticket.created_at,
             ))
         return result
@@ -456,6 +474,7 @@ class TicketService:
             estimated_wait_time_minutes=db_ticket.estimated_wait_time_minutes,
             served_at=db_ticket.served_at,
             completed_at=db_ticket.completed_at,
+            called_at=db_ticket.called_at,
             created_at=db_ticket.created_at,
             updated_at=db_ticket.updated_at,
             queue_name=queue.name if queue else None,

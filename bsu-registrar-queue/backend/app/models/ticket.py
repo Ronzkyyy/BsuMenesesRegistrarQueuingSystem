@@ -40,6 +40,7 @@ class Ticket(TicketBase):
     estimated_wait_time_minutes: Optional[int] = None
     served_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    called_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     queue_name: Optional[str] = None
@@ -58,7 +59,9 @@ class TicketPublic(BaseModel):
     queue_name: str
     position: int
     status: TicketStatus
+    priority: PriorityLevel
     estimated_wait_time_minutes: Optional[int]
+    called_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
