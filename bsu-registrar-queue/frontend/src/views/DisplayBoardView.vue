@@ -173,18 +173,31 @@ const playChime = () => {
 }
 
 watch(servingTickets, (tickets) => {
+  // Object keys are always strings, so ticket_number (a number) must be
+  // stringified here to match - otherwise every key looks stale on every
+  // poll and the baseline needed for the fix below never sticks.
+  const currentKeys = new Set(tickets.map((ticket) => String(ticket.ticket_number)))
+  Object.keys(lastCalledAt.value).forEach((key) => {
+    if (!currentKeys.has(key)) delete lastCalledAt.value[key]
+  })
+  Object.keys(justCalled.value).forEach((key) => {
+    if (!currentKeys.has(key)) delete justCalled.value[key]
+  })
+
   tickets.forEach((ticket) => {
-    if (!ticket.called_at) return
-    const previous = lastCalledAt.value[ticket.ticket_number]
-    lastCalledAt.value[ticket.ticket_number] = ticket.called_at
-    // Only pulse on a genuine change seen after the first time we've observed
-    // this ticket - otherwise a display board that loads fresh would
-    // immediately pulse for a call that happened before the page even opened.
-    if (previous !== undefined && previous !== ticket.called_at) {
-      justCalled.value[ticket.ticket_number] = true
+    const key = ticket.ticket_number
+    // hasBaseline tracks whether we've observed this ticket before at all
+    // (even while called_at was still null) - otherwise a display board
+    // that loads fresh would immediately pulse for a call that happened
+    // before the page even opened.
+    const hasBaseline = Object.prototype.hasOwnProperty.call(lastCalledAt.value, key)
+    const previous = lastCalledAt.value[key]
+    lastCalledAt.value[key] = ticket.called_at
+    if (hasBaseline && ticket.called_at && previous !== ticket.called_at) {
+      justCalled.value[key] = true
       playChime()
       setTimeout(() => {
-        justCalled.value[ticket.ticket_number] = false
+        justCalled.value[key] = false
       }, 2000)
     }
   })
