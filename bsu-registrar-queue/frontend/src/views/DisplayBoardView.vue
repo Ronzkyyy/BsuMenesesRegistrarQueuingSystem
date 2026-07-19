@@ -67,7 +67,8 @@
             <div
               v-for="ticket in servingTickets"
               :key="ticket.ticket_number"
-              class="bg-bsu-primary rounded-2xl px-16 py-12 shadow-lg shadow-pink-900/40 animate-pulse-slow"
+              class="bg-bsu-primary rounded-2xl px-16 py-12 shadow-lg shadow-pink-900/40"
+              :class="justCalled[ticket.ticket_number] ? 'animate-called-pulse' : 'animate-pulse-slow'"
             >
               <span class="text-8xl md:text-9xl font-extrabold text-white tabular-nums drop-shadow-lg">{{ ticket.ticket_number }}</span>
             </div>
@@ -117,7 +118,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
@@ -147,6 +148,47 @@ const waitingTickets = computed(() =>
 )
 const waitingPreview = computed(() => waitingTickets.value.slice(0, WAITING_PREVIEW_LIMIT))
 const waitingOverflow = computed(() => Math.max(0, waitingTickets.value.length - WAITING_PREVIEW_LIMIT))
+
+const lastCalledAt = ref({})
+const justCalled = ref({})
+
+const playChime = () => {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext
+    const ctx = new AudioContextClass()
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.value = 880
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.start()
+    oscillator.stop(ctx.currentTime + 0.4)
+  } catch (err) {
+    // Audio may be blocked by the browser's autoplay policy - fail silent,
+    // the visual pulse below still happens regardless.
+  }
+}
+
+watch(servingTickets, (tickets) => {
+  tickets.forEach((ticket) => {
+    if (!ticket.called_at) return
+    const previous = lastCalledAt.value[ticket.ticket_number]
+    lastCalledAt.value[ticket.ticket_number] = ticket.called_at
+    // Only pulse on a genuine change seen after the first time we've observed
+    // this ticket - otherwise a display board that loads fresh would
+    // immediately pulse for a call that happened before the page even opened.
+    if (previous !== undefined && previous !== ticket.called_at) {
+      justCalled.value[ticket.ticket_number] = true
+      playChime()
+      setTimeout(() => {
+        justCalled.value[ticket.ticket_number] = false
+      }, 2000)
+    }
+  })
+})
 
 let clockTimer = null
 
@@ -210,5 +252,13 @@ onUnmounted(() => {
 }
 .animate-pulse-slow {
   animation: pulse-slow 2.5s ease-in-out infinite;
+}
+
+@keyframes called-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(190, 24, 93, 0.7); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(190, 24, 93, 0); }
+}
+.animate-called-pulse {
+  animation: called-pulse 0.6s ease-in-out 3;
 }
 </style>
