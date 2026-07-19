@@ -944,3 +944,105 @@ Open the single-queue display board (`/display/:id`) for a queue that already ha
 git add bsu-registrar-queue/frontend/src/views/DisplayBoardView.vue
 git commit -m "feat(counter): pulse and chime the display board when a ticket is called"
 ```
+
+---
+
+### Task 4: Frontend — hydrate an already-serving ticket on load/poll
+
+**Background:** The final whole-branch review found that `CounterView.vue`'s `servingTicket` is only ever set by this screen's own `serveNext()` call, and is never populated from the regular poll. If a ticket is already `serving` when the Counter screen loads — served earlier from the existing Queue Management panel, or still serving across a page reload — the Currently Serving card wrongly shows `--` with an enabled "Serve Next Ticket" button, which can serve a second ticket concurrently for the same queue. This task closes that gap by reconciling `servingTicket` against the real backend state on every `updateQueueDisplay()` call (queue switch, and the existing 5-second poll), using the already-existing staff-facing `GET /api/tickets/queue/{queue_id}?status=serving` endpoint (via the already-existing `fetchQueueTickets` store action), which — unlike the public `/display` endpoint — returns full `Ticket` objects with an `id`, needed for the Call/Skip/Complete actions.
+
+**Files:**
+- Modify: `bsu-registrar-queue/frontend/src/views/CounterView.vue`
+
+**Interfaces:**
+- Consumes: the already-existing `queueStore.fetchQueueTickets(queueId, status)` action (`frontend/src/stores/queue.js:568-582`), which calls `GET /tickets/queue/{queueId}?status=serving` and populates `queueStore.queueTickets` with the matching full `Ticket` list (each item has `.id`).
+
+- [ ] **Step 1: Reconcile `servingTicket` inside `updateQueueDisplay`**
+
+In `bsu-registrar-queue/frontend/src/views/CounterView.vue`, change:
+
+```js
+const updateQueueDisplay = async () => {
+  if (!selectedQueueId.value) return
+  try {
+    await queueStore.fetchQueueDisplay(selectedQueueId.value)
+    queueDisplay.value = queueStore.queueDisplay
+  } catch (err) {
+    queueDisplay.value = []
+  }
+}
+```
+
+to:
+
+```js
+const updateQueueDisplay = async () => {
+  if (!selectedQueueId.value) return
+  const targetQueueId = selectedQueueId.value
+
+  try {
+    await queueStore.fetchQueueDisplay(targetQueueId)
+    if (selectedQueueId.value === targetQueueId) {
+      queueDisplay.value = queueStore.queueDisplay
+    }
+  } catch (err) {
+    if (selectedQueueId.value === targetQueueId) {
+      queueDisplay.value = []
+    }
+  }
+
+  try {
+    await queueStore.fetchQueueTickets(targetQueueId, 'serving')
+    if (selectedQueueId.value !== targetQueueId) return
+    const stillServing = queueStore.queueTickets[0] || null
+    if (stillServing) {
+      if (!servingTicket.value || servingTicket.value.id !== stillServing.id) {
+        servingTicket.value = stillServing
+      }
+    } else if (servingTicket.value) {
+      servingTicket.value = null
+    }
+  } catch (err) {
+    // Leave servingTicket as-is if this lookup fails - the waiting-list
+    // display above still updates, just without reconciling who's
+    // currently being served.
+  }
+}
+```
+
+Note: the `targetQueueId` guard on the `fetchQueueDisplay` half is a small, deliberate consistency addition alongside the main fix — `updateQueueDisplay` is being touched for the same "queue changed mid-request" race class that `serveNext` was already fixed for in Task 2, so it's fixed the same way here rather than left inconsistent within the same function.
+
+- [ ] **Step 2: Start the full dev stack**
+
+From `bsu-registrar-queue/`, run `.\dev.ps1` (or restart the frontend if already running). Confirm the backend is running **current code** — if the backend process already listening on port 8000 predates this branch's commits (check by hitting `GET /api/tickets/queue/{id}/display` and confirming the response includes `priority` and `called_at` keys), stop it and start a fresh instance from `bsu-registrar-queue/backend` (`.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000`) before verifying.
+
+- [ ] **Step 3: Verify — an already-serving ticket is detected, not just ones served from this screen**
+
+```bash
+cd bsu-registrar-queue/backend
+.venv/Scripts/python.exe -c "
+import httpx
+
+base = 'http://localhost:8000/api'
+resp = httpx.post(f'{base}/auth/login', data={'username': 'admin', 'password': 'admin123'})
+token = resp.json()['access_token']
+headers = {'Authorization': f'Bearer {token}'}
+
+queue_id = httpx.get(f'{base}/queues/active').json()[0]['id']
+student_id = httpx.get(f'{base}/students/search', params={'student_id': '2024000567'}).json()['id']
+
+ticket = httpx.post(f'{base}/tickets', json={'queue_id': queue_id, 'student_id': student_id, 'purpose': 'hydration test'}).json()
+served = httpx.post(f'{base}/tickets/queue/{queue_id}/next', headers=headers).json()
+print('served via API (simulating Queue Management, not the Counter screen):', served['status'], served['ticket_number'])
+print(f'Now open /admin/counter in a browser, pick queue id {queue_id}, and confirm the Currently Serving card shows ticket #{served[\"ticket_number\"]} within 5 seconds - NOT a plain -- with an enabled Serve Next button.')
+"
+```
+
+Open `/admin/counter`, select the queue printed above, and confirm the Currently Serving card shows the already-serving ticket (with its priority badge if applicable) within 5 seconds of the page loading or the queue being selected — not `--`. Confirm Call/Skip/Complete all work correctly against this ticket (they need its `id`, which this task supplies). Then confirm that if the ticket is completed from the *existing* Queue Management panel (`/admin/queues`) while the Counter screen is left open on the same queue, the Counter screen's Currently Serving card clears back to `--` within 5 seconds (the reconciliation also handles a ticket disappearing, not just appearing).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add bsu-registrar-queue/frontend/src/views/CounterView.vue
+git commit -m "fix(counter): hydrate already-serving ticket from poll, not just this screen's own serve action"
+```
