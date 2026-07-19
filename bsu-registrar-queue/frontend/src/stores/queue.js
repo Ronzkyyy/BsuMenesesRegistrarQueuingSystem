@@ -668,6 +668,20 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    async callTicket(ticketId) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post(`/tickets/${ticketId}/call`)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to call ticket'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     // ============ STUDENT ACTIONS ============
 
     async searchStudent(studentId) {
