@@ -19,7 +19,7 @@ During brainstorming, a real edge case surfaced: if the letter were derived from
 - No uniqueness constraint exists today on `queue_type`, `name`, or anything else that would prevent two queues from colliding in any way — plain `ticket_number` values already collide across different queues today (e.g., "Ticket #1" can exist simultaneously in both the Enrollment and Clearance queues), distinguished only by which queue's screen you're viewing.
 - The 5 currently-seeded queues (`backend/app/core/init_db.py:32-71`): Enrollment (type `ENROLLMENT`), Document Request (type `DOCUMENT_REQUEST`), Clearance (type `CLEARANCE`), Scholarship (type `SCHOLARSHIP`), General Inquiry (type `OTHERS` — note the name doesn't start with the same letter as its type).
 - No automated test framework is configured for this project; verification is manual against the real running dev stack, per every prior feature in this project's history.
-- No Alembic migration wiring exists; `Base.metadata.create_all()` only creates missing tables, so schema-adding changes require dropping/recreating affected tables in the dev DB (same caveat as every prior schema change in this project).
+- Alembic **is** wired up and working in this project (`backend/alembic.ini`, `backend/migrations/`, currently 3 revisions with head `db210995aa4a`) — `alembic revision --autogenerate` and `alembic upgrade head` are the correct way to apply this schema change, not a drop/recreate workaround.
 
 ## Scope
 
@@ -49,7 +49,7 @@ Add a required, admin-set `ticket_letter` field to each queue (set once, at crea
 
 ### Migration / Seed Data
 
-Same caveat as every previous schema change in this project: no Alembic wiring exists, so the new `ticket_letter` column requires dropping/recreating the `queues` table (and, transitively, `tickets`, since it foreign-keys to `queues`) in the dev database, with the same data-loss implication already accepted for prior features. `backend/app/core/init_db.py`'s 5 seeded queues (lines 32-71) each need a `ticket_letter` value added: Enrollment→E, Document Request→D, Clearance→C, Scholarship→S, General Inquiry→O (matching its `OTHERS` type, not its name).
+Add the `ticket_letter` column via a real Alembic migration (`alembic revision --autogenerate -m "add ticket_letter to queues"`, following the style of the existing revisions under `backend/migrations/versions/`), not a drop/recreate workaround — Alembic is properly wired up in this project. Since the column is `nullable=False` and existing seeded queues have no value yet, the migration needs a data-backfill step (matching the existing pattern in `db210995aa4a_student_id_ten_digit_format.py`, which backfills data in its `upgrade()` before/alongside the schema change): add the column nullable first, backfill each existing queue's letter from its `queue_type` (Enrollment→E, Document Request→D, Clearance→C, Scholarship→S, Others→O), then alter it to `nullable=False`. `backend/app/core/init_db.py`'s 5 seeded queue definitions (lines 32-71) also need a `ticket_letter` value added for fresh dev-DB setups: Enrollment→E, Document Request→D, Clearance→C, Scholarship→S, General Inquiry→O (matching its `OTHERS` type, not its name).
 
 ### Out of scope (deferred)
 
@@ -63,7 +63,7 @@ Same caveat as every previous schema change in this project: no Alembic wiring e
 
 No automated test framework is configured for this project. Verification is manual, against the real running dev stack:
 
-1. Confirm the new `ticket_letter` column exists and the 5 seeded queues carry their expected letters after recreating the dev DB (same caveat as prior schema-adding features).
+1. Confirm the new `ticket_letter` column exists and the 5 existing seeded queues carry their expected backfilled letters after running `alembic upgrade head`, with no data loss.
 2. Create a new queue via the admin UI, confirm the Ticket Letter field pre-fills based on the selected Queue Type and can be freely edited before submitting.
 3. Attempt to create a second queue using a letter already in use (e.g. `E`, already taken by the seeded Enrollment queue) and confirm the creation is rejected with a clear inline error, not silently accepted.
 4. Take a ticket as a student for a queue, confirm the ticket confirmation view (`QueueDetailView.vue`/`QueuesView.vue`) shows the formatted code (e.g. `E-004`), not a bare number.
