@@ -2,10 +2,9 @@
   <div class="h-screen overflow-hidden bg-gray-950 text-white flex flex-col">
     <!-- Top bar -->
     <header class="flex items-center justify-between px-6 py-2 border-b border-white/10 shrink-0">
-      <div class="flex items-center space-x-3">
-        <svg class="w-6 h-6 text-bsu-gold" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
-        </svg>
+      <div class="flex items-center space-x-2">
+        <img :src="BSUlogo" alt="BSU Logo" class="w-8 h-8 object-contain" />
+        <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-7 h-7 object-contain" />
         <div>
           <h1 class="text-sm font-bold leading-tight">BSU Meneses Campus</h1>
           <p class="text-xs text-white/50">All Queues Overview</p>
@@ -67,17 +66,17 @@
           <h2 class="text-[clamp(0.65rem,1.4vh,0.9rem)] font-semibold tracking-[0.2em] text-white/40 uppercase mb-2">{{ q.queue_name }}</h2>
 
           <div class="mb-2">
-            <p class="text-[clamp(0.55rem,1vh,0.7rem)] uppercase tracking-wide text-white/30 mb-1">Now Serving</p>
+            <p class="text-[clamp(0.6rem,1.3vh,0.85rem)] font-bold uppercase tracking-wide text-white/70 mb-1">Now Serving</p>
             <div v-if="q.serving_ticket_numbers.length > 0" class="flex flex-wrap justify-center gap-2">
               <span
                 v-for="num in q.serving_ticket_numbers"
                 :key="num"
-                class="inline-block bg-bsu-primary rounded-xl px-4 py-2 text-[clamp(1.25rem,4.5vh,2.5rem)] font-extrabold tabular-nums"
+                class="inline-block bg-bsu-primary rounded-xl px-4 py-2 text-[clamp(1.5rem,5.5vh,3rem)] font-extrabold text-white tabular-nums drop-shadow"
               >
                 {{ num }}
               </span>
             </div>
-            <span v-else class="inline-block bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[clamp(1.25rem,4.5vh,2.5rem)] font-extrabold text-white/20">
+            <span v-else class="inline-block bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[clamp(1.5rem,5.5vh,3rem)] font-extrabold text-white/25">
               --
             </span>
           </div>
@@ -110,6 +109,8 @@ import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
 import MediaAnnouncementPanel from '@/components/MediaAnnouncementPanel.vue'
+import BSUlogo from '@/assets/BSUlogo.png'
+import MENESESlogo from '@/assets/MENESESlogo.png'
 
 const queueStore = useQueueStore()
 

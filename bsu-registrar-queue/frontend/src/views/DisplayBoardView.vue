@@ -2,10 +2,9 @@
   <div class="min-h-screen bg-gray-950 text-white flex flex-col">
     <!-- Top bar -->
     <header class="flex items-center justify-between px-8 py-5 border-b border-white/10">
-      <div class="flex items-center space-x-4">
-        <svg class="w-9 h-9 text-bsu-gold" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
-        </svg>
+      <div class="flex items-center space-x-3">
+        <img :src="BSUlogo" alt="BSU Logo" class="w-12 h-12 object-contain" />
+        <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-10 h-10 object-contain" />
         <div>
           <h1 class="text-lg font-bold leading-tight">BSU Meneses Campus</h1>
           <p class="text-sm text-white/50">{{ queueName || 'Queue Display' }}</p>
@@ -62,19 +61,19 @@
       <div v-else class="w-full max-w-5xl">
         <!-- Now Serving -->
         <section class="text-center mb-12">
-          <h2 class="text-sm font-semibold tracking-[0.3em] text-white/40 uppercase mb-6">Now Serving</h2>
+          <h2 class="text-xl md:text-2xl font-bold tracking-[0.25em] text-white uppercase mb-6">Now Serving</h2>
 
           <div v-if="servingTickets.length > 0" class="flex flex-wrap justify-center gap-6">
             <div
               v-for="ticket in servingTickets"
               :key="ticket.ticket_number"
-              class="bg-bsu-primary rounded-2xl px-14 py-10 shadow-lg shadow-pink-900/40 animate-pulse-slow"
+              class="bg-bsu-primary rounded-2xl px-16 py-12 shadow-lg shadow-pink-900/40 animate-pulse-slow"
             >
-              <span class="text-7xl md:text-8xl font-extrabold tabular-nums">{{ ticket.ticket_number }}</span>
+              <span class="text-8xl md:text-9xl font-extrabold text-white tabular-nums drop-shadow-lg">{{ ticket.ticket_number }}</span>
             </div>
           </div>
-          <div v-else class="inline-block bg-white/5 rounded-2xl px-14 py-10 border border-white/10">
-            <span class="text-6xl md:text-7xl font-extrabold text-white/20">--</span>
+          <div v-else class="inline-block bg-white/5 rounded-2xl px-16 py-12 border border-white/10">
+            <span class="text-7xl md:text-8xl font-extrabold text-white/25">--</span>
           </div>
         </section>
 
@@ -123,6 +122,8 @@ import { useRoute } from 'vue-router'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
 import MediaAnnouncementPanel from '@/components/MediaAnnouncementPanel.vue'
+import BSUlogo from '@/assets/BSUlogo.png'
+import MENESESlogo from '@/assets/MENESESlogo.png'
 
 const route = useRoute()
 const queueStore = useQueueStore()
