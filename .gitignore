@@ -10,6 +10,10 @@ bsu-registrar-queue/backend/.env
 *.db
 bsu_queue.db
 
+# Uploaded media (runtime data, not source)
+backend/uploads/
+bsu-registrar-queue/backend/uploads/
+
 # Node
 node_modules/
 dist/

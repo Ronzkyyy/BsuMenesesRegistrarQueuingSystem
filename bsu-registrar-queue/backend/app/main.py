@@ -1,8 +1,10 @@
 """
 BSU Registrar Queue System - Main Application
 """
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .core.config import settings
 from .api import router
 
@@ -27,6 +29,13 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api")
+
+# Serves uploaded media (backend/uploads/media/<file>) at /api/uploads/media/<file> -
+# mounted under /api specifically so the frontend dev proxy (which only forwards /api/*)
+# and any production reverse-proxy rule for /api reach it with no extra configuration.
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 
 @app.get("/")

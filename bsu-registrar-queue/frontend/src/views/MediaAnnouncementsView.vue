@@ -36,7 +36,10 @@
             <tbody class="divide-y divide-gray-200">
               <tr v-for="item in queueStore.mediaItems" :key="item.id">
                 <td class="px-4 py-4 text-sm text-gray-900 capitalize">{{ item.media_type }}</td>
-                <td class="px-4 py-4 text-sm text-gray-500 max-w-xs truncate">{{ item.url }}</td>
+                <td class="px-4 py-4 text-sm text-gray-500 max-w-xs">
+                  <span class="block truncate">{{ item.url }}</span>
+                  <span class="block text-xs text-gray-400">{{ item.source === 'upload' ? 'Uploaded file' : 'External link' }}</span>
+                </td>
                 <td class="px-4 py-4 text-sm text-gray-500">{{ item.display_duration_seconds }}s</td>
                 <td class="px-4 py-4 text-sm text-gray-500">{{ item.display_order }}</td>
                 <td class="px-4 py-4">
@@ -148,7 +151,26 @@
           <h3 class="text-lg font-bold text-gray-900">{{ editingMediaId ? 'Edit Media Item' : 'Add Media Item' }}</h3>
         </div>
         <div class="px-6 py-4 space-y-4">
-          <div>
+          <div class="flex rounded-md border border-gray-300 overflow-hidden">
+            <button
+              type="button"
+              @click="mediaMode = 'upload'"
+              class="flex-1 px-3 py-2 text-sm font-medium"
+              :class="mediaMode === 'upload' ? 'bg-bsu-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+            >
+              Upload File
+            </button>
+            <button
+              type="button"
+              @click="mediaMode = 'link'"
+              class="flex-1 px-3 py-2 text-sm font-medium"
+              :class="mediaMode === 'link' ? 'bg-bsu-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+            >
+              Paste URL
+            </button>
+          </div>
+
+          <div v-if="mediaMode === 'link'">
             <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
             <select
               v-model="mediaForm.media_type"
@@ -158,7 +180,8 @@
               <option value="video">Video (embeddable URL, e.g. YouTube /embed/ link)</option>
             </select>
           </div>
-          <div>
+
+          <div v-if="mediaMode === 'link'">
             <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
             <input
               v-model="mediaForm.url"
@@ -167,6 +190,19 @@
               placeholder="https://..."
             />
           </div>
+
+          <div v-else>
+            <label class="block text-sm font-medium text-gray-700 mb-1">File</label>
+            <input
+              type="file"
+              accept="image/*,video/*"
+              @change="onMediaFileSelected"
+              class="w-full text-sm text-gray-700 file:mr-3 file:px-3 file:py-2 file:rounded-md file:border-0 file:bg-bsu-primary file:text-white file:text-sm hover:file:bg-pink-800"
+            />
+            <p v-if="editingMediaId && !selectedFile" class="mt-1 text-xs text-gray-500">Leave empty to keep the current file.</p>
+            <p class="mt-1 text-xs text-gray-500">Images up to 5MB (jpg, png, gif, webp); videos up to 50MB (mp4, webm, ogg).</p>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Duration (seconds)</label>
@@ -273,6 +309,9 @@ const mediaModalError = ref('')
 const mediaActionLoading = ref(false)
 const showMediaModal = ref(false)
 const editingMediaId = ref(null)
+const mediaMode = ref('link')
+const selectedFile = ref(null)
+const editingOriginalSource = ref(null)
 const mediaForm = ref({
   media_type: 'image',
   url: '',
@@ -280,9 +319,46 @@ const mediaForm = ref({
   display_order: 0,
 })
 
+const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg']
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024
+
+const validateSelectedFile = (file) => {
+  const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
+  const isImage = ALLOWED_IMAGE_EXTENSIONS.includes(ext)
+  const isVideo = ALLOWED_VIDEO_EXTENSIONS.includes(ext)
+  if (!isImage && !isVideo) {
+    return `Unsupported file type '${ext}'. Allowed: images (${ALLOWED_IMAGE_EXTENSIONS.join(', ')}), videos (${ALLOWED_VIDEO_EXTENSIONS.join(', ')})`
+  }
+  const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE
+  if (file.size > maxSize) {
+    return `File too large. Maximum size for ${isImage ? 'image' : 'video'} is ${maxSize / (1024 * 1024)}MB`
+  }
+  return null
+}
+
+const onMediaFileSelected = (event) => {
+  const file = event.target.files[0] || null
+  if (file) {
+    const validationError = validateSelectedFile(file)
+    if (validationError) {
+      mediaModalError.value = validationError
+      selectedFile.value = null
+      event.target.value = ''
+      return
+    }
+  }
+  mediaModalError.value = ''
+  selectedFile.value = file
+}
+
 const openCreateMediaModal = () => {
   mediaModalError.value = ''
   editingMediaId.value = null
+  mediaMode.value = 'link'
+  selectedFile.value = null
+  editingOriginalSource.value = null
   mediaForm.value = { media_type: 'image', url: '', display_duration_seconds: 10, display_order: 0 }
   showMediaModal.value = true
 }
@@ -290,6 +366,9 @@ const openCreateMediaModal = () => {
 const openEditMediaModal = (item) => {
   mediaModalError.value = ''
   editingMediaId.value = item.id
+  mediaMode.value = item.source === 'upload' ? 'upload' : 'link'
+  selectedFile.value = null
+  editingOriginalSource.value = item.source
   mediaForm.value = {
     media_type: item.media_type,
     url: item.url,
@@ -300,15 +379,26 @@ const openEditMediaModal = (item) => {
 }
 
 const saveMedia = async () => {
-  if (!mediaForm.value.url) return
+  if (mediaMode.value === 'link' && !mediaForm.value.url) return
+  if (mediaMode.value === 'upload' && editingOriginalSource.value !== 'upload' && !selectedFile.value) {
+    mediaModalError.value = 'Please choose a file to upload.'
+    return
+  }
 
   mediaActionLoading.value = true
   mediaModalError.value = ''
   try {
+    let payload = { ...mediaForm.value, source: mediaMode.value }
+
+    if (mediaMode.value === 'upload' && selectedFile.value) {
+      const uploadResult = await queueStore.uploadMediaFile(selectedFile.value)
+      payload = { ...payload, url: uploadResult.url, media_type: uploadResult.media_type }
+    }
+
     if (editingMediaId.value) {
-      await queueStore.updateMediaItem(editingMediaId.value, mediaForm.value)
+      await queueStore.updateMediaItem(editingMediaId.value, payload)
     } else {
-      await queueStore.createMediaItem(mediaForm.value)
+      await queueStore.createMediaItem(payload)
     }
     showMediaModal.value = false
   } catch (err) {

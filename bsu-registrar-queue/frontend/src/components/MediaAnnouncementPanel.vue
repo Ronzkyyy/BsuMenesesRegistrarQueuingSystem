@@ -12,6 +12,16 @@
           :alt="`Media item ${currentItem.id}`"
           class="w-full h-full object-contain"
         />
+        <video
+          v-else-if="currentItem.source === 'upload'"
+          :key="currentItem.id"
+          :src="currentItem.url"
+          class="w-full h-full object-contain"
+          autoplay
+          muted
+          loop
+          playsinline
+        ></video>
         <iframe
           v-else
           :src="currentItem.url"
