@@ -165,14 +165,19 @@ const updateQueueDisplay = async () => {
 
 const serveNext = async () => {
   if (!selectedQueueId.value) return
+  const targetQueueId = selectedQueueId.value
   loading.value = true
   counterError.value = ''
   try {
-    const result = await queueStore.serveNextTicket(selectedQueueId.value)
-    servingTicket.value = result
-    await updateQueueDisplay()
+    const result = await queueStore.serveNextTicket(targetQueueId)
+    if (selectedQueueId.value === targetQueueId) {
+      servingTicket.value = result
+      await updateQueueDisplay()
+    }
   } catch (err) {
-    counterError.value = err.response?.data?.detail || 'No waiting tickets'
+    if (selectedQueueId.value === targetQueueId) {
+      counterError.value = err.response?.data?.detail || 'No waiting tickets'
+    }
   } finally {
     loading.value = false
   }
