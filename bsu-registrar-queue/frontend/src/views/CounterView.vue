@@ -31,7 +31,7 @@
 
             <div v-if="servingTicket">
               <span class="inline-block px-8 py-4 bg-bsu-primary text-white text-5xl font-extrabold rounded-full mb-3">
-                {{ servingTicket.ticket_number }}
+                {{ servingTicket.ticket_code }}
               </span>
               <div class="mb-6">
                 <span
@@ -96,7 +96,7 @@
                 :class="ticket.priority === 'urgent' ? 'bg-red-50 border-l-4 border-red-400' : ticket.priority === 'priority' ? 'bg-yellow-50 border-l-4 border-yellow-400' : 'bg-white border border-gray-200'"
               >
                 <div class="flex items-center space-x-3">
-                  <span class="font-medium text-gray-900">#{{ ticket.ticket_number }}</span>
+                  <span class="font-medium text-gray-900">{{ ticket.ticket_code }}</span>
                   <span
                     v-if="ticket.priority !== 'normal'"
                     class="text-xs px-2 py-0.5 rounded-full"

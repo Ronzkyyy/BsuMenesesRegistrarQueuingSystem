@@ -67,13 +67,13 @@
 
           <div class="mb-2">
             <p class="text-[clamp(0.6rem,1.3vh,0.85rem)] font-bold uppercase tracking-wide text-white/70 mb-1">Now Serving</p>
-            <div v-if="q.serving_ticket_numbers.length > 0" class="flex flex-wrap justify-center gap-2">
+            <div v-if="q.serving_ticket_codes.length > 0" class="flex flex-wrap justify-center gap-2">
               <span
-                v-for="num in q.serving_ticket_numbers"
-                :key="num"
+                v-for="code in q.serving_ticket_codes"
+                :key="code"
                 class="inline-block bg-bsu-primary rounded-xl px-4 py-2 text-[clamp(1.5rem,5.5vh,3rem)] font-extrabold text-white tabular-nums drop-shadow"
               >
-                {{ num }}
+                {{ code }}
               </span>
             </div>
             <span v-else class="inline-block bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[clamp(1.5rem,5.5vh,3rem)] font-extrabold text-white/25">
@@ -88,7 +88,7 @@
             </div>
             <div>
               <p class="text-white/30">Next</p>
-              <p class="font-bold tabular-nums">{{ q.next_ticket_number ?? '--' }}</p>
+              <p class="font-bold tabular-nums">{{ q.next_ticket_code ?? '--' }}</p>
             </div>
           </div>
         </div>

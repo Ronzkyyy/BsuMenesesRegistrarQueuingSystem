@@ -70,7 +70,7 @@
               class="bg-bsu-primary rounded-2xl px-16 py-12 shadow-lg shadow-pink-900/40"
               :class="justCalled[ticket.ticket_number] ? 'animate-called-pulse' : 'animate-pulse-slow'"
             >
-              <span class="text-8xl md:text-9xl font-extrabold text-white tabular-nums drop-shadow-lg">{{ ticket.ticket_number }}</span>
+              <span class="text-8xl md:text-9xl font-extrabold text-white tabular-nums drop-shadow-lg">{{ ticket.ticket_code }}</span>
             </div>
           </div>
           <div v-else class="inline-block bg-white/5 rounded-2xl px-16 py-12 border border-white/10">
@@ -91,7 +91,7 @@
               class="rounded-xl px-6 py-4 text-center"
               :class="idx === 0 ? 'bg-bsu-gold text-gray-900' : 'bg-white/5 border border-white/10 text-white'"
             >
-              <p class="text-3xl font-bold tabular-nums">{{ ticket.ticket_number }}</p>
+              <p class="text-3xl font-bold tabular-nums">{{ ticket.ticket_code }}</p>
               <p class="text-xs mt-1" :class="idx === 0 ? 'text-gray-800/70' : 'text-white/40'">
                 {{ idx === 0 ? 'Up Next' : `~${ticket.estimated_wait_time_minutes ?? 0} min` }}
               </p>

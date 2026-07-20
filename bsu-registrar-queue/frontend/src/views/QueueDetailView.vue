@@ -117,7 +117,7 @@
               <div v-if="hasActiveTicket && myTicket">
                 <div class="text-center mb-6">
                   <div class="inline-flex items-center justify-center w-20 h-20 bg-bsu-primary text-white rounded-full mb-4">
-                    <span class="text-3xl font-bold">{{ myTicket.ticket_number }}</span>
+                    <span class="text-3xl font-bold">{{ myTicket.ticket_code }}</span>
                   </div>
                   <h3 class="text-lg font-bold text-gray-900">Your Ticket Number</h3>
                   <p class="text-gray-500">Queue: {{ queue.name }}</p>
@@ -431,7 +431,7 @@
             >
               <div>
                 <p class="font-medium text-gray-900">{{ t.queue_name }}</p>
-                <p class="text-sm text-gray-500">Ticket #{{ t.ticket_number }} &middot; Position {{ t.position }}</p>
+                <p class="text-sm text-gray-500">Ticket {{ t.ticket_code }} &middot; Position {{ t.position }}</p>
               </div>
               <StatusBadge :status="t.status" />
             </div>
