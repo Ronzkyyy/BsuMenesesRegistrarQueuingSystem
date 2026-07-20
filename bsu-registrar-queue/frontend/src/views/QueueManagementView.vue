@@ -85,7 +85,7 @@
           <p class="mt-2 text-gray-500">No queues found. Create a new queue to get started.</p>
         </div>
 
-        <div class="mt-6">
+        <div v-if="queueStore.currentUser?.role === 'admin'" class="mt-6">
           <button
             @click="showCreateQueueModal = true"
             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary"

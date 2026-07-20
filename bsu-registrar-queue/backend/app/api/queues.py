@@ -20,9 +20,9 @@ router = APIRouter()
 def create_queue(
     queue: QueueCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
-    """Create a new service queue (admin/registrar only)"""
+    """Create a new service queue (admin only)"""
     service = QueueService(db)
     try:
         return service.create_queue(queue)
