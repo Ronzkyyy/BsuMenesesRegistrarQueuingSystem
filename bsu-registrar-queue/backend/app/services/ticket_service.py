@@ -18,6 +18,10 @@ from ..models.student import Student
 from ..models.queue import Queue
 
 
+def _format_ticket_code(letter: str, ticket_number: int) -> str:
+    return f"{letter}-{ticket_number:03d}"
+
+
 class TicketService:
     def __init__(self, db: Session):
         self.db = db
@@ -416,6 +420,7 @@ class TicketService:
             # For display, show only ticket number, not student info
             result.append(TicketPublic(
                 ticket_number=ticket.ticket_number,
+                ticket_code=_format_ticket_code(queue.ticket_letter if queue else "?", ticket.ticket_number),
                 queue_name=queue.name if queue else "Unknown",
                 position=ticket.position,
                 status=TicketStatus(ticket.status.value),
@@ -453,8 +458,12 @@ class TicketService:
                 "queue_id": queue.id,
                 "queue_name": queue.name,
                 "queue_type": queue.queue_type.value,
-                "serving_ticket_numbers": [t.ticket_number for t in serving_tickets],
-                "next_ticket_number": next_waiting.ticket_number if next_waiting else None,
+                "serving_ticket_codes": [
+                    _format_ticket_code(queue.ticket_letter, t.ticket_number) for t in serving_tickets
+                ],
+                "next_ticket_code": (
+                    _format_ticket_code(queue.ticket_letter, next_waiting.ticket_number) if next_waiting else None
+                ),
                 "waiting_count": waiting_count,
             })
 
@@ -465,6 +474,7 @@ class TicketService:
         return Ticket(
             id=db_ticket.id,
             ticket_number=db_ticket.ticket_number,
+            ticket_code=_format_ticket_code(queue.ticket_letter, db_ticket.ticket_number) if queue else None,
             student_id=db_ticket.student_id,
             queue_id=db_ticket.queue_id,
             priority=PydanticPriorityLevel(db_ticket.priority.value),

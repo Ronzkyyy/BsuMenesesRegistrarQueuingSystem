@@ -35,6 +35,7 @@ class TicketCreate(TicketBase):
 class Ticket(TicketBase):
     id: int
     ticket_number: int
+    ticket_code: Optional[str] = None
     status: TicketStatus = TicketStatus.WAITING
     position: int
     estimated_wait_time_minutes: Optional[int] = None
@@ -56,6 +57,7 @@ class TicketInDB(Ticket):
 class TicketPublic(BaseModel):
     """Ticket data safe to expose to students (hides sensitive info)"""
     ticket_number: int
+    ticket_code: str
     queue_name: str
     position: int
     status: TicketStatus
