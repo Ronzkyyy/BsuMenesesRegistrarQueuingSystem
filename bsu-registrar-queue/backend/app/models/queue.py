@@ -1,6 +1,7 @@
 """
 Queue model for registrar services
 """
+import string
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
@@ -34,7 +35,7 @@ class QueueBase(BaseModel):
     @classmethod
     def validate_ticket_letter(cls, v: str) -> str:
         v = v.upper()
-        if not v.isalpha():
+        if v not in string.ascii_uppercase:
             raise ValueError('Ticket letter must be a single letter A-Z')
         return v
 
