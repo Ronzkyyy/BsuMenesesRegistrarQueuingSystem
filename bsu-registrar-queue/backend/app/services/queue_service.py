@@ -82,6 +82,34 @@ class QueueService:
         """Close queue for the day"""
         return self.update_queue_status(queue_id, QueueStatus.CLOSED)
 
+    def delete_queue(self, queue_id: int) -> bool:
+        """Delete a queue. Returns False if the queue doesn't exist.
+
+        Raises ValueError if the queue has any tickets (even completed/old
+        ones) - deleting it would violate the tickets.queue_id foreign key
+        and silently destroy historical ticket records, so we block it with
+        a clear message instead of letting the database raise a raw 500.
+        """
+        from ..db_models import TicketDB
+        from sqlalchemy import func
+
+        queue = self.db.query(QueueDB).filter(QueueDB.id == queue_id).first()
+        if not queue:
+            return False
+
+        ticket_count = self.db.query(func.count(TicketDB.id)).filter(
+            TicketDB.queue_id == queue_id
+        ).scalar()
+        if ticket_count:
+            raise ValueError(
+                f"Cannot delete queue '{queue.name}': it has {ticket_count} ticket(s). "
+                f"Close the queue instead to stop new tickets."
+            )
+
+        self.db.delete(queue)
+        self.db.commit()
+        return True
+
     def increment_ticket_number(self, queue_id: int) -> int:
         """Increment and return the next ticket number for a queue"""
         queue = self.db.query(QueueDB).filter(QueueDB.id == queue_id).first()

@@ -153,15 +153,11 @@ def delete_queue(
 ):
     """Delete a queue (admin only)"""
     service = QueueService(db)
-    queue = service.get_queue_by_id(queue_id)
-    if not queue:
+    try:
+        deleted = service.delete_queue(queue_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not deleted:
         raise HTTPException(status_code=404, detail="Queue not found")
-
-    # In a real system, you might want to check if there are active tickets
-    # For now, we'll just delete
-    from ..db_models import QueueDB
-    db_queue = db.query(QueueDB).filter(QueueDB.id == queue_id).first()
-    db.delete(db_queue)
-    db.commit()
 
     return {"message": "Queue deleted successfully"}
