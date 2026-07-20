@@ -28,6 +28,7 @@ class QueueDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     queue_type = Column(Enum(QueueDBType), nullable=False)
+    ticket_letter = Column(String(1), nullable=False)
     description = Column(Text)
     status = Column(Enum(QueueDBStatus), default=QueueDBStatus.ACTIVE)
     allow_priority = Column(Boolean, default=True)

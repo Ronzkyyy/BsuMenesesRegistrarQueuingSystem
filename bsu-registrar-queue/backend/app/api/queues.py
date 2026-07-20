@@ -24,7 +24,10 @@ def create_queue(
 ):
     """Create a new service queue (admin/registrar only)"""
     service = QueueService(db)
-    return service.create_queue(queue)
+    try:
+        return service.create_queue(queue)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("", response_model=List[Queue])

@@ -15,9 +15,20 @@ class QueueService:
 
     def create_queue(self, queue_data: QueueCreate) -> Queue:
         """Create a new service queue"""
+        # ticket_letter is already uppercased by QueueBase's validator, and
+        # every existing row's letter is uppercase too (backfilled or
+        # created through this same validated path) - a plain equality
+        # check is enough, no case-folding needed here.
+        existing = self.db.query(QueueDB).filter(
+            QueueDB.ticket_letter == queue_data.ticket_letter
+        ).first()
+        if existing:
+            raise ValueError(f"Ticket letter '{queue_data.ticket_letter}' is already used by another queue")
+
         db_queue = QueueDB(
             name=queue_data.name,
             queue_type=QueueDBType(queue_data.queue_type.value),
+            ticket_letter=queue_data.ticket_letter,
             description=queue_data.description,
             allow_priority=queue_data.allow_priority,
             max_capacity=queue_data.max_capacity,
@@ -189,6 +200,7 @@ class QueueService:
             id=db_queue.id,
             name=db_queue.name,
             queue_type=QueueDBType(db_queue.queue_type.value),
+            ticket_letter=db_queue.ticket_letter,
             description=db_queue.description,
             status=QueueDBStatus(db_queue.status.value),
             allow_priority=db_queue.allow_priority,

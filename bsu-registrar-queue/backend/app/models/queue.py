@@ -3,7 +3,7 @@ Queue model for registrar services
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
@@ -24,10 +24,19 @@ class QueueType(str, Enum):
 class QueueBase(BaseModel):
     name: str
     queue_type: QueueType
+    ticket_letter: str = Field(min_length=1, max_length=1)
     description: Optional[str] = None
     allow_priority: bool = True
     max_capacity: int = Field(default=50, ge=1, le=200)
     slot_duration_minutes: int = Field(default=30, ge=5, le=120)
+
+    @field_validator('ticket_letter')
+    @classmethod
+    def validate_ticket_letter(cls, v: str) -> str:
+        v = v.upper()
+        if not v.isalpha():
+            raise ValueError('Ticket letter must be a single letter A-Z')
+        return v
 
 
 class QueueCreate(QueueBase):

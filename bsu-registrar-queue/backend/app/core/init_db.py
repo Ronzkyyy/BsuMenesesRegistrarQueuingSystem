@@ -32,6 +32,7 @@ def seed_initial_data(db: Session) -> None:
         QueueDB(
             name="Enrollment",
             queue_type=QueueDBType.ENROLLMENT,
+            ticket_letter="E",
             description="Course enrollment and registration services",
             allow_priority=True,
             max_capacity=100,
@@ -40,6 +41,7 @@ def seed_initial_data(db: Session) -> None:
         QueueDB(
             name="Document Request",
             queue_type=QueueDBType.DOCUMENT_REQUEST,
+            ticket_letter="D",
             description="Transcript, diploma, and certificate requests",
             allow_priority=True,
             max_capacity=50,
@@ -48,6 +50,7 @@ def seed_initial_data(db: Session) -> None:
         QueueDB(
             name="Clearance",
             queue_type=QueueDBType.CLEARANCE,
+            ticket_letter="C",
             description="Academic clearance processing",
             allow_priority=True,
             max_capacity=50,
@@ -56,6 +59,7 @@ def seed_initial_data(db: Session) -> None:
         QueueDB(
             name="Scholarship",
             queue_type=QueueDBType.SCHOLARSHIP,
+            ticket_letter="S",
             description="Scholarship applications and inquiries",
             allow_priority=True,
             max_capacity=30,
@@ -64,6 +68,7 @@ def seed_initial_data(db: Session) -> None:
         QueueDB(
             name="General Inquiry",
             queue_type=QueueDBType.OTHERS,
+            ticket_letter="O",
             description="General registrar inquiries and assistance",
             allow_priority=False,
             max_capacity=30,
