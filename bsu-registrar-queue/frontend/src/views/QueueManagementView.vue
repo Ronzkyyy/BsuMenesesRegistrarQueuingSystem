@@ -214,12 +214,26 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Queue Type</label>
             <select
               v-model="newQueueForm.queue_type"
+              @change="onQueueTypeChange"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
             >
               <option :value="type.value" v-for="type in queueTypeOptions" :key="type.value">
                 {{ type.label }}
               </option>
             </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Ticket Letter</label>
+            <input
+              v-model="newQueueForm.ticket_letter"
+              @input="onTicketLetterInput"
+              type="text"
+              maxlength="1"
+              class="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary uppercase"
+              placeholder="E"
+            />
+            <p class="text-xs text-gray-500 mt-1">Prefixes this queue's tickets (e.g. E-007). Must be unique across all queues.</p>
           </div>
 
           <div>
@@ -314,6 +328,7 @@ const servingTicket = ref(null)
 const newQueueForm = ref({
   name: '',
   queue_type: 'enrollment',
+  ticket_letter: 'E',
   description: '',
   max_capacity: 50,
   slot_duration_minutes: 30,
@@ -327,6 +342,29 @@ const queueTypeOptions = [
   { value: 'scholarship', label: 'Scholarship' },
   { value: 'others', label: 'Others' },
 ]
+
+const TYPE_TO_DEFAULT_LETTER = {
+  enrollment: 'E',
+  document_request: 'D',
+  clearance: 'C',
+  scholarship: 'S',
+  others: 'O',
+}
+
+// Tracks whether the admin has typed their own letter, so picking a new
+// Queue Type doesn't clobber a deliberate override.
+const ticketLetterTouched = ref(false)
+
+const onQueueTypeChange = () => {
+  if (!ticketLetterTouched.value) {
+    newQueueForm.value.ticket_letter = TYPE_TO_DEFAULT_LETTER[newQueueForm.value.queue_type] || ''
+  }
+}
+
+const onTicketLetterInput = () => {
+  ticketLetterTouched.value = true
+  newQueueForm.value.ticket_letter = newQueueForm.value.ticket_letter.toUpperCase().slice(0, 1)
+}
 
 const loadQueues = async () => {
   dashboardError.value = ''
@@ -399,11 +437,13 @@ const createQueue = async () => {
     newQueueForm.value = {
       name: '',
       queue_type: 'enrollment',
+      ticket_letter: 'E',
       description: '',
       max_capacity: 50,
       slot_duration_minutes: 30,
       allow_priority: true,
     }
+    ticketLetterTouched.value = false
     await loadQueues()
   } catch (err) {
     createQueueError.value = err.response?.data?.detail || 'Failed to create queue'
