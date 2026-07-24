@@ -20,11 +20,6 @@ const router = createRouter({
       component: () => import('../views/QueuesView.vue')
     },
     {
-      path: '/queues/:id',
-      name: 'queue-detail',
-      component: () => import('../views/QueueDetailView.vue')
-    },
-    {
       path: '/admin',
       component: () => import('../components/AdminLayout.vue'),
       meta: { requiresAuth: true },

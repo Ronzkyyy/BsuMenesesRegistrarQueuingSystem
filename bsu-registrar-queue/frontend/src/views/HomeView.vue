@@ -47,7 +47,7 @@
         <router-link
           v-for="queue in queues"
           :key="queue.id"
-          :to="`/queues/${queue.id}`"
+          to="/queues"
           class="group relative bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-bsu-primary/20 transition-all duration-300 overflow-hidden"
         >
           <!-- Queue Type Icon -->
