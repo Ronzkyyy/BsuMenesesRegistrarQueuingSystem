@@ -588,7 +588,10 @@ const checkExistingTicketForSelectedService = async () => {
       showMyQueueStatus.value = true
     }
   } catch (err) {
-    // no active ticket in this queue yet - continue with registration
+    if (err.response?.status !== 404) {
+      error.value = err.response?.data?.detail || 'Failed to check for an existing ticket. Please try again.'
+    }
+    // a 404 here just means no active ticket exists yet - continue with registration
   }
 }
 
@@ -624,9 +627,13 @@ const lookupStudent = async () => {
     studentLookedUp.value = true
     await checkExistingTicketForSelectedService()
   } catch (err) {
-    studentFound.value = false
-    studentLookedUp.value = true
-    registrationForm.value.student_id = studentNumberInput.value.trim()
+    if (err.response?.status === 404) {
+      studentFound.value = false
+      studentLookedUp.value = true
+      registrationForm.value.student_id = studentNumberInput.value.trim()
+    } else {
+      error.value = err.response?.data?.detail || 'Failed to look up student. Please try again.'
+    }
   } finally {
     loading.value = false
   }
@@ -701,10 +708,13 @@ const cancelTicket = async () => {
 const refreshTicket = async () => {
   if (!queueStore.currentStudent || !selectedQueueId.value) return
   loading.value = true
+  error.value = ''
   try {
     await queueStore.fetchMyTicket(queueStore.currentStudent.id, selectedQueueId.value)
   } catch (err) {
-    // ignore - polling retries
+    if (err.response?.status !== 404) {
+      error.value = err.response?.data?.detail || 'Failed to refresh ticket status.'
+    }
   } finally {
     loading.value = false
   }
