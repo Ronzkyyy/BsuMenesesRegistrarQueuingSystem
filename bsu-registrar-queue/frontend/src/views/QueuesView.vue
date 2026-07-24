@@ -659,7 +659,12 @@ const confirmRegistration = async () => {
   loading.value = true
   error.value = ''
   try {
-    if (!studentFound.value) {
+    // Guard on currentStudent (not studentFound) - registerStudent already
+    // sets currentStudent on success, so if takeTicket below fails and the
+    // user retries, this correctly skips re-registering the same student_id
+    // a second time, without touching studentFound (which drives the Step 2
+    // form still visible behind this modal, so it must not change here).
+    if (!queueStore.currentStudent) {
       await queueStore.registerStudent(registrationForm.value)
     }
     const ticket = await queueStore.takeTicket(selectedQueueId.value, queueStore.currentStudent.id, purpose.value)
