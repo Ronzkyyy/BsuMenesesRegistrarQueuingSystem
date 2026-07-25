@@ -346,6 +346,9 @@ const queueTypeOptions = [
   { value: 'clearance', label: 'Clearance' },
   { value: 'scholarship', label: 'Scholarship' },
   { value: 'others', label: 'Others' },
+  { value: 'adding_dropping', label: 'Adding & Dropping' },
+  { value: 'petition_class', label: 'Petition Class' },
+  { value: 'other_concerns', label: 'Others (Miscellaneous)' },
 ]
 
 const TYPE_TO_DEFAULT_LETTER = {
@@ -354,6 +357,9 @@ const TYPE_TO_DEFAULT_LETTER = {
   clearance: 'C',
   scholarship: 'S',
   others: 'O',
+  adding_dropping: 'A',
+  petition_class: 'P',
+  other_concerns: 'X',
 }
 
 // Tracks whether the admin has typed their own letter, so picking a new

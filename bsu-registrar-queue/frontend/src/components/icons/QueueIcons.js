@@ -56,6 +56,9 @@ const ICONS_BY_TYPE = {
   clearance: ClearanceIcon,
   scholarship: ScholarshipIcon,
   others: OthersIcon,
+  adding_dropping: AddDropIcon,
+  petition_class: PetitionIcon,
+  other_concerns: OthersIcon,
 }
 
 const LABELS_BY_TYPE = {
@@ -64,6 +67,9 @@ const LABELS_BY_TYPE = {
   clearance: 'Clearance',
   scholarship: 'Scholarship',
   others: 'Others',
+  adding_dropping: 'Adding & Dropping',
+  petition_class: 'Petition Class',
+  other_concerns: 'Others',
 }
 
 export function getQueueIcon(type) {
