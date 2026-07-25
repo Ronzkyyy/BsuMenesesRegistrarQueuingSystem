@@ -33,6 +33,7 @@
               <span class="inline-block px-8 py-4 bg-bsu-primary text-white text-5xl font-extrabold rounded-full mb-3">
                 {{ servingTicket.ticket_code }}
               </span>
+              <p v-if="servingTicket.purpose" class="text-sm text-gray-600 mb-2">{{ servingTicket.purpose }}</p>
               <div class="mb-6">
                 <span
                   v-if="servingTicket.priority && servingTicket.priority !== 'normal'"
@@ -97,6 +98,7 @@
               >
                 <div class="flex items-center space-x-3">
                   <span class="font-medium text-gray-900">{{ ticket.ticket_code }}</span>
+                  <span v-if="ticket.purpose" class="text-sm text-gray-500">{{ ticket.purpose }}</span>
                   <span
                     v-if="ticket.priority !== 'normal'"
                     class="text-xs px-2 py-0.5 rounded-full"
@@ -137,10 +139,10 @@ const queues = ref([])
 const selectedQueueId = ref(null)
 const selectedQueue = computed(() => queues.value.find(q => q.id === selectedQueueId.value))
 
-const queueDisplay = ref([])
+const waitingTicketsRaw = ref([])
 const servingTicket = ref(null)
 const waitingTickets = computed(() =>
-  queueDisplay.value.filter(t => t.status === 'waiting').slice().sort((a, b) => a.position - b.position)
+  waitingTicketsRaw.value.filter(t => t.status === 'waiting').slice().sort((a, b) => a.position - b.position)
 )
 
 const loadQueues = async () => {
@@ -158,13 +160,13 @@ const updateQueueDisplay = async () => {
   const targetQueueId = selectedQueueId.value
 
   try {
-    await queueStore.fetchQueueDisplay(targetQueueId)
+    await queueStore.fetchQueueTickets(targetQueueId, 'waiting')
     if (selectedQueueId.value === targetQueueId) {
-      queueDisplay.value = queueStore.queueDisplay
+      waitingTicketsRaw.value = queueStore.queueTickets
     }
   } catch (err) {
     if (selectedQueueId.value === targetQueueId) {
-      queueDisplay.value = []
+      waitingTicketsRaw.value = []
     }
   }
 
@@ -253,7 +255,7 @@ const completeCurrentTicket = async () => {
 
 watch(selectedQueueId, () => {
   servingTicket.value = null
-  queueDisplay.value = []
+  waitingTicketsRaw.value = []
   updateQueueDisplay()
 })
 
