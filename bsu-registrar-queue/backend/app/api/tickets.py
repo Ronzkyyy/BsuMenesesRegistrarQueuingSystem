@@ -25,11 +25,14 @@ def create_ticket(
 ):
     """Student takes a queue ticket (public endpoint)"""
     service = TicketService(db)
-    result = service.create_ticket(ticket)
+    try:
+        result = service.create_ticket(ticket)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not result:
         raise HTTPException(
             status_code=400,
-            detail="Could not create ticket. Queue may be full, inactive, or student already has an active ticket."
+            detail="Could not create ticket. Queue may be full, inactive, or student not found."
         )
     return result
 

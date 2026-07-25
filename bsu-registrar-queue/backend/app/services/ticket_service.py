@@ -97,14 +97,23 @@ class TicketService:
         if not queue:
             return None
 
-        # Check if student already has an active ticket in this queue
+        # Check if student already has an active ticket in ANY queue - only
+        # one transaction in flight per student is allowed, across all queues.
         existing = self.db.query(TicketDB).filter(
             TicketDB.student_id == ticket_data.student_id,
-            TicketDB.queue_id == ticket_data.queue_id,
             TicketDB.status.in_([TicketDBStatus.WAITING, TicketDBStatus.SERVING])
         ).first()
         if existing:
-            return None  # Student already has active ticket
+            existing_queue = self.db.query(QueueDB).filter(QueueDB.id == existing.queue_id).first()
+            queue_label = existing_queue.name if existing_queue else "another queue"
+            ticket_code = (
+                _format_ticket_code(existing_queue.ticket_letter, existing.ticket_number)
+                if existing_queue else ""
+            )
+            raise ValueError(
+                f"You already have an active ticket in {queue_label} ({ticket_code}). "
+                f"Complete or cancel it before taking a new one."
+            )
 
         # Check queue capacity
         waiting_count = self.db.query(func.count(TicketDB.id)).filter(
