@@ -106,10 +106,28 @@ class StudentService:
         return self._to_student(student)
 
     def delete_student(self, student_id: int) -> bool:
-        """Delete a student"""
+        """Delete a student. Returns False if the student doesn't exist.
+
+        Raises ValueError if the student has any tickets (even completed/old
+        ones) - deleting them would violate the tickets.student_id foreign
+        key and silently destroy historical ticket records, so we block it
+        with a clear message instead of letting the database raise a raw 500.
+        """
+        from ..db_models import TicketDB
+
         student = self.db.query(StudentDB).filter(StudentDB.id == student_id).first()
         if not student:
             return False
+
+        ticket_count = self.db.query(func.count(TicketDB.id)).filter(
+            TicketDB.student_id == student_id
+        ).scalar()
+        if ticket_count:
+            raise ValueError(
+                f"Cannot delete student '{student.student_id}': they have {ticket_count} ticket(s) "
+                f"on record."
+            )
+
         self.db.delete(student)
         self.db.commit()
         return True

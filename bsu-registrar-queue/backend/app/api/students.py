@@ -100,8 +100,11 @@ def delete_student(
 ):
     """Delete a student (admin only)"""
     service = StudentService(db)
-    if not service.delete_student(student_id):
-        raise HTTPException(status_code=404, detail="Student not found")
+    try:
+        if not service.delete_student(student_id):
+            raise HTTPException(status_code=404, detail="Student not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"message": "Student deleted successfully"}
 
 
