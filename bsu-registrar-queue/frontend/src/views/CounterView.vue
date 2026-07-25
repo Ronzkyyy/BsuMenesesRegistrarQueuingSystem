@@ -11,20 +11,20 @@
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100">
       <div class="bg-bsu-primary/5 border-b border-bsu-primary/10 px-6 py-4 flex items-center justify-between">
-        <h3 class="text-xl font-bold text-gray-900">{{ selectedQueue?.name || 'Select a queue' }}</h3>
+        <h3 class="text-xl font-bold text-gray-900">{{ selectedService?.label || 'Select a service' }}</h3>
         <select
-          v-model="selectedQueueId"
+          v-model="selectedServiceKey"
           class="px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
         >
-          <option :value="null">Select Queue</option>
-          <option :value="q.id" v-for="q in queues" :key="q.id">
-            {{ q.name }}
+          <option :value="null">Select Service</option>
+          <option :value="service.key" v-for="service in availableServices" :key="service.key">
+            {{ service.label }}
           </option>
         </select>
       </div>
 
       <div class="p-6">
-        <div v-if="selectedQueue" class="space-y-6">
+        <div v-if="selectedQueueId" class="space-y-6">
           <!-- Currently Serving -->
           <div class="bg-gray-50 rounded-lg p-8 text-center">
             <h4 class="text-sm text-gray-500 uppercase tracking-wide mb-4">Currently Serving</h4>
@@ -118,7 +118,7 @@
         </div>
 
         <div v-else class="text-center py-12">
-          <p class="text-gray-500">Select a queue to start serving tickets</p>
+          <p class="text-gray-500">Select a service to start serving tickets</p>
         </div>
       </div>
     </div>
@@ -128,6 +128,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
+import { SERVICES } from '@/services/studentServices'
 
 const queueStore = useQueueStore()
 
@@ -136,8 +137,23 @@ const counterError = ref('')
 const justCalled = ref(false)
 
 const queues = ref([])
-const selectedQueueId = ref(null)
-const selectedQueue = computed(() => queues.value.find(q => q.id === selectedQueueId.value))
+const selectedServiceKey = ref(null)
+// Only offer services whose underlying queue is currently active - staff
+// couldn't select a paused/closed queue before this change either.
+const availableServices = computed(() =>
+  SERVICES.filter((service) => queues.value.some((q) => q.queue_type === service.queueType))
+)
+const selectedService = computed(() =>
+  availableServices.value.find((service) => service.key === selectedServiceKey.value) || null
+)
+// Several services share one underlying queue (e.g. Adding & Dropping,
+// Enrollment, and Petition Class all resolve to the same Enrollment queue) -
+// this is the actual queue id every fetch/serve action below operates on.
+const selectedQueueId = computed(() => {
+  if (!selectedService.value) return null
+  const queue = queues.value.find((q) => q.queue_type === selectedService.value.queueType)
+  return queue ? queue.id : null
+})
 
 const waitingTicketsRaw = ref([])
 const servingTicket = ref(null)
