@@ -14,75 +14,73 @@
         <h3 class="text-xl font-bold text-gray-900">Queue Management</h3>
       </div>
       <div class="p-6">
-        <div v-if="queues.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div
-            v-for="queue in queues"
-            :key="queue.id"
+            v-for="{ service, queue } in serviceCards"
+            :key="service.key"
             class="border border-gray-200 rounded-lg p-4"
           >
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center space-x-3">
-                <component :is="getQueueIcon(queue.queue_type)" class="w-8 h-8 text-bsu-primary" />
+                <component :is="service.icon" class="w-8 h-8 text-bsu-primary" />
                 <div>
-                  <h4 class="font-medium text-gray-900">{{ queue.name }}</h4>
-                  <p class="text-sm text-gray-500">{{ formatQueueType(queue.queue_type) }}</p>
+                  <h4 class="font-medium text-gray-900">{{ service.label }}</h4>
+                  <p class="text-sm text-gray-500">Queue: {{ formatQueueType(service.queueType) }}</p>
                 </div>
               </div>
-              <StatusBadge :status="queue.status" />
+              <StatusBadge v-if="queue" :status="queue.status" />
             </div>
 
-            <div class="text-sm text-gray-500 mb-3">
-              <p>Capacity: {{ queue.max_capacity }} | Slot: {{ queue.slot_duration_minutes }} min</p>
-            </div>
+            <template v-if="queue">
+              <div class="text-sm text-gray-500 mb-3">
+                <p>Capacity: {{ queue.max_capacity }} | Slot: {{ queue.slot_duration_minutes }} min</p>
+              </div>
 
-            <div class="flex space-x-2">
-              <button
-                v-if="queue.status === 'active'"
-                @click="pauseQueue(queue.id)"
-                :disabled="loading"
-                class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-yellow-100 text-yellow-800 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 disabled:opacity-50"
-              >
-                Pause
-              </button>
-              <button
-                v-else-if="queue.status === 'paused'"
-                @click="resumeQueue(queue.id)"
-                :disabled="loading"
-                class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-green-100 text-green-800 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
-              >
-                Resume
-              </button>
-              <button
-                v-if="queue.status !== 'closed'"
-                @click="closeQueue(queue.id)"
-                :disabled="loading"
-                class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
-              >
-                Close
-              </button>
-              <router-link
-                :to="`/display/${queue.id}`"
-                target="_blank"
-                class="flex-1 inline-flex justify-center items-center px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >
-                Display Board
-              </router-link>
-              <button
-                @click="deleteQueue(queue.id)"
-                :disabled="loading"
-                class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:opacity-50"
-              >
-                Delete
-              </button>
-            </div>
+              <div class="flex space-x-2">
+                <button
+                  v-if="queue.status === 'active'"
+                  @click="pauseQueue(queue.id)"
+                  :disabled="loading"
+                  class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-yellow-100 text-yellow-800 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 disabled:opacity-50"
+                >
+                  Pause
+                </button>
+                <button
+                  v-else-if="queue.status === 'paused'"
+                  @click="resumeQueue(queue.id)"
+                  :disabled="loading"
+                  class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-green-100 text-green-800 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                >
+                  Resume
+                </button>
+                <button
+                  v-if="queue.status !== 'closed'"
+                  @click="closeQueue(queue.id)"
+                  :disabled="loading"
+                  class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+                >
+                  Close
+                </button>
+                <router-link
+                  :to="`/display/${queue.id}`"
+                  target="_blank"
+                  class="flex-1 inline-flex justify-center items-center px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                >
+                  Display Board
+                </router-link>
+                <button
+                  @click="deleteQueue(queue.id)"
+                  :disabled="loading"
+                  class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </div>
+            </template>
+            <p v-else class="text-sm text-gray-500 italic">
+              No "{{ formatQueueType(service.queueType) }}" queue exists yet - create it below to enable this service.
+            </p>
           </div>
-        </div>
-
-        <div v-else class="text-center py-8">
-          <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-5.586a1 1 0 01-.707-.293L9 5z" />
-          </svg>
-          <p class="mt-2 text-gray-500">No queues found. Create a new queue to get started.</p>
         </div>
 
         <div v-if="queueStore.currentUser?.role === 'admin'" class="mt-6">
@@ -310,7 +308,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { getQueueIcon, formatQueueType } from '@/components/icons/QueueIcons'
+import { formatQueueType } from '@/components/icons/QueueIcons'
+import { SERVICES } from '@/services/studentServices'
 
 const queueStore = useQueueStore()
 
@@ -322,6 +321,12 @@ const showCreateQueueModal = ref(false)
 const queues = ref([])
 const selectedQueueId = ref(null)
 const selectedQueue = computed(() => queues.value.find(q => q.id === selectedQueueId.value))
+const serviceCards = computed(() =>
+  SERVICES.map((service) => ({
+    service,
+    queue: queues.value.find((q) => q.queue_type === service.queueType) || null,
+  }))
+)
 const queueDisplay = ref([])
 const servingTicket = ref(null)
 
