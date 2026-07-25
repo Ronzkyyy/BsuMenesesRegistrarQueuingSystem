@@ -74,6 +74,33 @@ def seed_initial_data(db: Session) -> None:
             max_capacity=30,
             slot_duration_minutes=15,
         ),
+        QueueDB(
+            name="Adding & Dropping",
+            queue_type=QueueDBType.ADDING_DROPPING,
+            ticket_letter="A",
+            description="Process for adding or dropping subjects",
+            allow_priority=True,
+            max_capacity=50,
+            slot_duration_minutes=15,
+        ),
+        QueueDB(
+            name="Petition Class",
+            queue_type=QueueDBType.PETITION_CLASS,
+            ticket_letter="P",
+            description="File a petition for class consideration",
+            allow_priority=True,
+            max_capacity=30,
+            slot_duration_minutes=20,
+        ),
+        QueueDB(
+            name="Others",
+            queue_type=QueueDBType.OTHER_CONCERNS,
+            ticket_letter="X",
+            description="Other concerns not listed",
+            allow_priority=False,
+            max_capacity=30,
+            slot_duration_minutes=15,
+        ),
     ]
 
     for queue in queues:

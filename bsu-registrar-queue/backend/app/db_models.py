@@ -20,6 +20,9 @@ class QueueDBType(str, enum.Enum):
     CLEARANCE = "clearance"
     SCHOLARSHIP = "scholarship"
     OTHERS = "others"
+    ADDING_DROPPING = "adding_dropping"
+    PETITION_CLASS = "petition_class"
+    OTHER_CONCERNS = "other_concerns"
 
 
 class QueueDB(Base):
