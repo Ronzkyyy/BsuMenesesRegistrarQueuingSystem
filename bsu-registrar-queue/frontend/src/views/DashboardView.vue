@@ -45,8 +45,8 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Tickets Today by Queue</h3>
-        <div v-if="hasQueueData" class="h-64">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Tickets Today by Service</h3>
+        <div v-if="hasServiceData" class="h-64">
           <Bar :data="barData" :options="barOptions" />
         </div>
         <p v-else class="text-center text-gray-500 py-8">No tickets today</p>
@@ -85,18 +85,18 @@ const summaryError = ref('')
 
 const summary = computed(() => queueStore.dashboardSummary)
 
-const hasQueueData = computed(() => (summary.value?.tickets_today_by_queue?.length ?? 0) > 0)
+const hasServiceData = computed(() => (summary.value?.tickets_today_by_service?.length ?? 0) > 0)
 const hasStatusData = computed(() => {
   const byStatus = summary.value?.tickets_today_by_status
   return !!byStatus && Object.values(byStatus).some((count) => count > 0)
 })
 
 const barData = computed(() => ({
-  labels: (summary.value?.tickets_today_by_queue ?? []).map((q) => q.queue_name),
+  labels: (summary.value?.tickets_today_by_service ?? []).map((s) => s.service_name),
   datasets: [
     {
       label: 'Tickets Today',
-      data: (summary.value?.tickets_today_by_queue ?? []).map((q) => q.count),
+      data: (summary.value?.tickets_today_by_service ?? []).map((s) => s.count),
       backgroundColor: '#be185d',
       borderRadius: 4,
       maxBarThickness: 48,
