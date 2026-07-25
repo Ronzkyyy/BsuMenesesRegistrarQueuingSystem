@@ -51,16 +51,6 @@ def get_my_ticket(
     return ticket
 
 
-@router.get("/my-tickets", response_model=List[Ticket])
-def get_my_tickets(
-    student_id: int,
-    db: Session = Depends(get_db)
-):
-    """Get all of a student's currently active tickets, across every queue (public endpoint)"""
-    service = TicketService(db)
-    return service.get_student_tickets(student_id)
-
-
 @router.post("/{ticket_id}/cancel", response_model=Ticket)
 def cancel_ticket(
     ticket_id: int,

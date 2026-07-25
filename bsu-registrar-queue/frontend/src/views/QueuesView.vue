@@ -86,13 +86,6 @@
             >
               Take Another Ticket
             </button>
-            <button
-              @click="viewAllMyTickets"
-              :disabled="loading"
-              class="flex-1 inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bsu-primary disabled:opacity-50"
-            >
-              View All My Tickets
-            </button>
           </div>
         </div>
 
@@ -393,39 +386,6 @@
         </div>
       </div>
     </div>
-
-    <!-- My Tickets modal -->
-    <div v-if="showMyTicketsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900">My Active Tickets</h3>
-        </div>
-        <div class="px-6 py-4 space-y-3 max-h-96 overflow-y-auto">
-          <div v-if="queueStore.myTickets.length === 0" class="text-center text-gray-500 py-4">
-            You have no active tickets right now.
-          </div>
-          <div
-            v-for="t in queueStore.myTickets"
-            :key="t.id"
-            class="flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 bg-gray-50"
-          >
-            <div>
-              <p class="font-medium text-gray-900">{{ t.queue_name }}</p>
-              <p class="text-sm text-gray-500">Ticket {{ t.ticket_code }} &middot; Position {{ t.position }}</p>
-            </div>
-            <StatusBadge :status="t.status" />
-          </div>
-        </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
-          <button
-            @click="showMyTicketsModal = false"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -489,7 +449,6 @@ const studentLookedUp = ref(false)
 const studentFound = ref(false)
 
 const showConfirmModal = ref(false)
-const showMyTicketsModal = ref(false)
 const showMyQueueStatus = ref(false)
 const ticketResult = ref(null)
 
@@ -725,12 +684,6 @@ const refreshTicket = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const viewAllMyTickets = async () => {
-  if (!queueStore.currentStudent) return
-  await queueStore.fetchMyTickets(queueStore.currentStudent.id)
-  showMyTicketsModal.value = true
 }
 
 onMounted(async () => {

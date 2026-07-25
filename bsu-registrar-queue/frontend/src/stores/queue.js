@@ -30,7 +30,6 @@ export const useQueueStore = defineStore('queue', {
 
     // Tickets
     myTicket: null,
-    myTickets: [],
     queueTickets: [],
     queueDisplay: [],
     servingTicket: null,
@@ -529,21 +528,6 @@ export const useQueueStore = defineStore('queue', {
           this.error = err.response?.data?.detail || 'Failed to fetch ticket'
         }
         this.myTicket = null
-        throw err
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async fetchMyTickets(studentId) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await api.get('/tickets/my-tickets', { params: { student_id: studentId } })
-        this.myTickets = response.data
-        return response.data
-      } catch (err) {
-        this.error = err.response?.data?.detail || 'Failed to fetch tickets'
         throw err
       } finally {
         this.loading = false

@@ -401,20 +401,6 @@ class TicketService:
 
         return self._to_ticket(ticket, student, queue)
 
-    def get_student_tickets(self, student_id: int) -> List[Ticket]:
-        """Get all of a student's currently active tickets, across every queue"""
-        tickets = self.db.query(TicketDB).filter(
-            TicketDB.student_id == student_id,
-            TicketDB.status.in_([TicketDBStatus.WAITING, TicketDBStatus.SERVING])
-        ).all()
-
-        student = self.db.query(StudentDB).filter(StudentDB.id == student_id).first()
-        result = []
-        for ticket in tickets:
-            queue = self.db.query(QueueDB).filter(QueueDB.id == ticket.queue_id).first()
-            result.append(self._to_ticket(ticket, student, queue))
-        return result
-
     def get_queue_display(self, queue_id: int) -> List[TicketPublic]:
         """Get tickets for public display (limited info)"""
         tickets = self.db.query(TicketDB).filter(
