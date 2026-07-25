@@ -200,14 +200,19 @@ class QueueService:
         for status, count in status_rows:
             tickets_today_by_status[status.value] = count
 
-        queue_rows = self.db.query(
-            TicketDB.queue_id, QueueDB.name, func.count(TicketDB.id)
+        # Group by the student's specific purpose (e.g. "Petition Class"),
+        # falling back to the queue name for the rare ticket with no purpose
+        # set - purpose is the only place the specific service (as opposed
+        # to the shared underlying queue) survives past ticket creation.
+        service_label = func.coalesce(TicketDB.purpose, QueueDB.name)
+        service_rows = self.db.query(
+            service_label, func.count(TicketDB.id)
         ).join(QueueDB, TicketDB.queue_id == QueueDB.id).filter(
             TicketDB.created_at >= today_start
-        ).group_by(TicketDB.queue_id, QueueDB.name).all()
-        tickets_today_by_queue = [
-            {"queue_id": queue_id, "queue_name": queue_name, "count": count}
-            for queue_id, queue_name, count in queue_rows
+        ).group_by(service_label).all()
+        tickets_today_by_service = [
+            {"service_name": service_name, "count": count}
+            for service_name, count in service_rows
         ]
 
         return {
@@ -218,7 +223,7 @@ class QueueService:
             "serving_count": serving_count,
             "completed_today_count": tickets_today_by_status["completed"],
             "no_shows_today_count": tickets_today_by_status["no_show"],
-            "tickets_today_by_queue": tickets_today_by_queue,
+            "tickets_today_by_service": tickets_today_by_service,
             "tickets_today_by_status": tickets_today_by_status,
         }
 
