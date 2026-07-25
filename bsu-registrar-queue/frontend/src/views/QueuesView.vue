@@ -582,9 +582,11 @@ const selectService = (key) => {
 const checkExistingTicketForSelectedService = async () => {
   if (!queueStore.currentStudent || !selectedQueueId.value) return
   try {
-    await queueStore.fetchMyTicket(queueStore.currentStudent.id, selectedQueueId.value)
+    // Unscoped from any single queue - a student can only ever hold one
+    // active ticket at a time, in any queue, so check across all of them.
+    await queueStore.fetchMyTicket(queueStore.currentStudent.id)
     if (queueStore.myTicket && !['completed', 'cancelled', 'no_show'].includes(queueStore.myTicket.status)) {
-      queueStore.startPollingMyTicket(queueStore.currentStudent.id, selectedQueueId.value)
+      queueStore.startPollingMyTicket(queueStore.currentStudent.id)
       showMyQueueStatus.value = true
     }
   } catch (err) {
