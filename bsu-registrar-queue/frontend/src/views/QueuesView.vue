@@ -672,11 +672,11 @@ const cancelTicket = async () => {
 }
 
 const refreshTicket = async () => {
-  if (!queueStore.currentStudent || !selectedQueueId.value) return
+  if (!queueStore.currentStudent) return
   loading.value = true
   error.value = ''
   try {
-    await queueStore.fetchMyTicket(queueStore.currentStudent.id, selectedQueueId.value)
+    await queueStore.fetchMyTicket(queueStore.currentStudent.id)
   } catch (err) {
     if (err.response?.status !== 404) {
       error.value = err.response?.data?.detail || 'Failed to refresh ticket status.'

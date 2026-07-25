@@ -381,9 +381,10 @@ class TicketService:
     def get_student_ticket(self, student_id: int, queue_id: Optional[int] = None) -> Optional[Ticket]:
         """Get student's current active ticket, optionally scoped to one queue.
 
-        Without queue_id, a student holding active tickets in multiple queues
-        would non-deterministically get back whichever ticket the query finds
-        first - always pass queue_id when checking a specific queue's page.
+        A student can hold at most one active ticket at a time, across all
+        queues (enforced in create_ticket), so an unscoped call is
+        deterministic - callers may omit queue_id to check for any active
+        ticket regardless of which queue it's in.
         """
         query = self.db.query(TicketDB).filter(
             TicketDB.student_id == student_id,
