@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen flex flex-col">
-    <AppHeader gradient subtitle="Registrar Queue Management System" />
+    <AppHeader gradient />
 
     <main class="relative flex-1 flex items-center justify-center overflow-hidden">
       <img
@@ -24,7 +24,7 @@
 
         <router-link
           to="/queues"
-          class="mt-8 inline-flex items-center gap-2 bg-white text-bsu-primary font-bold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+          class="mt-8 inline-flex items-center gap-2 bg-white text-bsu-primary font-bold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bsu-primary"
         >
           BROWSE
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

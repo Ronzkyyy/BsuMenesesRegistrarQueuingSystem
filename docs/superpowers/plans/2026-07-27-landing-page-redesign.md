@@ -23,7 +23,7 @@
 - Create: `bsu-registrar-queue/frontend/src/assets/archBackground.png`
 
 **Interfaces:**
-- Produces: a 960×544 PNG at `frontend/src/assets/archBackground.png`, imported by `HomeView.vue` in Task 3 as `import archBackground from '@/assets/archBackground.png'`.
+- Produces: a 960×270 PNG at `frontend/src/assets/archBackground.png` (recropped to a shorter region of the mockup that excludes the baked-in mockup text), imported by `HomeView.vue` in Task 3 as `import archBackground from '@/assets/archBackground.png'`.
 
 - [ ] **Step 1: Install Pillow for this one-off task**
 
@@ -153,7 +153,7 @@ Expected: build succeeds with no errors.
 cd "bsu-registrar-queue/frontend" && npm run dev
 ```
 
-Open `http://localhost:5173/login` in a browser (or use the `claude-in-chrome`/`run` tooling if available) and confirm the header is still the plain solid pink `bg-bsu-primary` bar — identical to before this change, since `LoginView` does not pass the new `gradient` prop.
+Open `http://localhost:5173/display` in a browser (or use the `claude-in-chrome`/`run` tooling if available) and confirm the header is still the plain solid pink `bg-bsu-primary` bar — identical to before this change, since `DisplayIndexView` does not pass the new `gradient` prop. (`/admin/*` pages, via `AdminLayout`, are another unaffected `AppHeader` consumer.)
 
 - [ ] **Step 4: Commit**
 

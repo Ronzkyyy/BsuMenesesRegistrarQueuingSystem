@@ -82,5 +82,5 @@ exists independently in `QueuesView.vue`.
 
 - Manual: `npm run dev`, visit `/`, confirm gradient header, blurred arch background, centered
   gradient text, white Browse button, and that clicking Browse navigates to `/queues`.
-- Confirm `/login` and `/queues` headers are still the solid `bg-bsu-primary` (regression check
-  on the new `gradient` prop's default).
+- Confirm `/admin/*` (via `AdminLayout`) and `/display` (via `DisplayIndexView`) headers are
+  still the solid `bg-bsu-primary` (regression check on the new `gradient` prop's default).
