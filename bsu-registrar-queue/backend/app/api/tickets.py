@@ -1,11 +1,12 @@
 """
 Ticket management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..core.database import get_db
+from ..core.limiter import limiter
 from ..core.security import get_current_active_user, require_role
 from ..db_models import UserRole, TicketDBStatus
 from ..models.ticket import (
@@ -19,7 +20,9 @@ router = APIRouter()
 
 
 @router.post("", response_model=Ticket)
+@limiter.limit("10/minute")
 def create_ticket(
+    request: Request,
     ticket: TicketCreate,
     db: Session = Depends(get_db)
 ):
@@ -38,7 +41,9 @@ def create_ticket(
 
 
 @router.get("/my-ticket", response_model=Ticket)
+@limiter.limit("30/minute")
 def get_my_ticket(
+    request: Request,
     student_id: int,
     queue_id: Optional[int] = None,
     db: Session = Depends(get_db)
@@ -52,7 +57,9 @@ def get_my_ticket(
 
 
 @router.post("/{ticket_id}/cancel", response_model=Ticket)
+@limiter.limit("10/minute")
 def cancel_ticket(
+    request: Request,
     ticket_id: int,
     db: Session = Depends(get_db)
 ):

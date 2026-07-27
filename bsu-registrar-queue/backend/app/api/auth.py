@@ -1,12 +1,13 @@
 """
 Authentication endpoints for registrar staff
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from ..core.database import get_db
+from ..core.limiter import limiter
 from ..core.security import (
     verify_password,
     create_access_token,
@@ -23,7 +24,9 @@ router = APIRouter()
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     portal: str | None = Form(None),
     db: Session = Depends(get_db)
