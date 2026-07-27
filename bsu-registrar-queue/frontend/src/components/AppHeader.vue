@@ -1,5 +1,10 @@
 <template>
-  <header class="bg-bsu-primary text-white shadow-lg">
+  <header
+    :class="[
+      'text-white shadow-lg',
+      gradient ? 'bg-gradient-to-r from-bsu-primary to-bsu-gold' : 'bg-bsu-primary',
+    ]"
+  >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div class="flex items-center justify-between">
         <router-link to="/" class="flex items-center space-x-3">
@@ -28,6 +33,10 @@ defineProps({
   subtitle: {
     type: String,
     default: 'Registrar Queue Management System',
+  },
+  gradient: {
+    type: Boolean,
+    default: false,
   },
 })
 </script>
