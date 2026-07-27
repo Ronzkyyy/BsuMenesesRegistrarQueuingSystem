@@ -19,9 +19,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 # Default letter per queue_type (the DB stores the enum MEMBER NAME, e.g.
-# 'ENROLLMENT', not the lowercase Python value 'enrollment' - confirmed by
-# querying the dev database directly) - used to backfill existing queues
-# before the column becomes NOT NULL.
+# 'ENROLLMENT', not the lowercase Python value 'enrollment') - used to
+# backfill existing queues before the column becomes NOT NULL.
 _TYPE_TO_LETTER = {
     'ENROLLMENT': 'E',
     'DOCUMENT_REQUEST': 'D',
