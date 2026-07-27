@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://bsumenesesregistrarqueuingsystem.onrender.com/api/:path*"
+    }
+  ]
+}
