@@ -3,6 +3,10 @@ set -e
 
 alembic upgrade head
 
+# Idempotent: seed_initial_data() no-ops if any queue already exists, so this
+# is safe to run on every boot rather than requiring a one-off manual step.
+python -m app.core.init_db
+
 # On platforms with only one free process slot (e.g. Render's free Web
 # Service tier), RUN_WORKER_INLINE=true runs the Celery worker/beat inside
 # this same container instead of as a separate service. docker-compose
