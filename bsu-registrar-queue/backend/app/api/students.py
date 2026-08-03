@@ -8,7 +8,7 @@ from typing import List, Optional
 from ..core.database import get_db
 from ..core.security import get_current_active_user, require_role
 from ..db_models import UserRole, Course, YearLevel, StudentDBType
-from ..models.student import Student, StudentCreate, StudentBase
+from ..models.student import Student, StudentCreate, StudentBase, StudentListResponse
 from ..models.user import User
 from ..services import StudentService
 
@@ -56,25 +56,26 @@ def get_student(
     return student
 
 
-@router.get("", response_model=List[Student])
+@router.get("", response_model=StudentListResponse)
 def list_students(
     query: str = "",
     course: Optional[Course] = None,
     year_level: Optional[YearLevel] = None,
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 25,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
 ):
     """List students with filters (staff only)"""
     service = StudentService(db)
-    return service.search_students(
+    items, total = service.search_students(
         query=query,
         course=course,
         year_level=year_level,
         skip=skip,
         limit=limit
     )
+    return StudentListResponse(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.patch("/{student_id}", response_model=Student)

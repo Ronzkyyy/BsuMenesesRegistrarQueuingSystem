@@ -2,7 +2,7 @@
 Student model for BSU student records
 """
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field, model_validator
 from enum import Enum
 
@@ -75,3 +75,10 @@ class StudentInDB(Student):
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+
+
+class StudentListResponse(BaseModel):
+    items: List[Student]
+    total: int
+    skip: int
+    limit: int

@@ -2,7 +2,7 @@
 Student service - business logic for student management
 """
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from sqlalchemy import func, or_
 
 from ..db_models import (
@@ -60,9 +60,9 @@ class StudentService:
         course: Optional[Course] = None,
         year_level: Optional[YearLevel] = None,
         skip: int = 0,
-        limit: int = 50
-    ) -> List[Student]:
-        """Search students with filters"""
+        limit: int = 25
+    ) -> Tuple[List[Student], int]:
+        """Search students with filters. Returns (page of students, total matching count)."""
         q = self.db.query(StudentDB)
 
         if query:
@@ -81,8 +81,9 @@ class StudentService:
         if year_level:
             q = q.filter(StudentDB.year_level == year_level)
 
+        total = q.count()
         students = q.offset(skip).limit(limit).all()
-        return [self._to_student(s) for s in students]
+        return [self._to_student(s) for s in students], total
 
     def update_student(self, student_id: int, student_data: StudentBase) -> Optional[Student]:
         """Update student information"""
