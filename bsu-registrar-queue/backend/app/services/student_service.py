@@ -82,7 +82,7 @@ class StudentService:
             q = q.filter(StudentDB.year_level == year_level)
 
         total = q.count()
-        students = q.offset(skip).limit(limit).all()
+        students = q.order_by(StudentDB.id).offset(skip).limit(limit).all()
         return [self._to_student(s) for s in students], total
 
     def update_student(self, student_id: int, student_data: StudentBase) -> Optional[Student]:
