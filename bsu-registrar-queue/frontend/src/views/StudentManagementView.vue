@@ -8,7 +8,7 @@
       <button
         v-if="canEdit"
         @click="openCreateModal"
-        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+        class="btn-primary btn-md"
       >
         <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -17,7 +17,7 @@
       </button>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-3">
+    <div class="panel p-4 mb-6 flex flex-wrap gap-3">
       <input
         v-model="filters.query"
         @keyup.enter="applyFilters"
@@ -35,7 +35,7 @@
       </select>
       <button
         @click="applyFilters"
-        class="px-4 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+        class="btn-secondary btn-md"
       >
         Search
       </button>
@@ -45,7 +45,7 @@
       <p class="text-sm text-red-700">{{ listError }}</p>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+    <div class="panel overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
@@ -58,7 +58,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="student in queueStore.students" :key="student.id">
+          <tr v-for="student in queueStore.students" :key="student.id" class="table-row-hover">
             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ student.student_id }}</td>
             <td class="px-6 py-4 text-sm text-gray-500">{{ student.first_name }} {{ student.last_name }}</td>
             <td class="px-6 py-4 text-sm text-gray-500">{{ student.course }}</td>
@@ -72,7 +72,7 @@
               <button
                 v-if="canEdit"
                 @click="openEditModal(student)"
-                class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                class="btn-secondary btn-sm"
               >
                 Edit
               </button>
@@ -80,7 +80,7 @@
                 v-if="canDelete"
                 @click="removeStudent(student)"
                 :disabled="actionLoading"
-                class="px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-800 hover:bg-red-200 disabled:opacity-50"
+                class="btn-danger btn-sm"
               >
                 Delete
               </button>
@@ -102,7 +102,7 @@
         <button
           @click="goToPage(page - 1)"
           :disabled="page === 1"
-          class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="btn-secondary btn-sm"
         >
           ‹ Prev
         </button>
@@ -111,8 +111,8 @@
           <button
             v-else
             @click="goToPage(p)"
-            class="px-3 py-1.5 text-sm font-medium rounded-md"
-            :class="p === page ? 'bg-bsu-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+            class="btn-sm"
+            :class="p === page ? 'btn-primary' : 'btn-secondary'"
           >
             {{ p }}
           </button>
@@ -120,7 +120,7 @@
         <button
           @click="goToPage(page + 1)"
           :disabled="page === totalPages"
-          class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="btn-secondary btn-sm"
         >
           Next ›
         </button>
@@ -128,7 +128,24 @@
     </div>
 
     <!-- Create / Edit Modal -->
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-100 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
     <div v-if="showFormModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Transition
+        appear
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
       <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-bold text-gray-900">{{ editingStudent ? 'Edit Student' : 'Add Student' }}</h3>
@@ -215,20 +232,22 @@
         <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             @click="showFormModal = false"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+            class="btn-secondary btn-md"
           >
             Cancel
           </button>
           <button
             @click="submitForm"
             :disabled="actionLoading"
-            class="px-4 py-2 text-sm font-medium text-white bg-bsu-primary rounded-md hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+            class="btn-primary btn-md"
           >
             {{ editingStudent ? 'Save Changes' : 'Create' }}
           </button>
         </div>
       </div>
+      </Transition>
     </div>
+    </Transition>
   </div>
 </template>
 

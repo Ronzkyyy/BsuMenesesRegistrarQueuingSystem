@@ -7,7 +7,7 @@
         </span>
         <button
           @click="logout"
-          class="px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          class="px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 hover:bg-red-700 transition-colors duration-150 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
         >
           Logout
         </button>
@@ -19,45 +19,45 @@
         <nav class="space-y-1">
           <router-link
             to="/admin"
-            class="block px-3 py-2 rounded-md text-sm font-medium"
-            :class="route.path === '/admin' ? 'bg-bsu-primary/10 text-bsu-primary' : 'text-gray-700 hover:bg-gray-100'"
+            class="block px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
+            :class="route.path === '/admin' ? 'bg-bsu-primary/10 text-bsu-primary font-semibold' : 'text-gray-700 hover:bg-bsu-primary/5 hover:text-bsu-primary-dark'"
           >
             Dashboard
           </router-link>
           <router-link
             to="/admin/queues"
-            class="block px-3 py-2 rounded-md text-sm font-medium"
-            :class="route.path === '/admin/queues' ? 'bg-bsu-primary/10 text-bsu-primary' : 'text-gray-700 hover:bg-gray-100'"
+            class="block px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
+            :class="route.path === '/admin/queues' ? 'bg-bsu-primary/10 text-bsu-primary font-semibold' : 'text-gray-700 hover:bg-bsu-primary/5 hover:text-bsu-primary-dark'"
           >
             Queue Management
           </router-link>
           <router-link
             to="/admin/counter"
-            class="block px-3 py-2 rounded-md text-sm font-medium"
-            :class="route.path === '/admin/counter' ? 'bg-bsu-primary/10 text-bsu-primary' : 'text-gray-700 hover:bg-gray-100'"
+            class="block px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
+            :class="route.path === '/admin/counter' ? 'bg-bsu-primary/10 text-bsu-primary font-semibold' : 'text-gray-700 hover:bg-bsu-primary/5 hover:text-bsu-primary-dark'"
           >
             Counter
           </router-link>
           <router-link
             to="/admin/students"
-            class="block px-3 py-2 rounded-md text-sm font-medium"
-            :class="route.path === '/admin/students' ? 'bg-bsu-primary/10 text-bsu-primary' : 'text-gray-700 hover:bg-gray-100'"
+            class="block px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
+            :class="route.path === '/admin/students' ? 'bg-bsu-primary/10 text-bsu-primary font-semibold' : 'text-gray-700 hover:bg-bsu-primary/5 hover:text-bsu-primary-dark'"
           >
             Students
           </router-link>
           <router-link
             v-if="['admin', 'registrar'].includes(queueStore.currentUser?.role)"
             to="/admin/media"
-            class="block px-3 py-2 rounded-md text-sm font-medium"
-            :class="route.path === '/admin/media' ? 'bg-bsu-primary/10 text-bsu-primary' : 'text-gray-700 hover:bg-gray-100'"
+            class="block px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
+            :class="route.path === '/admin/media' ? 'bg-bsu-primary/10 text-bsu-primary font-semibold' : 'text-gray-700 hover:bg-bsu-primary/5 hover:text-bsu-primary-dark'"
           >
             Media & Announcements
           </router-link>
           <router-link
             v-if="queueStore.currentUser?.role === 'admin'"
             to="/admin/users"
-            class="block px-3 py-2 rounded-md text-sm font-medium"
-            :class="route.path === '/admin/users' ? 'bg-bsu-primary/10 text-bsu-primary' : 'text-gray-700 hover:bg-gray-100'"
+            class="block px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
+            :class="route.path === '/admin/users' ? 'bg-bsu-primary/10 text-bsu-primary font-semibold' : 'text-gray-700 hover:bg-bsu-primary/5 hover:text-bsu-primary-dark'"
           >
             User Management
           </router-link>

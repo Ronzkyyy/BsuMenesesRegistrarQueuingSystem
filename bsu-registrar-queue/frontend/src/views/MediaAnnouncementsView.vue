@@ -6,12 +6,12 @@
     </div>
 
     <!-- Media Section -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-8">
-      <div class="bg-bsu-primary/5 border-b border-bsu-primary/10 px-6 py-4 flex items-center justify-between">
+    <div class="panel mb-8">
+      <div class="panel-header flex items-center justify-between">
         <h3 class="text-xl font-bold text-gray-900">Media Playlist</h3>
         <button
           @click="openCreateMediaModal"
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+          class="btn-primary btn-md"
         >
           Add Media Item
         </button>
@@ -34,7 +34,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-              <tr v-for="item in queueStore.mediaItems" :key="item.id">
+              <tr v-for="item in queueStore.mediaItems" :key="item.id" class="table-row-hover">
                 <td class="px-4 py-4 text-sm text-gray-900 capitalize">{{ item.media_type }}</td>
                 <td class="px-4 py-4 text-sm text-gray-500 max-w-xs">
                   <span class="block truncate">{{ item.url }}</span>
@@ -49,21 +49,21 @@
                   <button
                     @click="toggleMediaActive(item)"
                     :disabled="mediaActionLoading"
-                    class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                    class="btn-secondary btn-sm"
                   >
                     {{ item.is_active ? 'Deactivate' : 'Activate' }}
                   </button>
                   <button
                     @click="openEditMediaModal(item)"
                     :disabled="mediaActionLoading"
-                    class="px-3 py-1.5 text-sm font-medium rounded-md bg-blue-100 text-blue-800 hover:bg-blue-200 disabled:opacity-50"
+                    class="btn-secondary btn-sm"
                   >
                     Edit
                   </button>
                   <button
                     @click="removeMediaItem(item.id)"
                     :disabled="mediaActionLoading"
-                    class="px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-800 hover:bg-red-200 disabled:opacity-50"
+                    class="btn-danger btn-sm"
                   >
                     Delete
                   </button>
@@ -79,12 +79,12 @@
     </div>
 
     <!-- Announcements Section -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-      <div class="bg-bsu-primary/5 border-b border-bsu-primary/10 px-6 py-4 flex items-center justify-between">
+    <div class="panel">
+      <div class="panel-header flex items-center justify-between">
         <h3 class="text-xl font-bold text-gray-900">Announcements</h3>
         <button
           @click="openCreateAnnouncementModal"
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+          class="btn-primary btn-md"
         >
           Add Announcement
         </button>
@@ -105,7 +105,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-              <tr v-for="item in queueStore.announcements" :key="item.id">
+              <tr v-for="item in queueStore.announcements" :key="item.id" class="table-row-hover">
                 <td class="px-4 py-4 text-sm text-gray-900 max-w-md truncate">{{ item.text }}</td>
                 <td class="px-4 py-4 text-sm text-gray-500">{{ item.display_order }}</td>
                 <td class="px-4 py-4">
@@ -115,21 +115,21 @@
                   <button
                     @click="toggleAnnouncementActive(item)"
                     :disabled="announcementActionLoading"
-                    class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                    class="btn-secondary btn-sm"
                   >
                     {{ item.is_active ? 'Deactivate' : 'Activate' }}
                   </button>
                   <button
                     @click="openEditAnnouncementModal(item)"
                     :disabled="announcementActionLoading"
-                    class="px-3 py-1.5 text-sm font-medium rounded-md bg-blue-100 text-blue-800 hover:bg-blue-200 disabled:opacity-50"
+                    class="btn-secondary btn-sm"
                   >
                     Edit
                   </button>
                   <button
                     @click="removeAnnouncement(item.id)"
                     :disabled="announcementActionLoading"
-                    class="px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-800 hover:bg-red-200 disabled:opacity-50"
+                    class="btn-danger btn-sm"
                   >
                     Delete
                   </button>
@@ -145,7 +145,24 @@
     </div>
 
     <!-- Media Modal -->
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-100 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
     <div v-if="showMediaModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Transition
+        appear
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-bold text-gray-900">{{ editingMediaId ? 'Edit Media Item' : 'Add Media Item' }}</h3>
@@ -155,16 +172,16 @@
             <button
               type="button"
               @click="mediaMode = 'upload'"
-              class="flex-1 px-3 py-2 text-sm font-medium"
-              :class="mediaMode === 'upload' ? 'bg-bsu-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+              class="flex-1 px-3 py-2 text-sm font-medium transition-colors duration-150"
+              :class="mediaMode === 'upload' ? 'bg-bsu-primary text-white' : 'bg-white text-gray-700 hover:bg-bsu-primary/10'"
             >
               Upload File
             </button>
             <button
               type="button"
               @click="mediaMode = 'link'"
-              class="flex-1 px-3 py-2 text-sm font-medium"
-              :class="mediaMode === 'link' ? 'bg-bsu-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+              class="flex-1 px-3 py-2 text-sm font-medium transition-colors duration-150"
+              :class="mediaMode === 'link' ? 'bg-bsu-primary text-white' : 'bg-white text-gray-700 hover:bg-bsu-primary/10'"
             >
               Paste URL
             </button>
@@ -197,7 +214,7 @@
               type="file"
               accept="image/*,video/*"
               @change="onMediaFileSelected"
-              class="w-full text-sm text-gray-700 file:mr-3 file:px-3 file:py-2 file:rounded-md file:border-0 file:bg-bsu-primary file:text-white file:text-sm hover:file:bg-pink-800"
+              class="w-full text-sm text-gray-700 file:mr-3 file:px-3 file:py-2 file:rounded-md file:border-0 file:bg-bsu-primary file:text-white file:text-sm file:transition-colors file:duration-150 hover:file:bg-bsu-primary-dark"
             />
             <p v-if="editingMediaId && !selectedFile" class="mt-1 text-xs text-gray-500">Leave empty to keep the current file.</p>
             <p class="mt-1 text-xs text-gray-500">Images up to 5MB (jpg, png, gif, webp); videos up to 50MB (mp4, webm, ogg).</p>
@@ -231,23 +248,42 @@
         <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             @click="showMediaModal = false"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+            class="btn-secondary btn-md"
           >
             Cancel
           </button>
           <button
             @click="saveMedia"
             :disabled="mediaActionLoading"
-            class="px-4 py-2 text-sm font-medium text-white bg-bsu-primary rounded-md hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+            class="btn-primary btn-md"
           >
             {{ editingMediaId ? 'Save' : 'Create' }}
           </button>
         </div>
       </div>
+      </Transition>
     </div>
+    </Transition>
 
     <!-- Announcement Modal -->
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-100 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
     <div v-if="showAnnouncementModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Transition
+        appear
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-bold text-gray-900">{{ editingAnnouncementId ? 'Edit Announcement' : 'Add Announcement' }}</h3>
@@ -279,20 +315,22 @@
         <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             @click="showAnnouncementModal = false"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+            class="btn-secondary btn-md"
           >
             Cancel
           </button>
           <button
             @click="saveAnnouncement"
             :disabled="announcementActionLoading"
-            class="px-4 py-2 text-sm font-medium text-white bg-bsu-primary rounded-md hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+            class="btn-primary btn-md"
           >
             {{ editingAnnouncementId ? 'Save' : 'Create' }}
           </button>
         </div>
       </div>
+      </Transition>
     </div>
+    </Transition>
   </div>
 </template>
 

@@ -7,7 +7,7 @@
       </div>
       <button
         @click="openCreateModal"
-        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+        class="btn-primary btn-md"
       >
         <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -20,7 +20,7 @@
       <p class="text-sm text-red-700">{{ listError }}</p>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="panel overflow-hidden">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
@@ -32,7 +32,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="user in queueStore.users" :key="user.id">
+          <tr v-for="user in queueStore.users" :key="user.id" class="table-row-hover">
             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ user.username }}</td>
             <td class="px-6 py-4 text-sm text-gray-500">{{ user.full_name }}</td>
             <td class="px-6 py-4 text-sm text-gray-500 capitalize">{{ user.role }}</td>
@@ -44,7 +44,7 @@
                 v-if="user.is_active"
                 @click="deactivate(user.id)"
                 :disabled="actionLoading"
-                class="px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-800 hover:bg-red-200 disabled:opacity-50"
+                class="btn-danger btn-sm"
               >
                 Deactivate
               </button>
@@ -52,7 +52,7 @@
                 v-else
                 @click="activate(user.id)"
                 :disabled="actionLoading"
-                class="px-3 py-1.5 text-sm font-medium rounded-md bg-green-100 text-green-800 hover:bg-green-200 disabled:opacity-50"
+                class="btn-success btn-sm"
               >
                 Activate
               </button>
@@ -66,7 +66,24 @@
       </table>
     </div>
 
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-100 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
     <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Transition
+        appear
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-bold text-gray-900">Create User</h3>
@@ -122,20 +139,22 @@
         <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             @click="showCreateModal = false"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+            class="btn-secondary btn-md"
           >
             Cancel
           </button>
           <button
             @click="createUser"
             :disabled="actionLoading"
-            class="px-4 py-2 text-sm font-medium text-white bg-bsu-primary rounded-md hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+            class="btn-primary btn-md"
           >
             Create
           </button>
         </div>
       </div>
+      </Transition>
     </div>
+    </Transition>
   </div>
 </template>
 

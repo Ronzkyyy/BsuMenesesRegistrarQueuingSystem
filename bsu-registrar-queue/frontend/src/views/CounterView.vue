@@ -9,12 +9,12 @@
       <p class="text-sm text-red-700">{{ counterError }}</p>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-      <div class="bg-bsu-primary/5 border-b border-bsu-primary/10 px-6 py-4 flex items-center justify-between">
+    <div class="panel">
+      <div class="panel-header flex items-center justify-between">
         <h3 class="text-xl font-bold text-gray-900">{{ selectedService?.label || 'Select a service' }}</h3>
         <select
           v-model="selectedServiceKey"
-          class="px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+          class="px-3 py-1.5 border border-gray-300 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-bsu-primary focus:border-bsu-primary"
         >
           <option :value="null">Select Service</option>
           <option :value="service.key" v-for="service in availableServices" :key="service.key">
@@ -48,21 +48,21 @@
                 <button
                   @click="callCurrentTicket"
                   :disabled="loading"
-                  class="px-5 py-2.5 text-sm font-medium rounded-md bg-bsu-gold text-gray-900 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-bsu-gold disabled:opacity-50"
+                  class="btn-gold btn-md px-5 py-2.5"
                 >
                   {{ justCalled ? 'Called ✓' : 'Call' }}
                 </button>
                 <button
                   @click="skipCurrentTicket"
                   :disabled="loading"
-                  class="px-5 py-2.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+                  class="btn-danger-solid btn-md px-5 py-2.5"
                 >
                   Skip
                 </button>
                 <button
                   @click="completeCurrentTicket"
                   :disabled="loading"
-                  class="px-5 py-2.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                  class="btn-success-solid btn-md px-5 py-2.5"
                 >
                   Complete
                 </button>
@@ -77,7 +77,7 @@
                 <button
                   @click="serveNext"
                   :disabled="loading || waitingTickets.length === 0"
-                  class="px-6 py-3 text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+                  class="btn-primary btn-md px-6 py-3"
                 >
                   <span v-if="!loading">Serve Next Ticket</span>
                   <span v-else>Processing...</span>

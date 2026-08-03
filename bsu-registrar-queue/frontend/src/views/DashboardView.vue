@@ -10,54 +10,68 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="panel border-t-4 border-t-bsu-primary/60 p-6">
         <p class="text-sm text-gray-500">Users</p>
         <p class="text-2xl font-bold text-gray-900">{{ summary?.users_count ?? 0 }}</p>
       </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="panel border-t-4 border-t-bsu-primary/60 p-6">
         <p class="text-sm text-gray-500">Queues</p>
         <p class="text-2xl font-bold text-gray-900">{{ summary?.queues_count ?? 0 }}</p>
       </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="panel border-t-4 border-t-bsu-primary/60 p-6">
         <p class="text-sm text-gray-500">Active Queues</p>
         <p class="text-2xl font-bold text-gray-900">{{ summary?.active_queues_count ?? 0 }}</p>
       </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div
+        class="panel border-t-4 p-6"
+        :class="(summary?.waiting_count ?? 0) > 0 ? 'border-t-amber-400' : 'border-t-bsu-primary/60'"
+      >
         <p class="text-sm text-gray-500">Waiting</p>
         <p class="text-2xl font-bold text-gray-900">{{ summary?.waiting_count ?? 0 }}</p>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="panel border-t-4 border-t-bsu-primary/60 p-6">
         <p class="text-sm text-gray-500">Serving</p>
         <p class="text-2xl font-bold text-gray-900">{{ summary?.serving_count ?? 0 }}</p>
       </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="panel border-t-4 border-t-bsu-primary/60 p-6">
         <p class="text-sm text-gray-500">Completed Today</p>
         <p class="text-2xl font-bold text-gray-900">{{ summary?.completed_today_count ?? 0 }}</p>
       </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div
+        class="panel border-t-4 p-6"
+        :class="(summary?.no_shows_today_count ?? 0) > 0 ? 'border-t-amber-400' : 'border-t-bsu-primary/60'"
+      >
         <p class="text-sm text-gray-500">No-Shows</p>
         <p class="text-2xl font-bold text-gray-900">{{ summary?.no_shows_today_count ?? 0 }}</p>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Tickets Today by Service</h3>
-        <div v-if="hasServiceData" class="h-64">
-          <Bar :data="barData" :options="barOptions" />
+      <div class="panel overflow-hidden">
+        <div class="panel-header">
+          <h3 class="text-lg font-medium text-gray-900">Tickets Today by Service</h3>
         </div>
-        <p v-else class="text-center text-gray-500 py-8">No tickets today</p>
+        <div class="p-6">
+          <div v-if="hasServiceData" class="h-64">
+            <Bar :data="barData" :options="barOptions" />
+          </div>
+          <p v-else class="text-center text-gray-500 py-8">No tickets today</p>
+        </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Today's Tickets by Status</h3>
-        <div v-if="hasStatusData" class="h-64">
-          <Doughnut :data="doughnutData" :options="doughnutOptions" />
+      <div class="panel overflow-hidden">
+        <div class="panel-header">
+          <h3 class="text-lg font-medium text-gray-900">Today's Tickets by Status</h3>
         </div>
-        <p v-else class="text-center text-gray-500 py-8">No tickets today</p>
+        <div class="p-6">
+          <div v-if="hasStatusData" class="h-64">
+            <Doughnut :data="doughnutData" :options="doughnutOptions" />
+          </div>
+          <p v-else class="text-center text-gray-500 py-8">No tickets today</p>
+        </div>
       </div>
     </div>
   </div>

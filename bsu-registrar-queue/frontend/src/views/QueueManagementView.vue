@@ -9,8 +9,8 @@
       <p class="text-sm text-red-700">{{ dashboardError }}</p>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
-      <div class="bg-bsu-primary/5 border-b border-bsu-primary/10 px-6 py-4">
+    <div class="panel mb-6">
+      <div class="panel-header">
         <h3 class="text-xl font-bold text-gray-900">Queue Management</h3>
       </div>
       <div class="p-6">
@@ -41,7 +41,7 @@
                   v-if="queue.status === 'active'"
                   @click="pauseQueue(queue.id)"
                   :disabled="loading"
-                  class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-yellow-100 text-yellow-800 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 disabled:opacity-50"
+                  class="btn-warning btn-sm flex-1"
                 >
                   Pause
                 </button>
@@ -49,7 +49,7 @@
                   v-else-if="queue.status === 'paused'"
                   @click="resumeQueue(queue.id)"
                   :disabled="loading"
-                  class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-green-100 text-green-800 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                  class="btn-success btn-sm flex-1"
                 >
                   Resume
                 </button>
@@ -57,21 +57,21 @@
                   v-if="queue.status !== 'closed'"
                   @click="closeQueue(queue.id)"
                   :disabled="loading"
-                  class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+                  class="btn-danger btn-sm flex-1"
                 >
                   Close
                 </button>
                 <router-link
                   :to="`/display/${queue.id}`"
                   target="_blank"
-                  class="flex-1 inline-flex justify-center items-center px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  class="btn-secondary btn-sm flex-1"
                 >
                   Display Board
                 </router-link>
                 <button
                   @click="deleteQueue(queue.id)"
                   :disabled="loading"
-                  class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:opacity-50"
+                  class="btn-danger-solid btn-sm flex-1"
                 >
                   Delete
                 </button>
@@ -86,7 +86,7 @@
         <div v-if="queueStore.currentUser?.role === 'admin'" class="mt-6">
           <button
             @click="showCreateQueueModal = true"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+            class="btn-primary btn-md"
           >
             <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -97,10 +97,10 @@
       </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
-      <div class="bg-bsu-primary/5 border-b border-bsu-primary/10 px-6 py-4 flex items-center justify-between">
+    <div class="panel mb-6">
+      <div class="panel-header flex items-center justify-between">
         <h3 class="text-xl font-bold text-gray-900">Queue Display</h3>
-        <router-link to="/display" target="_blank" class="text-sm font-medium text-bsu-primary hover:underline">
+        <router-link to="/display" target="_blank" class="text-sm font-medium text-bsu-primary hover:underline transition-colors hover:text-bsu-primary-dark">
           View All Boards ↗
         </router-link>
       </div>
@@ -171,7 +171,7 @@
             <button
               @click="serveNextTicket"
               :disabled="loading || queueDisplay.length === 0"
-              class="flex-1 px-4 py-2 text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+              class="btn-primary btn-md flex-1"
             >
               <span v-if="!loading">Serve Next Ticket</span>
               <span v-else>Processing...</span>
@@ -179,7 +179,7 @@
             <button
               @click="completeCurrentTicket"
               :disabled="loading || !servingTicket"
-              class="flex-1 px-4 py-2 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+              class="btn-success-solid btn-md flex-1"
             >
               <span v-if="!loading">Mark Complete</span>
               <span v-else>Processing...</span>
@@ -192,7 +192,24 @@
       </div>
     </div>
 
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-100 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
     <div v-if="showCreateQueueModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Transition
+        appear
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-bold text-gray-900">Create New Queue</h3>
@@ -287,20 +304,22 @@
         <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             @click="showCreateQueueModal = false"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+            class="btn-secondary btn-md"
           >
             Cancel
           </button>
           <button
             @click="createQueue"
             :disabled="loading"
-            class="px-4 py-2 text-sm font-medium text-white bg-bsu-primary rounded-md hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+            class="btn-primary btn-md"
           >
             Create
           </button>
         </div>
       </div>
+      </Transition>
     </div>
+    </Transition>
   </div>
 </template>
 
