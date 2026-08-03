@@ -38,6 +38,7 @@ export const useQueueStore = defineStore('queue', {
     // Students
     currentStudent: null,
     students: [],
+    studentsTotal: 0,
     studentStats: null,
 
     // Auth
@@ -743,7 +744,7 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
-    async searchStudents(query = '', course = null, yearLevel = null, skip = 0, limit = 50) {
+    async searchStudents(query = '', course = null, yearLevel = null, skip = 0, limit = 25) {
       this.loading = true
       this.error = null
       try {
@@ -751,7 +752,8 @@ export const useQueueStore = defineStore('queue', {
         if (course) params.course = course
         if (yearLevel) params.year_level = yearLevel
         const response = await api.get('/students', { params })
-        this.students = response.data
+        this.students = response.data.items
+        this.studentsTotal = response.data.total
         return response.data
       } catch (err) {
         this.error = err.response?.data?.detail || 'Failed to search students'
@@ -858,6 +860,7 @@ export const useQueueStore = defineStore('queue', {
       this.servingTicket = null
       this.currentStudent = null
       this.students = []
+      this.studentsTotal = 0
       this.studentStats = null
       this.loading = false
       this.error = null

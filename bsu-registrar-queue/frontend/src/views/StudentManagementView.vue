@@ -94,6 +94,39 @@
       </table>
     </div>
 
+    <div v-if="queueStore.studentsTotal > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-gray-600">
+        Showing {{ rangeStart }}-{{ rangeEnd }} of {{ queueStore.studentsTotal }} students
+      </p>
+      <nav class="flex items-center gap-1">
+        <button
+          @click="goToPage(page - 1)"
+          :disabled="page === 1"
+          class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ‹ Prev
+        </button>
+        <template v-for="(p, idx) in paginationRange" :key="idx">
+          <span v-if="p === '…'" class="px-2 text-sm text-gray-400">…</span>
+          <button
+            v-else
+            @click="goToPage(p)"
+            class="px-3 py-1.5 text-sm font-medium rounded-md"
+            :class="p === page ? 'bg-bsu-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          >
+            {{ p }}
+          </button>
+        </template>
+        <button
+          @click="goToPage(page + 1)"
+          :disabled="page === totalPages"
+          class="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next ›
+        </button>
+      </nav>
+    </div>
+
     <!-- Create / Edit Modal -->
     <div v-if="showFormModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -154,6 +187,7 @@
           <div v-if="form.course === BIT_COURSE">
             <label class="block text-sm font-medium text-gray-700 mb-1">Major</label>
             <select v-model="form.major" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary">
+              <option value="" disabled>Select major</option>
               <option v-for="m in majors" :key="m" :value="m">{{ m }}</option>
             </select>
           </div>
@@ -242,6 +276,28 @@ const editingStudent = ref(null)
 
 const filters = ref({ query: '', course: '', year_level: '' })
 
+const PAGE_SIZE = 25
+const page = ref(1)
+const totalPages = computed(() => Math.max(1, Math.ceil(queueStore.studentsTotal / PAGE_SIZE)))
+const rangeStart = computed(() => (queueStore.studentsTotal === 0 ? 0 : (page.value - 1) * PAGE_SIZE + 1))
+const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, queueStore.studentsTotal))
+
+const paginationRange = computed(() => {
+  const total = totalPages.value
+  const current = page.value
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  const pages = new Set([1, total, current, current - 1, current - 2, current + 1, current + 2])
+  const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b)
+  const withEllipses = []
+  sorted.forEach((p, i) => {
+    if (i > 0 && p - sorted[i - 1] > 1) withEllipses.push('…')
+    withEllipses.push(p)
+  })
+  return withEllipses
+})
+
 const emptyForm = () => ({
   student_id: '',
   first_name: '',
@@ -258,13 +314,25 @@ const emptyForm = () => ({
 
 const form = ref(emptyForm())
 
-const applyFilters = async () => {
+const loadStudents = async () => {
   listError.value = ''
   try {
-    await queueStore.searchStudents(filters.value.query, filters.value.course || null, filters.value.year_level || null)
+    const skip = (page.value - 1) * PAGE_SIZE
+    await queueStore.searchStudents(filters.value.query, filters.value.course || null, filters.value.year_level || null, skip, PAGE_SIZE)
   } catch (err) {
     listError.value = err.response?.data?.detail || 'Failed to load students'
   }
+}
+
+const applyFilters = async () => {
+  page.value = 1
+  await loadStudents()
+}
+
+const goToPage = async (targetPage) => {
+  if (targetPage < 1 || targetPage > totalPages.value || targetPage === page.value) return
+  page.value = targetPage
+  await loadStudents()
 }
 
 const openCreateModal = () => {
@@ -323,6 +391,7 @@ const submitForm = async () => {
       await queueStore.updateStudent(editingStudent.value.id, payload)
     } else {
       await queueStore.createStudent(payload)
+      await loadStudents()
     }
     showFormModal.value = false
   } catch (err) {
@@ -342,6 +411,11 @@ const removeStudent = async (student) => {
   listError.value = ''
   try {
     await queueStore.deleteStudent(student.id)
+    await loadStudents()
+    if (queueStore.students.length === 0 && page.value > 1) {
+      page.value -= 1
+      await loadStudents()
+    }
   } catch (err) {
     listError.value = err.response?.data?.detail || 'Failed to delete student'
   } finally {
@@ -350,10 +424,6 @@ const removeStudent = async (student) => {
 }
 
 onMounted(async () => {
-  try {
-    await queueStore.searchStudents()
-  } catch (err) {
-    listError.value = err.response?.data?.detail || 'Failed to load students'
-  }
+  await loadStudents()
 })
 </script>
