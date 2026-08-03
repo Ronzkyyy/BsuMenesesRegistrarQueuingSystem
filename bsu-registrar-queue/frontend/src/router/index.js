@@ -40,6 +40,11 @@ const router = createRouter({
           component: () => import('../views/CounterView.vue')
         },
         {
+          path: 'students',
+          name: 'admin-students',
+          component: () => import('../views/StudentManagementView.vue')
+        },
+        {
           path: 'media',
           name: 'admin-media',
           component: () => import('../views/MediaAnnouncementsView.vue'),

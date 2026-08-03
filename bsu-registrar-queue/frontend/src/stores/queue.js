@@ -699,6 +699,35 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    async createStudent(studentData) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post('/students', studentData)
+        this.students.push(response.data)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to create student'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async deleteStudent(studentId) {
+      this.loading = true
+      this.error = null
+      try {
+        await api.delete(`/students/${studentId}`)
+        this.students = this.students.filter(s => s.id !== studentId)
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to delete student'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     async fetchStudentById(studentId) {
       this.loading = true
       this.error = null
