@@ -7,7 +7,7 @@
       <div class="p-8">
         <div class="flex flex-col items-center text-center mb-6">
           <div class="flex items-center space-x-2 mb-4">
-            <img :src="BSUlogo" alt="BSU Logo" class="w-16 h-16 object-contain" />
+            <img :src="BSUlogo" alt="BSU Logo" class="w-12 h-12 object-contain" />
             <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-12 h-12 object-contain" />
           </div>
           <h1 class="text-2xl font-bold text-bsu-primary">BSU Registrar Queue System</h1>

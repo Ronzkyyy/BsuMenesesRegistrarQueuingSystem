@@ -67,7 +67,7 @@
       <div class="flex items-center justify-between">
         <router-link to="/" class="flex items-center space-x-3">
           <div class="flex items-center space-x-2 flex-shrink-0">
-            <img :src="BSUlogo" alt="BSU Logo" class="w-24 h-24 object-contain" />
+            <img :src="BSUlogo" alt="BSU Logo" class="w-16 h-16 object-contain" />
             <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-16 h-16 object-contain" />
           </div>
           <div>

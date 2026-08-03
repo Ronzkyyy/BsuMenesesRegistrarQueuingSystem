@@ -3,7 +3,7 @@
     <!-- Top bar -->
     <header class="flex items-center justify-between px-8 py-5 border-b border-white/10">
       <div class="flex items-center space-x-3">
-        <img :src="BSUlogo" alt="BSU Logo" class="w-12 h-12 object-contain" />
+        <img :src="BSUlogo" alt="BSU Logo" class="w-10 h-10 object-contain" />
         <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-10 h-10 object-contain" />
         <div>
           <h1 class="text-lg font-bold leading-tight">BSU Meneses Campus</h1>

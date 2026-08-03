@@ -11,7 +11,7 @@
             STEP {{ displayedStep }}: {{ stepLabels[displayedStep] }}
           </div>
           <div class="flex items-center space-x-2 mb-3">
-            <img :src="BSUlogo" alt="BSU Logo" class="w-14 h-14 object-contain" />
+            <img :src="BSUlogo" alt="BSU Logo" class="w-11 h-11 object-contain" />
             <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-11 h-11 object-contain" />
           </div>
           <h1 class="text-2xl font-bold text-bsu-primary">BSU Registrar Queue System</h1>
