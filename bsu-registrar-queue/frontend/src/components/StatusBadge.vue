@@ -1,7 +1,7 @@
 <template>
   <span
     :class="[
-      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase transition-colors duration-150',
+      'inline-flex items-center px-3 py-1 rounded-xl text-xs font-semibold uppercase tracking-wide transition-colors duration-150',
       solid ? solidClasses : softClasses,
     ]"
   >
@@ -27,18 +27,18 @@ const tone = computed(() => {
 })
 
 const softClasses = computed(() => ({
-  green: 'bg-green-100 text-green-800',
-  yellow: 'bg-yellow-100 text-yellow-800',
-  red: 'bg-red-100 text-red-800',
-  blue: 'bg-blue-100 text-blue-800',
-  gray: 'bg-gray-100 text-gray-800',
+  green: 'bg-green-50 text-green-700',
+  yellow: 'bg-bsu-gold/20 text-bsu-gold-dark',
+  red: 'bg-red-50 text-red-600',
+  blue: 'bg-bsu-primary/10 text-bsu-primary-dark',
+  gray: 'bg-gray-100 text-gray-600',
 }[tone.value]))
 
 const solidClasses = computed(() => ({
   green: 'bg-green-500 text-white',
-  yellow: 'bg-yellow-500 text-white',
+  yellow: 'bg-bsu-gold text-bsu-ink',
   red: 'bg-red-500 text-white',
-  blue: 'bg-blue-500 text-white',
+  blue: 'bg-bsu-primary text-white',
   gray: 'bg-gray-500 text-white',
 }[tone.value]))
 </script>

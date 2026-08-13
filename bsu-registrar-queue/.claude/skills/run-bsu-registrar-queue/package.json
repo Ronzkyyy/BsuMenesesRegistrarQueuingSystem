@@ -1,0 +1,9 @@
+{
+  "name": "run-bsu-registrar-queue-driver",
+  "private": true,
+  "type": "module",
+  "description": "Playwright REPL driver used by the run-bsu-registrar-queue skill. Not part of the app; not published.",
+  "dependencies": {
+    "playwright": "^1.62.1"
+  }
+}

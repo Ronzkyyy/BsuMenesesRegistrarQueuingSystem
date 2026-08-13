@@ -1,24 +1,21 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center relative overflow-hidden px-4 py-10">
-    <div class="absolute -top-16 -left-16 w-72 h-72 bg-bsu-primary/10 rounded-full blur-3xl"></div>
-    <div class="absolute top-1/3 -right-16 w-80 h-80 bg-bsu-gold/10 rounded-full blur-3xl"></div>
-
-    <div class="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-      <div class="p-8">
+  <div class="min-h-screen bg-bsu-surface flex items-center justify-center px-4 py-10">
+    <div class="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-soft-lg border border-gray-100 overflow-hidden">
+      <div class="p-6 sm:p-8">
         <!-- Header (logos + step badge) -->
         <div class="flex flex-col items-center text-center mb-6">
-          <div v-if="!showMyQueueStatus" class="inline-flex items-center px-3 py-1 rounded-full bg-bsu-primary text-white text-xs font-bold mb-3">
+          <div v-if="!showMyQueueStatus" class="inline-flex items-center px-3 py-1 rounded-xl bg-bsu-primary text-white text-xs font-bold mb-3">
             STEP {{ displayedStep }}: {{ stepLabels[displayedStep] }}
           </div>
           <div class="flex items-center space-x-2 mb-3">
             <img :src="BSUlogo" alt="BSU Logo" class="w-11 h-11 object-contain" />
             <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-11 h-11 object-contain" />
           </div>
-          <h1 class="text-2xl font-bold text-bsu-primary">BSU Registrar Queue System</h1>
+          <h1 class="text-2xl font-bold text-bsu-ink">BSU Registrar Queue System</h1>
           <p class="mt-1 text-sm text-gray-500">{{ headerSubtitle }}</p>
         </div>
 
-        <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
           <p class="text-sm text-red-700">{{ error }}</p>
         </div>
 
@@ -30,32 +27,32 @@
         <!-- Ticket status view (already has an active ticket) -->
         <div v-else-if="showMyQueueStatus">
           <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-bsu-primary text-white rounded-full mb-4">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-bsu-primary text-white rounded-2xl mb-4 shadow-soft">
               <span class="text-3xl font-bold">{{ myTicket?.ticket_code }}</span>
             </div>
-            <h3 class="text-lg font-bold text-gray-900">Your Ticket Number</h3>
+            <h3 class="text-lg font-bold text-bsu-ink">Your Ticket Number</h3>
             <p class="text-gray-500">Queue: {{ myTicket?.queue_name }}</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <div class="bg-bsu-surface rounded-xl p-4 text-center">
               <p class="text-sm text-gray-500 mb-1">Position</p>
               <p class="text-2xl font-bold text-bsu-primary">{{ myTicket?.position || 0 }}</p>
             </div>
-            <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <div class="bg-bsu-surface rounded-xl p-4 text-center">
               <p class="text-sm text-gray-500 mb-1">Estimated Wait</p>
-              <p class="text-2xl font-bold text-bsu-gold">{{ myTicket?.estimated_wait_time_minutes || 0 }} min</p>
+              <p class="text-2xl font-bold text-bsu-gold-dark">{{ myTicket?.estimated_wait_time_minutes || 0 }} min</p>
             </div>
           </div>
 
-          <div class="bg-gray-50 rounded-lg p-4 mb-6">
+          <div class="bg-bsu-surface rounded-xl p-4 mb-6">
             <div class="flex items-center justify-between mb-2">
               <span class="text-gray-600 text-sm">Status</span>
               <StatusBadge :status="myTicket?.status" />
             </div>
             <div v-if="myTicket?.priority !== 'normal'" class="flex items-center justify-between">
               <span class="text-gray-600 text-sm">Priority</span>
-              <span class="text-gray-900 font-medium capitalize">{{ myTicket?.priority }}</span>
+              <span class="text-bsu-ink font-medium capitalize">{{ myTicket?.priority }}</span>
             </div>
           </div>
 
@@ -64,7 +61,7 @@
               v-if="myTicket?.status === 'waiting'"
               @click="cancelTicket"
               :disabled="loading"
-              class="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+              class="btn btn-danger-solid flex-1 py-2.5"
             >
               Cancel Ticket
             </button>
@@ -72,7 +69,7 @@
               v-if="myTicket?.status === 'waiting'"
               @click="refreshTicket"
               :disabled="loading"
-              class="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bsu-primary disabled:opacity-50"
+              class="btn btn-primary flex-1 py-2.5"
             >
               Refresh
             </button>
@@ -82,7 +79,7 @@
             <button
               @click="takeAnotherTicket"
               :disabled="loading"
-              class="flex-1 inline-flex justify-center items-center px-4 py-2 border border-bsu-primary text-sm font-medium rounded-md text-bsu-primary bg-white hover:bg-bsu-primary/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bsu-primary disabled:opacity-50"
+              class="btn btn-secondary flex-1 py-2.5"
             >
               Take Another Ticket
             </button>
@@ -99,7 +96,7 @@
               :key="service.key"
               type="button"
               @click="selectService(service.key)"
-              class="relative text-left p-4 rounded-xl border-2 transition-colors"
+              class="relative text-left p-4 rounded-2xl border-2 transition-colors"
               :class="selectedServiceKey === service.key ? 'border-bsu-primary bg-bsu-primary/5' : 'border-gray-200 hover:border-bsu-primary/40'"
             >
               <div
@@ -110,17 +107,19 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <component :is="service.icon" class="w-8 h-8 text-bsu-primary mb-3" />
-              <h3 class="font-bold text-gray-900 mb-1">{{ service.label }}</h3>
+              <div class="w-11 h-11 rounded-xl bg-bsu-primary/10 flex items-center justify-center mb-3">
+                <component :is="service.icon" class="w-6 h-6 text-bsu-primary" />
+              </div>
+              <h3 class="font-bold text-bsu-ink mb-1">{{ service.label }}</h3>
               <p class="text-sm text-gray-500">{{ service.description }}</p>
             </button>
           </div>
 
           <div v-if="selectedServiceKey === 'request_documents'" class="mt-6">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Document Type</label>
             <select
               v-model="selectedDocumentType"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary"
+              class="field"
             >
               <option value="" disabled>Select a document type</option>
               <option v-for="dt in DOCUMENT_TYPES" :key="dt.value" :value="dt.value">{{ dt.label }}</option>
@@ -128,13 +127,13 @@
           </div>
 
           <div v-if="selectedServiceKey === 'others'" class="mt-6">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Please specify your purpose</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Please specify your purpose</label>
             <textarea
               v-model="othersReason"
               rows="3"
               maxlength="200"
               placeholder="Describe your concern"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary"
+              class="field"
             ></textarea>
           </div>
 
@@ -149,7 +148,7 @@
             <button
               @click="goToStep2"
               :disabled="!canProceedStep1"
-              class="px-6 py-2.5 text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+              class="btn btn-primary px-6 py-2.5"
             >
               Next →
             </button>
@@ -158,22 +157,22 @@
 
         <!-- STEP 2: Provide Information -->
         <div v-else-if="currentStep === 2">
-          <div class="bg-bsu-primary/5 border border-bsu-primary/10 rounded-lg p-4 mb-6 flex flex-wrap gap-x-8 gap-y-2">
+          <div class="bg-bsu-primary/5 border border-bsu-primary/10 rounded-xl p-4 mb-6 flex flex-wrap gap-x-8 gap-y-2">
             <div>
-              <p class="text-xs font-medium text-bsu-primary uppercase">Selected Service</p>
-              <p class="font-bold text-gray-900">{{ selectedService?.label }}</p>
+              <p class="text-xs font-semibold text-bsu-primary uppercase tracking-wide">Selected Service</p>
+              <p class="font-bold text-bsu-ink">{{ selectedService?.label }}</p>
             </div>
             <div v-if="selectedServiceKey === 'request_documents'">
-              <p class="text-xs font-medium text-bsu-primary uppercase">Document Type</p>
-              <p class="font-bold text-gray-900">{{ selectedDocumentTypeLabel }}</p>
+              <p class="text-xs font-semibold text-bsu-primary uppercase tracking-wide">Document Type</p>
+              <p class="font-bold text-bsu-ink">{{ selectedDocumentTypeLabel }}</p>
             </div>
           </div>
 
-          <h3 class="text-lg font-medium text-gray-900 mb-3">Student Information</h3>
+          <h3 class="text-lg font-semibold text-bsu-ink mb-3">Student Information</h3>
 
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Student Number</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Student Number</label>
               <div class="relative">
                 <input
                   v-model="studentNumberInput"
@@ -182,14 +181,14 @@
                   maxlength="10"
                   :disabled="studentLookedUp"
                   placeholder="Enter your 10-digit student number"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary disabled:bg-gray-100"
+                  class="field pr-24 disabled:bg-gray-100"
                   @keyup.enter="lookupStudent"
                 />
                 <button
                   v-if="!studentLookedUp"
                   @click="lookupStudent"
                   :disabled="loading"
-                  class="absolute inset-y-0 right-0 px-4 py-2 bg-bsu-primary text-white rounded-r-md hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+                  class="absolute inset-y-1 right-1 px-4 bg-bsu-primary text-white rounded-lg hover:bg-bsu-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
                 >
                   Check
                 </button>
@@ -197,7 +196,7 @@
                   v-else
                   @click="resetStudentLookup"
                   type="button"
-                  class="absolute inset-y-0 right-0 px-4 py-2 bg-gray-100 text-gray-600 rounded-r-md hover:bg-gray-200"
+                  class="absolute inset-y-1 right-1 px-4 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Change
                 </button>
@@ -207,78 +206,78 @@
             <template v-if="studentLookedUp && studentFound">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <input :value="queueStore.studentFullName" disabled class="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-md text-gray-600" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                  <input :value="queueStore.studentFullName" disabled class="field bg-gray-100 text-gray-600" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input :value="queueStore.currentStudent?.email" disabled class="w-full px-3 py-2 border border-gray-200 bg-gray-100 rounded-md text-gray-600" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                  <input :value="queueStore.currentStudent?.email" disabled class="field bg-gray-100 text-gray-600" />
                 </div>
               </div>
             </template>
 
             <template v-if="studentLookedUp && !studentFound">
-              <p class="text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p class="text-sm text-bsu-gold-dark bg-bsu-gold/15 border border-bsu-gold/30 rounded-xl p-3">
                 Student not found. Please fill in the details below to register.
               </p>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <input v-model="registrationForm.first_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
+                  <input v-model="registrationForm.first_name" type="text" class="field" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input v-model="registrationForm.last_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
+                  <input v-model="registrationForm.last_name" type="text" class="field" />
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input v-model="registrationForm.email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary" />
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <input v-model="registrationForm.email" type="email" class="field" />
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                  <select v-model="registrationForm.course" @change="onCourseChange" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary">
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Course</label>
+                  <select v-model="registrationForm.course" @change="onCourseChange" class="field">
                     <option :value="course.value" v-for="course in courseOptions" :key="course.value">{{ course.label }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
-                  <select v-model="registrationForm.year_level" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary">
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Year Level</label>
+                  <select v-model="registrationForm.year_level" class="field">
                     <option :value="year.value" v-for="year in yearLevelOptions" :key="year.value">{{ year.label }}</option>
                   </select>
                 </div>
               </div>
               <div v-if="isBitCourse">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Major</label>
-                <select v-model="registrationForm.major" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Major</label>
+                <select v-model="registrationForm.major" class="field">
                   <option :value="null" disabled>Select a major</option>
                   <option :value="major.value" v-for="major in majorOptions" :key="major.value">{{ major.label }}</option>
                 </select>
               </div>
-              <div class="space-y-2">
+              <div class="flex flex-wrap gap-x-6 gap-y-2">
                 <div class="flex items-center">
-                  <input id="is_scholar" type="checkbox" v-model="registrationForm.is_scholar" class="h-4 w-4 text-bsu-primary border-gray-300 rounded" />
+                  <input id="is_scholar" type="checkbox" v-model="registrationForm.is_scholar" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
                   <label for="is_scholar" class="ml-2 text-sm text-gray-700">Scholar</label>
                 </div>
                 <div class="flex items-center">
-                  <input id="is_varsity" type="checkbox" v-model="registrationForm.is_varsity" class="h-4 w-4 text-bsu-primary border-gray-300 rounded" />
+                  <input id="is_varsity" type="checkbox" v-model="registrationForm.is_varsity" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
                   <label for="is_varsity" class="ml-2 text-sm text-gray-700">Varsity Athlete</label>
                 </div>
                 <div class="flex items-center">
-                  <input id="is_graduating" type="checkbox" v-model="registrationForm.is_graduating" class="h-4 w-4 text-bsu-primary border-gray-300 rounded" />
+                  <input id="is_graduating" type="checkbox" v-model="registrationForm.is_graduating" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
                   <label for="is_graduating" class="ml-2 text-sm text-gray-700">Graduating Student</label>
                 </div>
               </div>
             </template>
 
             <div v-if="studentLookedUp">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Purpose</label>
               <textarea
                 v-model="purpose"
                 rows="3"
                 maxlength="200"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary"
+                class="field"
               ></textarea>
               <p class="text-xs text-gray-400 text-right mt-1">{{ purpose.length }} / 200</p>
             </div>
@@ -287,14 +286,14 @@
           <div class="flex justify-between mt-6">
             <button
               @click="currentStep = 1"
-              class="px-6 py-2.5 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+              class="btn btn-secondary px-6 py-2.5"
             >
               ← Back
             </button>
             <button
               @click="openConfirmModal"
               :disabled="!canProceedStep2"
-              class="px-6 py-2.5 text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+              class="btn btn-primary px-6 py-2.5"
             >
               Next →
             </button>
@@ -304,18 +303,18 @@
         <!-- STEP 4: Queue Number Generated -->
         <div v-else-if="currentStep === 4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            <div class="bg-bsu-primary/5 border border-bsu-primary/10 rounded-xl p-6 text-center">
-              <p class="text-xs font-medium text-bsu-primary uppercase mb-2">Your Queue Number</p>
+            <div class="bg-bsu-primary/5 border border-bsu-primary/10 rounded-2xl p-6 text-center">
+              <p class="text-xs font-semibold text-bsu-primary uppercase tracking-wide mb-2">Your Queue Number</p>
               <p class="text-5xl font-extrabold text-bsu-primary">{{ ticketResult?.ticket_code }}</p>
             </div>
             <div class="space-y-2 text-sm">
-              <div class="flex justify-between"><span class="text-gray-500">Service</span><span class="font-medium text-gray-900">{{ selectedService?.label }}</span></div>
-              <div v-if="selectedServiceKey === 'request_documents'" class="flex justify-between"><span class="text-gray-500">Document Type</span><span class="font-medium text-gray-900">{{ selectedDocumentTypeLabel }}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Student Number</span><span class="font-medium text-gray-900">{{ studentNumberInput }}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Student Name</span><span class="font-medium text-gray-900">{{ queueStore.studentFullName }}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Purpose</span><span class="font-medium text-gray-900">{{ purpose }}</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Estimated Wait</span><span class="font-medium text-gray-900">{{ ticketResult?.estimated_wait_time_minutes || 0 }} min</span></div>
-              <div class="flex justify-between"><span class="text-gray-500">Date & Time</span><span class="font-medium text-gray-900">{{ formattedTicketDate }}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Service</span><span class="font-medium text-bsu-ink">{{ selectedService?.label }}</span></div>
+              <div v-if="selectedServiceKey === 'request_documents'" class="flex justify-between"><span class="text-gray-500">Document Type</span><span class="font-medium text-bsu-ink">{{ selectedDocumentTypeLabel }}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Student Number</span><span class="font-medium text-bsu-ink">{{ studentNumberInput }}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Student Name</span><span class="font-medium text-bsu-ink">{{ queueStore.studentFullName }}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Purpose</span><span class="font-medium text-bsu-ink">{{ purpose }}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Estimated Wait</span><span class="font-medium text-bsu-ink">{{ ticketResult?.estimated_wait_time_minutes || 0 }} min</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">Date & Time</span><span class="font-medium text-bsu-ink">{{ formattedTicketDate }}</span></div>
             </div>
           </div>
 
@@ -324,13 +323,13 @@
           <div class="flex flex-col sm:flex-row gap-3 mt-6">
             <button
               @click="viewMyQueueFromSuccess"
-              class="flex-1 px-6 py-2.5 text-sm font-medium rounded-md border border-bsu-primary text-bsu-primary bg-white hover:bg-bsu-primary/5 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+              class="btn btn-secondary flex-1 py-2.5"
             >
               View My Queue
             </button>
             <button
               @click="router.push('/')"
-              class="flex-1 px-6 py-2.5 text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+              class="btn btn-primary flex-1 py-2.5"
             >
               Return to Home
             </button>
@@ -338,46 +337,46 @@
         </div>
 
         <div v-if="!loadingQueues && !showMyQueueStatus" class="mt-8 text-center">
-          <router-link to="/" class="text-sm text-gray-500 hover:underline">← Back to Home</router-link>
+          <router-link to="/" class="text-sm text-gray-500 hover:text-bsu-primary hover:underline">← Back to Home</router-link>
         </div>
       </div>
     </div>
 
     <!-- STEP 3: Confirm modal -->
-    <div v-if="showConfirmModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-      <div class="bg-white rounded-2xl shadow-xl max-w-md w-full">
+    <div v-if="showConfirmModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50 px-4">
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full">
         <div class="p-6 text-center">
-          <div class="mx-auto w-12 h-12 rounded-full bg-bsu-primary/10 flex items-center justify-center mb-4">
+          <div class="mx-auto w-12 h-12 rounded-xl bg-bsu-primary/10 flex items-center justify-center mb-4">
             <svg class="w-6 h-6 text-bsu-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h3 class="text-lg font-bold text-gray-900 mb-1">Confirm Your Registration</h3>
+          <h3 class="text-lg font-bold text-bsu-ink mb-1">Confirm Your Registration</h3>
           <p class="text-sm text-gray-500 mb-4">Please review your information before submitting.</p>
 
           <div class="text-left space-y-2 text-sm mb-4">
-            <div class="flex justify-between"><span class="text-gray-500">Service</span><span class="font-medium text-gray-900">{{ selectedService?.label }}</span></div>
-            <div v-if="selectedServiceKey === 'request_documents'" class="flex justify-between"><span class="text-gray-500">Document Type</span><span class="font-medium text-gray-900">{{ selectedDocumentTypeLabel }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-500">Student Number</span><span class="font-medium text-gray-900">{{ studentNumberInput }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-500">Student Name</span><span class="font-medium text-gray-900">{{ studentFound ? queueStore.studentFullName : `${registrationForm.first_name} ${registrationForm.last_name}` }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-500">Purpose</span><span class="font-medium text-gray-900">{{ purpose }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Service</span><span class="font-medium text-bsu-ink">{{ selectedService?.label }}</span></div>
+            <div v-if="selectedServiceKey === 'request_documents'" class="flex justify-between"><span class="text-gray-500">Document Type</span><span class="font-medium text-bsu-ink">{{ selectedDocumentTypeLabel }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Student Number</span><span class="font-medium text-bsu-ink">{{ studentNumberInput }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Student Name</span><span class="font-medium text-bsu-ink">{{ studentFound ? queueStore.studentFullName : `${registrationForm.first_name} ${registrationForm.last_name}` }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Purpose</span><span class="font-medium text-bsu-ink">{{ purpose }}</span></div>
           </div>
 
-          <div class="bg-bsu-primary/5 border border-bsu-primary/10 rounded-lg p-3 text-sm text-gray-700 mb-4">
+          <div class="bg-bsu-primary/5 border border-bsu-primary/10 rounded-xl p-3 text-sm text-gray-700 mb-4">
             Once confirmed, a queue number will automatically be generated.
           </div>
 
           <div class="flex gap-3">
             <button
               @click="closeConfirmModal"
-              class="flex-1 px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-bsu-primary"
+              class="btn btn-secondary flex-1 py-2"
             >
               ← Back
             </button>
             <button
               @click="confirmRegistration"
               :disabled="loading"
-              class="flex-1 px-4 py-2 text-sm font-medium rounded-md text-white bg-bsu-primary hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+              class="btn btn-primary flex-1 py-2"
             >
               <span v-if="!loading">Confirm & Get Queue Number</span>
               <span v-else>Processing...</span>

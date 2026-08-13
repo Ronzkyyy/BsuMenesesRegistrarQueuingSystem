@@ -1,35 +1,32 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center relative overflow-hidden px-4">
-    <div class="absolute -top-16 -left-16 w-72 h-72 bg-bsu-primary/10 rounded-full blur-3xl"></div>
-    <div class="absolute top-1/3 -right-16 w-80 h-80 bg-bsu-gold/10 rounded-full blur-3xl"></div>
-
-    <div class="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+  <div class="min-h-screen bg-bsu-surface flex items-center justify-center px-4 py-10">
+    <div class="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-soft-lg border border-gray-100 overflow-hidden">
       <div class="p-8">
         <div class="flex flex-col items-center text-center mb-6">
           <div class="flex items-center space-x-2 mb-4">
             <img :src="BSUlogo" alt="BSU Logo" class="w-12 h-12 object-contain" />
             <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-12 h-12 object-contain" />
           </div>
-          <h1 class="text-2xl font-bold text-bsu-primary">BSU Registrar Queue System</h1>
+          <h1 class="text-2xl font-bold text-bsu-ink">Staff Login</h1>
           <p class="mt-1 text-sm text-gray-500">Enter your credentials to continue</p>
         </div>
 
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
-            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label for="username" class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
             <input
               id="username"
               v-model="form.username"
               type="text"
               required
               autocomplete="username"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary"
+              class="field"
               placeholder="Enter your username"
             />
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
             <div class="relative">
               <input
                 id="password"
@@ -37,7 +34,7 @@
                 :type="showPassword ? 'text' : 'password'"
                 required
                 autocomplete="current-password"
-                class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary"
+                class="field pr-10"
                 placeholder="Enter your password"
               />
               <button
@@ -58,12 +55,12 @@
           </div>
 
           <div>
-            <label for="portal" class="block text-sm font-medium text-gray-700 mb-1">Select Portal</label>
+            <label for="portal" class="block text-sm font-medium text-gray-700 mb-1.5">Select Portal</label>
             <select
               id="portal"
               v-model="form.portal"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-bsu-primary focus:border-bsu-primary"
+              class="field"
             >
               <option value="" disabled>Choose a portal</option>
               <option value="admin">Admin</option>
@@ -74,19 +71,19 @@
           <button
             type="submit"
             :disabled="loading"
-            class="w-full py-2 px-4 text-sm font-medium text-white bg-bsu-primary rounded-md hover:bg-pink-800 focus:outline-none focus:ring-2 focus:ring-bsu-primary disabled:opacity-50"
+            class="btn btn-primary w-full py-2.5"
           >
             <span v-if="!loading">Login</span>
             <span v-else>Logging in...</span>
           </button>
         </form>
 
-        <div v-if="loginError" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div v-if="loginError" class="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl">
           <p class="text-sm text-red-700">{{ loginError }}</p>
         </div>
 
         <div class="mt-6 flex items-center justify-center space-x-4 text-sm">
-          <router-link to="/" class="text-gray-500 hover:underline">Back to Home</router-link>
+          <router-link to="/" class="text-gray-500 hover:text-bsu-primary hover:underline">Back to Home</router-link>
           <span class="text-gray-300">|</span>
           <router-link to="/display" class="text-bsu-primary hover:underline">View Display Board</router-link>
         </div>

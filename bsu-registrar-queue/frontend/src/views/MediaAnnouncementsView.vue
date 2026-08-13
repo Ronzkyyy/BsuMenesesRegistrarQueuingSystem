@@ -1,14 +1,14 @@
 <template>
   <div>
     <div class="mb-8">
-      <h2 class="text-3xl font-bold text-gray-900">Media & Announcements</h2>
-      <p class="mt-2 text-gray-600">Manage the media playlist and announcement ticker shown on display boards</p>
+      <h2 class="text-3xl font-bold text-bsu-ink">Media & Announcements</h2>
+      <p class="mt-2 text-gray-500">Manage the media playlist and announcement ticker shown on display boards</p>
     </div>
 
     <!-- Media Section -->
     <div class="panel mb-8">
       <div class="panel-header flex items-center justify-between">
-        <h3 class="text-xl font-bold text-gray-900">Media Playlist</h3>
+        <h3 class="text-xl font-bold text-bsu-ink">Media Playlist</h3>
         <button
           @click="openCreateMediaModal"
           class="btn-primary btn-md"
@@ -17,25 +17,25 @@
         </button>
       </div>
       <div class="p-6">
-        <div v-if="mediaError" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+        <div v-if="mediaError" class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-4">
           <p class="text-sm text-red-700">{{ mediaError }}</p>
         </div>
 
         <div class="overflow-hidden">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-gray-100">
+            <thead class="bg-bsu-surface">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">URL</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-100">
               <tr v-for="item in queueStore.mediaItems" :key="item.id" class="table-row-hover">
-                <td class="px-4 py-4 text-sm text-gray-900 capitalize">{{ item.media_type }}</td>
+                <td class="px-4 py-4 text-sm text-bsu-ink capitalize">{{ item.media_type }}</td>
                 <td class="px-4 py-4 text-sm text-gray-500 max-w-xs">
                   <span class="block truncate">{{ item.url }}</span>
                   <span class="block text-xs text-gray-400">{{ item.source === 'upload' ? 'Uploaded file' : 'External link' }}</span>
@@ -81,7 +81,7 @@
     <!-- Announcements Section -->
     <div class="panel">
       <div class="panel-header flex items-center justify-between">
-        <h3 class="text-xl font-bold text-gray-900">Announcements</h3>
+        <h3 class="text-xl font-bold text-bsu-ink">Announcements</h3>
         <button
           @click="openCreateAnnouncementModal"
           class="btn-primary btn-md"
@@ -90,23 +90,23 @@
         </button>
       </div>
       <div class="p-6">
-        <div v-if="announcementError" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+        <div v-if="announcementError" class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-4">
           <p class="text-sm text-red-700">{{ announcementError }}</p>
         </div>
 
         <div class="overflow-hidden">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-gray-100">
+            <thead class="bg-bsu-surface">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Text</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Text</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-100">
               <tr v-for="item in queueStore.announcements" :key="item.id" class="table-row-hover">
-                <td class="px-4 py-4 text-sm text-gray-900 max-w-md truncate">{{ item.text }}</td>
+                <td class="px-4 py-4 text-sm text-bsu-ink max-w-md truncate">{{ item.text }}</td>
                 <td class="px-4 py-4 text-sm text-gray-500">{{ item.display_order }}</td>
                 <td class="px-4 py-4">
                   <StatusBadge :status="item.is_active ? 'active' : 'inactive'" />
@@ -153,7 +153,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-    <div v-if="showMediaModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div v-if="showMediaModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50">
       <Transition
         appear
         enter-active-class="transition duration-200 ease-out"
@@ -163,12 +163,12 @@
         leave-from-class="opacity-100 scale-100"
         leave-to-class="opacity-0 scale-95"
       >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900">{{ editingMediaId ? 'Edit Media Item' : 'Add Media Item' }}</h3>
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full mx-4">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">{{ editingMediaId ? 'Edit Media Item' : 'Add Media Item' }}</h3>
         </div>
         <div class="px-6 py-4 space-y-4">
-          <div class="flex rounded-md border border-gray-300 overflow-hidden">
+          <div class="flex rounded-xl border border-gray-200 overflow-hidden">
             <button
               type="button"
               @click="mediaMode = 'upload'"
@@ -188,10 +188,10 @@
           </div>
 
           <div v-if="mediaMode === 'link'">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Type</label>
             <select
               v-model="mediaForm.media_type"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
             >
               <option value="image">Image</option>
               <option value="video">Video (embeddable URL, e.g. YouTube /embed/ link)</option>
@@ -199,22 +199,22 @@
           </div>
 
           <div v-if="mediaMode === 'link'">
-            <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">URL</label>
             <input
               v-model="mediaForm.url"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
               placeholder="https://..."
             />
           </div>
 
           <div v-else>
-            <label class="block text-sm font-medium text-gray-700 mb-1">File</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">File</label>
             <input
               type="file"
               accept="image/*,video/*"
               @change="onMediaFileSelected"
-              class="w-full text-sm text-gray-700 file:mr-3 file:px-3 file:py-2 file:rounded-md file:border-0 file:bg-bsu-primary file:text-white file:text-sm file:transition-colors file:duration-150 hover:file:bg-bsu-primary-dark"
+              class="w-full text-sm text-gray-700 file:mr-3 file:px-3 file:py-2 file:rounded-xl file:border-0 file:bg-bsu-primary file:text-white file:text-sm file:transition-colors file:duration-150 hover:file:bg-bsu-primary-dark"
             />
             <p v-if="editingMediaId && !selectedFile" class="mt-1 text-xs text-gray-500">Leave empty to keep the current file.</p>
             <p class="mt-1 text-xs text-gray-500">Images up to 5MB (jpg, png, gif, webp); videos up to 50MB (mp4, webm, ogg).</p>
@@ -222,30 +222,30 @@
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Duration (seconds)</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration (seconds)</label>
               <input
                 v-model.number="mediaForm.display_duration_seconds"
                 type="number"
                 min="1"
                 max="300"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+                class="field"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Order</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Order</label>
               <input
                 v-model.number="mediaForm.display_order"
                 type="number"
                 min="0"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+                class="field"
               />
             </div>
           </div>
-          <div v-if="mediaModalError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div v-if="mediaModalError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
             <p class="text-sm text-red-700">{{ mediaModalError }}</p>
           </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
           <button
             @click="showMediaModal = false"
             class="btn-secondary btn-md"
@@ -274,7 +274,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-    <div v-if="showAnnouncementModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div v-if="showAnnouncementModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50">
       <Transition
         appear
         enter-active-class="transition duration-200 ease-out"
@@ -284,35 +284,35 @@
         leave-from-class="opacity-100 scale-100"
         leave-to-class="opacity-0 scale-95"
       >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900">{{ editingAnnouncementId ? 'Edit Announcement' : 'Add Announcement' }}</h3>
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full mx-4">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">{{ editingAnnouncementId ? 'Edit Announcement' : 'Add Announcement' }}</h3>
         </div>
         <div class="px-6 py-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Text</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Text</label>
             <textarea
               v-model="announcementForm.text"
               rows="3"
               maxlength="500"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
               placeholder="e.g., Enrollment for AY 2026-2027 is now open"
             ></textarea>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Order</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Order</label>
             <input
               v-model.number="announcementForm.display_order"
               type="number"
               min="0"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
             />
           </div>
-          <div v-if="announcementModalError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div v-if="announcementModalError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
             <p class="text-sm text-red-700">{{ announcementModalError }}</p>
           </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
           <button
             @click="showAnnouncementModal = false"
             class="btn-secondary btn-md"

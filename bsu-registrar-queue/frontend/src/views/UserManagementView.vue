@@ -2,8 +2,8 @@
   <div>
     <div class="mb-8 flex items-center justify-between">
       <div>
-        <h2 class="text-3xl font-bold text-gray-900">User Management</h2>
-        <p class="mt-2 text-gray-600">Manage registrar staff accounts</p>
+        <h2 class="text-3xl font-bold text-bsu-ink">User Management</h2>
+        <p class="mt-2 text-gray-500">Manage registrar staff accounts</p>
       </div>
       <button
         @click="openCreateModal"
@@ -16,26 +16,26 @@
       </button>
     </div>
 
-    <div v-if="listError" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+    <div v-if="listError" class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
       <p class="text-sm text-red-700">{{ listError }}</p>
     </div>
 
     <div class="panel overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+      <table class="min-w-full divide-y divide-gray-100">
+        <thead class="bg-bsu-surface">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Username</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Full Name</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-100">
           <tr v-for="user in queueStore.users" :key="user.id" class="table-row-hover">
-            <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ user.username }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500">{{ user.full_name }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500 capitalize">{{ user.role }}</td>
+            <td class="px-6 py-4 text-sm font-medium text-bsu-ink">{{ user.username }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ user.full_name }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600 capitalize">{{ user.role }}</td>
             <td class="px-6 py-4">
               <StatusBadge :status="user.is_active ? 'active' : 'inactive'" />
             </td>
@@ -74,7 +74,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-    <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div v-if="showCreateModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50">
       <Transition
         appear
         enter-active-class="transition duration-200 ease-out"
@@ -84,36 +84,36 @@
         leave-from-class="opacity-100 scale-100"
         leave-to-class="opacity-0 scale-95"
       >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900">Create User</h3>
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full mx-4">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">Create User</h3>
         </div>
         <div class="px-6 py-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
             <input
               v-model="newUserForm.username"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
               placeholder="e.g., jsantos"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
             <input
               v-model="newUserForm.full_name"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
               placeholder="e.g., Juan Santos"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
             <select
               v-model="newUserForm.role"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
             >
               <option value="admin">Admin</option>
               <option value="registrar">Registrar</option>
@@ -122,21 +122,21 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
             <input
               v-model="newUserForm.password"
               type="password"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
               placeholder="At least 8 characters"
             />
           </div>
 
-          <div v-if="createError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div v-if="createError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
             <p class="text-sm text-red-700">{{ createError }}</p>
           </div>
         </div>
 
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
           <button
             @click="showCreateModal = false"
             class="btn-secondary btn-md"

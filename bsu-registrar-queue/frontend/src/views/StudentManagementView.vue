@@ -2,8 +2,8 @@
   <div>
     <div class="mb-8 flex items-center justify-between">
       <div>
-        <h2 class="text-3xl font-bold text-gray-900">Student Management</h2>
-        <p class="mt-2 text-gray-600">View and edit student records</p>
+        <h2 class="text-3xl font-bold text-bsu-ink">Student Management</h2>
+        <p class="mt-2 text-gray-500">View and edit student records</p>
       </div>
       <button
         v-if="canEdit"
@@ -23,13 +23,13 @@
         @keyup.enter="applyFilters"
         type="text"
         placeholder="Search by ID, name, or email"
-        class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+        class="field flex-1 min-w-[200px]"
       />
-      <select v-model="filters.course" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary">
+      <select v-model="filters.course" class="field w-auto">
         <option value="">All Courses</option>
         <option v-for="c in courses" :key="c" :value="c">{{ c }}</option>
       </select>
-      <select v-model="filters.year_level" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary">
+      <select v-model="filters.year_level" class="field w-auto">
         <option value="">All Year Levels</option>
         <option v-for="y in yearLevels" :key="y.value" :value="y.value">{{ y.label }}</option>
       </select>
@@ -41,32 +41,32 @@
       </button>
     </div>
 
-    <div v-if="listError" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+    <div v-if="listError" class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
       <p class="text-sm text-red-700">{{ listError }}</p>
     </div>
 
     <div class="panel overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+      <table class="min-w-full divide-y divide-gray-100">
+        <thead class="bg-bsu-surface">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year Level</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flags</th>
-            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Student ID</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Course</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Year Level</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Flags</th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-100">
           <tr v-for="student in queueStore.students" :key="student.id" class="table-row-hover">
-            <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ student.student_id }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500">{{ student.first_name }} {{ student.last_name }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500">{{ student.course }}</td>
-            <td class="px-6 py-4 text-sm text-gray-500">{{ yearLevelLabel(student.year_level) }}</td>
+            <td class="px-6 py-4 text-sm font-medium text-bsu-ink">{{ student.student_id }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ student.first_name }} {{ student.last_name }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ student.course }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ yearLevelLabel(student.year_level) }}</td>
             <td class="px-6 py-4 text-sm text-gray-500 space-x-1">
-              <span v-if="student.is_scholar" class="inline-block px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">Scholar</span>
-              <span v-if="student.is_varsity" class="inline-block px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800">Varsity</span>
-              <span v-if="student.is_graduating" class="inline-block px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-800">Graduating</span>
+              <span v-if="student.is_scholar" class="inline-block px-2 py-0.5 text-xs rounded-xl bg-bsu-primary/10 text-bsu-primary-dark">Scholar</span>
+              <span v-if="student.is_varsity" class="inline-block px-2 py-0.5 text-xs rounded-xl bg-bsu-peach/20 text-bsu-peach-dark">Varsity</span>
+              <span v-if="student.is_graduating" class="inline-block px-2 py-0.5 text-xs rounded-xl bg-bsu-gold/20 text-bsu-gold-dark">Graduating</span>
             </td>
             <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
               <button
@@ -95,7 +95,7 @@
     </div>
 
     <div v-if="queueStore.studentsTotal > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p class="text-sm text-gray-600">
+      <p class="text-sm text-gray-500">
         Showing {{ rangeStart }}-{{ rangeEnd }} of {{ queueStore.studentsTotal }} students
       </p>
       <nav class="flex items-center gap-1">
@@ -136,7 +136,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-    <div v-if="showFormModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div v-if="showFormModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50 p-4">
       <Transition
         appear
         enter-active-class="transition duration-200 ease-out"
@@ -146,64 +146,64 @@
         leave-from-class="opacity-100 scale-100"
         leave-to-class="opacity-0 scale-95"
       >
-      <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900">{{ editingStudent ? 'Edit Student' : 'Add Student' }}</h3>
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">{{ editingStudent ? 'Edit Student' : 'Add Student' }}</h3>
         </div>
         <div class="px-6 py-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Student ID</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Student ID</label>
             <input
               v-model="form.student_id"
               type="text"
               :disabled="!!editingStudent"
               maxlength="10"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary disabled:bg-gray-100"
+              class="field disabled:bg-gray-100"
               placeholder="10-digit student number"
             />
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-              <input v-model="form.first_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary" />
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
+              <input v-model="form.first_name" type="text" class="field" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-              <input v-model="form.last_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary" />
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
+              <input v-model="form.last_name" type="text" class="field" />
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input v-model="form.email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary" />
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+            <input v-model="form.email" type="email" class="field" />
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Student Type</label>
-              <select v-model="form.student_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Student Type</label>
+              <select v-model="form.student_type" class="field">
                 <option v-for="t in studentTypes" :key="t" :value="t">{{ t }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
-              <select v-model="form.year_level" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Year Level</label>
+              <select v-model="form.year_level" class="field">
                 <option v-for="y in yearLevels" :key="y.value" :value="y.value">{{ y.label }}</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Course</label>
-            <select v-model="form.course" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Course</label>
+            <select v-model="form.course" class="field">
               <option v-for="c in courses" :key="c" :value="c">{{ c }}</option>
             </select>
           </div>
 
           <div v-if="form.course === BIT_COURSE">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Major</label>
-            <select v-model="form.major" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Major</label>
+            <select v-model="form.major" class="field">
               <option value="" disabled>Select major</option>
               <option v-for="m in majors" :key="m" :value="m">{{ m }}</option>
             </select>
@@ -224,12 +224,12 @@
             </label>
           </div>
 
-          <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div v-if="formError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
             <p class="text-sm text-red-700">{{ formError }}</p>
           </div>
         </div>
 
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
           <button
             @click="showFormModal = false"
             class="btn-secondary btn-md"

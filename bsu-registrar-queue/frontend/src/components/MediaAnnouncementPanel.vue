@@ -3,7 +3,7 @@
     <!-- Media Panel -->
     <section v-if="mediaItems.length > 0 && currentItem" class="mt-2 px-8 flex justify-center">
       <div
-        class="max-w-full aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center"
+        class="max-w-full aspect-video rounded-2xl overflow-hidden border border-gray-200 shadow-soft bg-black flex items-center justify-center"
         :style="mediaBoxStyle"
       >
         <img
@@ -34,7 +34,7 @@
     </section>
 
     <!-- Announcement Ticker -->
-    <div v-if="tickerText" class="mt-2 bg-bsu-gold text-gray-900 overflow-hidden py-1.5">
+    <div v-if="tickerText" class="mt-2 bg-bsu-gold text-bsu-ink rounded-xl overflow-hidden py-2">
       <div class="whitespace-nowrap inline-block animate-marquee font-semibold px-4 text-sm">
         {{ tickerText }}
       </div>

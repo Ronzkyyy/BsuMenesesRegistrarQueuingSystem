@@ -1,78 +1,93 @@
 <template>
-  <div class="relative min-h-screen flex flex-col overflow-x-hidden">
-    <!-- Full-viewport background, fixed so it always covers the entire screen behind the header too -->
-    <img
-      :src="archBackground"
-      alt=""
-      class="fixed inset-0 -z-20 w-full h-full object-cover scale-110 blur-sm"
-    />
-    <div class="fixed inset-0 -z-10 bg-white/45"></div>
-    <div
-      class="fixed -top-24 -left-24 -z-10 w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-pink-400/25 blur-3xl"
-      aria-hidden="true"
-    ></div>
-    <div
-      class="fixed -bottom-24 -right-24 -z-10 w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-amber-300/25 blur-3xl"
-      aria-hidden="true"
-    ></div>
-
+  <div class="relative min-h-screen flex flex-col bg-bsu-surface overflow-x-hidden">
     <AppHeader floating>
       <template #actions>
         <router-link
-          to="/queues"
-          class="block md:inline-block text-center text-sm font-semibold text-white/90 hover:text-white px-4 py-2 md:py-1.5 rounded-full hover:bg-white/15 transition-colors"
-        >
-          Browse Queues
-        </router-link>
-        <router-link
           to="/login"
-          class="block md:inline-block text-center text-sm font-semibold text-white/90 hover:text-white px-4 py-2 md:py-1.5 rounded-full hover:bg-white/15 transition-colors"
+          class="btn text-sm px-5 py-2 rounded-xl bg-gradient-to-r from-bsu-primary to-bsu-peach text-white shadow-sm hover:shadow focus:ring-bsu-primary"
         >
           Staff Login
         </router-link>
       </template>
     </AppHeader>
 
-    <main class="relative flex-1 flex items-center justify-center px-4 py-12 sm:py-16">
-      <div class="relative z-10 flex flex-col items-center text-center px-4 sm:px-6 max-w-3xl mx-auto">
-        <h1
-          class="text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tight leading-none bg-gradient-to-r from-pink-600 via-orange-500 to-amber-400 bg-clip-text text-transparent drop-shadow-sm"
-        >
-          WELCOME
-        </h1>
+    <main class="flex-1">
+      <!-- Full-screen hero -->
+      <section class="relative w-full min-h-[75vh] sm:min-h-screen flex items-center overflow-hidden -mt-[1px]">
+        <img
+          :src="archBackground"
+          alt="Bulacan State University Meneses Campus arch"
+          class="absolute inset-0 w-full h-full object-cover"
+        />
+        <div class="absolute inset-0 bg-gradient-to-r from-bsu-surface/70 via-bsu-surface/30 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-bsu-surface/40 via-transparent to-transparent"></div>
 
-        <div class="flex items-center gap-3 mt-5 sm:mt-6 w-full max-w-xs sm:max-w-sm">
-          <span class="h-px flex-1 bg-gradient-to-r from-transparent via-pink-400/70 to-orange-400/70"></span>
-          <svg class="w-5 h-5 sm:w-6 sm:h-6 text-orange-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 11-8 0 4 4 0 018 0zm6 3a4 4 0 10-8 0" />
-          </svg>
-          <span class="h-px flex-1 bg-gradient-to-l from-transparent via-amber-400/70 to-orange-400/70"></span>
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 w-full py-24 sm:py-0">
+          <div class="max-w-xl text-center sm:text-left">
+            <h1 class="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.05] text-[#C81E4E] [text-shadow:0_2px_10px_rgba(0,0,0,0.4)]">
+              WELCOME
+            </h1>
+            <p class="mt-2 text-2xl sm:text-3xl md:text-4xl font-bold text-bsu-ink drop-shadow-sm">
+              to BSU Registrar Queue System
+            </p>
+            <p class="mt-5 text-base sm:text-lg font-semibold text-gray-700 max-w-md mx-auto sm:mx-0 drop-shadow-sm">
+              Fast, transparent, and accessible queue management for students.
+            </p>
+
+            <router-link
+              to="/queues"
+              class="btn mt-8 gap-2 text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-bsu-primary to-bsu-peach text-white shadow-sm hover:shadow focus:ring-bsu-primary"
+            >
+              Let's Get Started
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </router-link>
+          </div>
+        </div>
+      </section>
+
+      <!-- Vision & Mission -->
+      <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24">
+        <div class="text-center mb-10 sm:mb-14">
+          <span class="inline-block text-xs font-semibold tracking-[0.25em] uppercase text-bsu-primary">
+            Bulacan State University
+          </span>
+          <h2 class="mt-2 text-3xl sm:text-4xl font-bold text-bsu-ink">Vision &amp; Mission</h2>
         </div>
 
-        <p class="mt-3 sm:mt-4 text-xs sm:text-sm md:text-base font-semibold tracking-[0.2em] sm:tracking-[0.3em] text-gray-700 uppercase">
-          Registrar Queuing System
-        </p>
+        <div class="grid sm:grid-cols-2 gap-6 sm:gap-8">
+          <div class="bg-white rounded-3xl shadow-soft border border-gray-100 p-8 sm:p-10">
+            <div class="flex items-center gap-3 mb-5 border-l-4 border-bsu-primary pl-4">
+              <h3 class="text-sm font-bold tracking-[0.2em] uppercase text-bsu-primary">Vision</h3>
+            </div>
+            <p class="text-lg sm:text-xl leading-relaxed text-bsu-ink font-medium">
+              {{ vision }}
+            </p>
+          </div>
 
-        <router-link
-          to="/queues"
-          class="group mt-8 sm:mt-10 inline-flex items-center gap-2 bg-white/90 backdrop-blur text-gray-900 font-semibold text-sm sm:text-base px-6 sm:px-8 py-3 sm:py-3.5 rounded-full shadow-lg hover:shadow-2xl hover:bg-white hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
-        >
-          Let's get started
-          <svg
-            class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </router-link>
-      </div>
+          <div class="bg-white rounded-3xl shadow-soft border border-gray-100 p-8 sm:p-10">
+            <div class="flex items-center gap-3 mb-5 border-l-4 border-bsu-peach pl-4">
+              <h3 class="text-sm font-bold tracking-[0.2em] uppercase text-bsu-peach-dark">Mission</h3>
+            </div>
+            <p class="text-lg sm:text-xl leading-relaxed text-bsu-ink font-medium">
+              {{ mission }}
+            </p>
+          </div>
+        </div>
+      </section>
     </main>
+
+    <AppFooter />
   </div>
 </template>
 
 <script setup>
 import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
 import archBackground from '@/assets/archBackground.png'
+
+const vision = 'Ang Bulacan State University ay isang progresibong institusyong lumilikha ng kaalaman na kinikilala sa daigdig sa pinakamahusay na pagtuturo, nangungunang mga pananaliksik, at maagap na pagtugon sa pangangailangan ng komunidad.'
+
+const mission = 'Ang Bulacan State University ay may hangaring humubog ng mga propesyonal na mahuhusay, etikal, at handang maglingkod, na nakapag-aambag sa patuloy na pagunlad ng bayan.'
 </script>

@@ -1,20 +1,20 @@
 <template>
   <div>
     <div class="mb-8">
-      <h2 class="text-3xl font-bold text-gray-900">Counter</h2>
-      <p class="mt-2 text-gray-600">Serve tickets for a queue</p>
+      <h2 class="text-3xl font-bold text-bsu-ink">Counter</h2>
+      <p class="mt-2 text-gray-500">Serve tickets for a queue</p>
     </div>
 
-    <div v-if="counterError" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+    <div v-if="counterError" class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
       <p class="text-sm text-red-700">{{ counterError }}</p>
     </div>
 
     <div class="panel">
       <div class="panel-header flex items-center justify-between">
-        <h3 class="text-xl font-bold text-gray-900">{{ selectedService?.label || 'Select a service' }}</h3>
+        <h3 class="text-xl font-bold text-bsu-ink">{{ selectedService?.label || 'Select a service' }}</h3>
         <select
           v-model="selectedServiceKey"
-          class="px-3 py-1.5 border border-gray-300 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-bsu-primary focus:border-bsu-primary"
+          class="field w-auto py-1.5"
         >
           <option :value="null">Select Service</option>
           <option :value="service.key" v-for="service in availableServices" :key="service.key">
@@ -26,19 +26,19 @@
       <div class="p-6">
         <div v-if="selectedQueueId" class="space-y-6">
           <!-- Currently Serving -->
-          <div class="bg-gray-50 rounded-lg p-8 text-center">
+          <div class="bg-bsu-surface rounded-2xl p-8 text-center">
             <h4 class="text-sm text-gray-500 uppercase tracking-wide mb-4">Currently Serving</h4>
 
             <div v-if="servingTicket">
-              <span class="inline-block px-8 py-4 bg-bsu-primary text-white text-5xl font-extrabold rounded-full mb-3">
+              <span class="inline-block px-8 py-4 bg-gradient-to-br from-bsu-primary to-bsu-peach text-white text-5xl font-extrabold rounded-2xl mb-3 shadow-soft">
                 {{ servingTicket.ticket_code }}
               </span>
               <p v-if="servingTicket.purpose" class="text-sm text-gray-600 mb-2">{{ servingTicket.purpose }}</p>
               <div class="mb-6">
                 <span
                   v-if="servingTicket.priority && servingTicket.priority !== 'normal'"
-                  class="text-xs px-2 py-0.5 rounded-full"
-                  :class="servingTicket.priority === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'"
+                  class="text-xs px-2 py-0.5 rounded-xl"
+                  :class="servingTicket.priority === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-bsu-gold/20 text-bsu-gold-dark'"
                 >
                   {{ servingTicket.priority }}
                 </span>
@@ -70,7 +70,7 @@
             </div>
 
             <div v-else>
-              <span class="inline-block px-8 py-4 bg-gray-200 text-gray-500 text-5xl font-extrabold rounded-full mb-6">
+              <span class="inline-block px-8 py-4 bg-gray-200 text-gray-500 text-5xl font-extrabold rounded-2xl mb-6">
                 --
               </span>
               <div>
@@ -93,16 +93,16 @@
               <div
                 v-for="ticket in waitingTickets"
                 :key="ticket.ticket_number"
-                class="flex items-center justify-between px-3 py-2 rounded-md"
-                :class="ticket.priority === 'urgent' ? 'bg-red-50 border-l-4 border-red-400' : ticket.priority === 'priority' ? 'bg-yellow-50 border-l-4 border-yellow-400' : 'bg-white border border-gray-200'"
+                class="flex items-center justify-between px-3 py-2.5 rounded-xl"
+                :class="ticket.priority === 'urgent' ? 'bg-red-50 border-l-4 border-red-400' : ticket.priority === 'priority' ? 'bg-bsu-gold/10 border-l-4 border-bsu-gold' : 'bg-white border border-gray-200'"
               >
                 <div class="flex items-center space-x-3">
-                  <span class="font-medium text-gray-900">{{ ticket.ticket_code }}</span>
+                  <span class="font-medium text-bsu-ink">{{ ticket.ticket_code }}</span>
                   <span v-if="ticket.purpose" class="text-sm text-gray-500">{{ ticket.purpose }}</span>
                   <span
                     v-if="ticket.priority !== 'normal'"
-                    class="text-xs px-2 py-0.5 rounded-full"
-                    :class="ticket.priority === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'"
+                    class="text-xs px-2 py-0.5 rounded-xl"
+                    :class="ticket.priority === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-bsu-gold/20 text-bsu-gold-dark'"
                   >
                     {{ ticket.priority }}
                   </span>

@@ -1,30 +1,32 @@
 <template>
   <div>
     <div class="mb-8">
-      <h2 class="text-3xl font-bold text-gray-900">Queue Management</h2>
-      <p class="mt-2 text-gray-600">Manage queues and serve tickets</p>
+      <h2 class="text-3xl font-bold text-bsu-ink">Queue Management</h2>
+      <p class="mt-2 text-gray-500">Manage queues and serve tickets</p>
     </div>
 
-    <div v-if="dashboardError" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+    <div v-if="dashboardError" class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
       <p class="text-sm text-red-700">{{ dashboardError }}</p>
     </div>
 
     <div class="panel mb-6">
       <div class="panel-header">
-        <h3 class="text-xl font-bold text-gray-900">Queue Management</h3>
+        <h3 class="text-xl font-bold text-bsu-ink">Queue Management</h3>
       </div>
       <div class="p-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div
             v-for="{ service, queue } in serviceCards"
             :key="service.key"
-            class="border border-gray-200 rounded-lg p-4"
+            class="border border-gray-200 rounded-2xl p-4"
           >
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center space-x-3">
-                <component :is="service.icon" class="w-8 h-8 text-bsu-primary" />
+                <div class="w-11 h-11 rounded-xl bg-bsu-primary/10 flex items-center justify-center flex-shrink-0">
+                  <component :is="service.icon" class="w-6 h-6 text-bsu-primary" />
+                </div>
                 <div>
-                  <h4 class="font-medium text-gray-900">{{ service.label }}</h4>
+                  <h4 class="font-medium text-bsu-ink">{{ service.label }}</h4>
                   <p class="text-sm text-gray-500">Queue: {{ formatQueueType(service.queueType) }}</p>
                 </div>
               </div>
@@ -99,17 +101,17 @@
 
     <div class="panel mb-6">
       <div class="panel-header flex items-center justify-between">
-        <h3 class="text-xl font-bold text-gray-900">Queue Display</h3>
+        <h3 class="text-xl font-bold text-bsu-ink">Queue Display</h3>
         <router-link to="/display" target="_blank" class="text-sm font-medium text-bsu-primary hover:underline transition-colors hover:text-bsu-primary-dark">
           View All Boards ↗
         </router-link>
       </div>
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
-          <h4 class="text-lg font-medium text-gray-900">{{ selectedQueue?.name || 'No queue selected' }}</h4>
+          <h4 class="text-lg font-medium text-bsu-ink">{{ selectedQueue?.name || 'No queue selected' }}</h4>
           <select
             v-model="selectedQueueId"
-            class="px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+            class="field w-auto py-1.5"
           >
             <option :value="null">Select Queue</option>
             <option :value="q.id" v-for="q in queues" :key="q.id">
@@ -119,19 +121,19 @@
         </div>
 
         <div v-if="selectedQueue" class="space-y-4">
-          <div class="bg-gray-50 rounded-lg p-6">
+          <div class="bg-bsu-surface rounded-2xl p-6">
             <div class="text-center mb-6">
               <h5 class="text-sm text-gray-500 uppercase tracking-wide">CURRENTLY SERVING</h5>
               <div class="mt-2">
                 <span
                   v-if="servingTicket"
-                  class="inline-block px-6 py-3 bg-bsu-primary text-white text-3xl font-bold rounded-full"
+                  class="inline-block px-6 py-3 bg-bsu-primary text-white text-3xl font-bold rounded-2xl shadow-soft"
                 >
                   {{ servingTicket.ticket_code }}
                 </span>
                 <span
                   v-else
-                  class="inline-block px-6 py-3 bg-gray-200 text-gray-600 text-3xl font-bold rounded-full"
+                  class="inline-block px-6 py-3 bg-gray-200 text-gray-500 text-3xl font-bold rounded-2xl"
                 >
                   --
                 </span>
@@ -144,13 +146,13 @@
                 <div
                   v-for="ticket in queueDisplay"
                   :key="ticket.id"
-                  class="flex items-center justify-between px-3 py-2 rounded-md"
-                  :class="ticket.priority === 'urgent' ? 'bg-red-50 border-l-4 border-red-400' : ticket.priority === 'priority' ? 'bg-yellow-50 border-l-4 border-yellow-400' : 'bg-white border border-gray-200'"
+                  class="flex items-center justify-between px-3 py-2.5 rounded-xl"
+                  :class="ticket.priority === 'urgent' ? 'bg-red-50 border-l-4 border-red-400' : ticket.priority === 'priority' ? 'bg-bsu-gold/10 border-l-4 border-bsu-gold' : 'bg-white border border-gray-200'"
                 >
                   <div class="flex items-center space-x-3">
-                    <span class="font-medium text-gray-900">{{ ticket.ticket_code }}</span>
-                    <span v-if="ticket.priority !== 'normal'" class="text-xs px-2 py-0.5 rounded-full"
-                      :class="ticket.priority === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'"
+                    <span class="font-medium text-bsu-ink">{{ ticket.ticket_code }}</span>
+                    <span v-if="ticket.priority !== 'normal'" class="text-xs px-2 py-0.5 rounded-xl"
+                      :class="ticket.priority === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-bsu-gold/20 text-bsu-gold-dark'"
                     >
                       {{ ticket.priority }}
                     </span>
@@ -200,7 +202,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-    <div v-if="showCreateQueueModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div v-if="showCreateQueueModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50">
       <Transition
         appear
         enter-active-class="transition duration-200 ease-out"
@@ -210,27 +212,27 @@
         leave-from-class="opacity-100 scale-100"
         leave-to-class="opacity-0 scale-95"
       >
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900">Create New Queue</h3>
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full mx-4">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">Create New Queue</h3>
         </div>
         <div class="px-6 py-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Queue Name</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Queue Name</label>
             <input
               v-model="newQueueForm.name"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
               placeholder="e.g., Document Request"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Queue Type</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Queue Type</label>
             <select
               v-model="newQueueForm.queue_type"
               @change="onQueueTypeChange"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
             >
               <option :value="type.value" v-for="type in queueTypeOptions" :key="type.value">
                 {{ type.label }}
@@ -239,47 +241,47 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Ticket Letter</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Ticket Letter</label>
             <input
               v-model="newQueueForm.ticket_letter"
               @input="onTicketLetterInput"
               type="text"
               maxlength="1"
-              class="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary uppercase"
+              class="field w-24 uppercase"
               placeholder="E"
             />
             <p class="text-xs text-gray-500 mt-1">Prefixes this queue's tickets (e.g. E-007). Must be unique across all queues.</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
             <textarea
               v-model="newQueueForm.description"
               rows="2"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+              class="field"
               placeholder="Brief description of the service"
             ></textarea>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Max Capacity</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Max Capacity</label>
               <input
                 v-model.number="newQueueForm.max_capacity"
                 type="number"
                 min="1"
                 max="200"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+                class="field"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Slot Duration (min)</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Slot Duration (min)</label>
               <input
                 v-model.number="newQueueForm.slot_duration_minutes"
                 type="number"
                 min="5"
                 max="120"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-bsu-primary"
+                class="field"
               />
             </div>
           </div>
@@ -289,19 +291,19 @@
               id="allow_priority"
               type="checkbox"
               v-model="newQueueForm.allow_priority"
-              class="h-4 w-4 text-bsu-primary border-gray-300 rounded"
+              class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary"
             />
             <label for="allow_priority" class="ml-2 text-sm text-gray-700">
               Allow Priority Access
             </label>
           </div>
 
-          <div v-if="createQueueError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div v-if="createQueueError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
             <p class="text-sm text-red-700">{{ createQueueError }}</p>
           </div>
         </div>
 
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
           <button
             @click="showCreateQueueModal = false"
             class="btn-secondary btn-md"
