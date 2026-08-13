@@ -111,4 +111,11 @@
   .table-row-hover {
     transition: none;
   }
+  .service-card {
+    transition: none;
+  }
+  .service-card:hover,
+  .service-card:active {
+    transform: none;
+  }
 }

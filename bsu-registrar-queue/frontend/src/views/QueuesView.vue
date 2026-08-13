@@ -1,5 +1,10 @@
 <template>
-  <div class="min-h-screen bg-bsu-surface flex items-center justify-center px-4 py-10">
+  <div class="relative min-h-screen bg-bsu-surface flex items-center justify-center px-4 py-10 overflow-hidden">
+    <img
+      :src="archBackground"
+      alt="Bulacan State University Meneses Campus arch"
+      class="absolute inset-0 w-full h-full object-cover"
+    />
     <div class="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-soft-lg border border-gray-100 overflow-hidden">
       <div class="p-6 sm:p-8">
         <!-- Header (logos + step badge) -->
@@ -8,8 +13,8 @@
             STEP {{ displayedStep }}: {{ stepLabels[displayedStep] }}
           </div>
           <div class="flex items-center space-x-2 mb-3">
-            <img :src="BSUlogo" alt="BSU Logo" class="w-11 h-11 object-contain" />
-            <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-11 h-11 object-contain" />
+            <img :src="BSUlogo" alt="BSU Logo" class="h-11 w-auto object-contain" />
+            <img :src="MENESESlogo" alt="Meneses Campus Logo" class="h-11 w-auto object-contain" />
           </div>
           <h1 class="text-2xl font-bold text-bsu-ink">BSU Registrar Queue System</h1>
           <p class="mt-1 text-sm text-gray-500">{{ headerSubtitle }}</p>
@@ -96,22 +101,22 @@
               :key="service.key"
               type="button"
               @click="selectService(service.key)"
-              class="relative text-left p-4 rounded-2xl border-2 transition-colors"
-              :class="selectedServiceKey === service.key ? 'border-bsu-primary bg-bsu-primary/5' : 'border-gray-200 hover:border-bsu-primary/40'"
+              class="service-card relative text-left p-4 rounded-2xl bg-gradient-to-br from-bsu-primary to-bsu-peach text-white shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 active:scale-[0.97] active:duration-75"
+              :class="selectedServiceKey === service.key ? 'ring-4 ring-white shadow-lg' : 'hover:shadow-lg'"
             >
               <div
                 v-if="selectedServiceKey === service.key"
-                class="absolute top-3 right-3 w-6 h-6 rounded-full bg-bsu-primary text-white flex items-center justify-center"
+                class="absolute top-3 right-3 w-6 h-6 rounded-full bg-white text-bsu-primary flex items-center justify-center"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <div class="w-11 h-11 rounded-xl bg-bsu-primary/10 flex items-center justify-center mb-3">
-                <component :is="service.icon" class="w-6 h-6 text-bsu-primary" />
+              <div class="w-11 h-11 rounded-xl bg-white/25 flex items-center justify-center mb-3">
+                <component :is="service.icon" class="w-6 h-6 text-white" />
               </div>
-              <h3 class="font-bold text-bsu-ink mb-1">{{ service.label }}</h3>
-              <p class="text-sm text-gray-500">{{ service.description }}</p>
+              <h3 class="font-bold text-white mb-1">{{ service.label }}</h3>
+              <p class="text-sm text-white/85">{{ service.description }}</p>
             </button>
           </div>
 
@@ -396,6 +401,7 @@ import { useQueueStore } from '@/stores/queue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import BSUlogo from '@/assets/BSUlogo.png'
 import MENESESlogo from '@/assets/MENESESlogo.png'
+import archBackground from '@/assets/archBackground.png'
 import { SERVICES } from '@/services/studentServices'
 
 const router = useRouter()

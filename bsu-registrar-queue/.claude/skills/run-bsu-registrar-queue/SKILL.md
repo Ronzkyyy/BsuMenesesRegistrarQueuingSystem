@@ -78,6 +78,7 @@ run it after each navigation you care about; `[]` means clean.
 | `fill <selector> <value...>` | rest of line is the value (spaces OK) |
 | `select <selector> <value>` | `<select>` option value |
 | `click <selector...>` | rest of line is the selector (spaces OK, e.g. `button:has-text("Login")`) |
+| `hover <selector...>` | move the mouse onto it and leave it there — screenshot right after to capture `:hover` state |
 | `press <key>` | keyboard key, e.g. `Enter` |
 | `sleep <ms>` | fixed wait, avoid unless nothing else fits |
 | `screenshot [name]` | full-page-off viewport screenshot |

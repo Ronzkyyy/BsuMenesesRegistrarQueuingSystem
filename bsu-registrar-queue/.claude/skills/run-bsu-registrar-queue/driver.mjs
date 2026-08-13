@@ -7,6 +7,7 @@
 //   fill <selector> <value...>
 //   select <selector> <value>
 //   click <selector...>
+//   hover <selector...>
 //   press <key>
 //   sleep <ms>
 //   screenshot [name]
@@ -65,6 +66,10 @@ for await (const line of rl) {
       const sel = rest.join(' ')
       await page.click(sel)
       console.log('OK click', sel)
+    } else if (cmd === 'hover') {
+      const sel = rest.join(' ')
+      await page.hover(sel)
+      console.log('OK hover', sel)
     } else if (cmd === 'press') {
       await page.keyboard.press(rest.join(' '))
       console.log('OK press')
