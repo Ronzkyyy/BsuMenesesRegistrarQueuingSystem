@@ -41,6 +41,13 @@ export const useQueueStore = defineStore('queue', {
     studentsTotal: 0,
     studentStats: null,
 
+    // Appointments
+    appointmentAvailability: [],
+    myAppointment: null,
+    bookedAppointment: null,
+    appointmentSearchResults: [],
+    checkInResult: null,
+
     // Auth
     token: localStorage.getItem(TOKEN_KEY) || null,
     currentUser: null,
@@ -684,6 +691,109 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    // ============ APPOINTMENT ACTIONS ============
+
+    async fetchAppointmentAvailability(queueId, appointmentDate) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/appointments/availability', {
+          params: { queue_id: queueId, appointment_date: appointmentDate },
+        })
+        this.appointmentAvailability = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch availability'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async bookAppointment(payload) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post('/appointments', payload)
+        this.bookedAppointment = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to book appointment'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async lookupAppointment(studentId, referenceCode) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/appointments/lookup', {
+          params: { student_id: studentId, reference_code: referenceCode },
+        })
+        this.myAppointment = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Appointment not found'
+        this.myAppointment = null
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async cancelAppointment(appointmentId, studentId) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post(`/appointments/${appointmentId}/cancel`, null, {
+          params: { student_id: studentId },
+        })
+        this.myAppointment = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to cancel appointment'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async searchAppointments(query) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/appointments/search', { params: { query } })
+        this.appointmentSearchResults = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to search appointments'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async checkInAppointment({ token = null, referenceCode = null, force = false }) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post('/appointments/checkin', {
+          token,
+          reference_code: referenceCode,
+          force,
+        })
+        this.checkInResult = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Check-in failed'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     // ============ STUDENT ACTIONS ============
 
     async searchStudent(studentId) {
@@ -879,6 +989,11 @@ export const useQueueStore = defineStore('queue', {
       this.students = []
       this.studentsTotal = 0
       this.studentStats = null
+      this.appointmentAvailability = []
+      this.myAppointment = null
+      this.bookedAppointment = null
+      this.appointmentSearchResults = []
+      this.checkInResult = null
       this.loading = false
       this.error = null
       this.stopPolling()
