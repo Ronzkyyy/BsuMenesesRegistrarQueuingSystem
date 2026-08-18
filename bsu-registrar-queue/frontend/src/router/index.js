@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('../views/QueuesView.vue')
     },
     {
+      path: '/appointments',
+      name: 'appointments',
+      component: () => import('../views/AppointmentsView.vue')
+    },
+    {
       path: '/admin',
       component: () => import('../components/AdminLayout.vue'),
       meta: { requiresAuth: true },

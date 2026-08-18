@@ -93,7 +93,11 @@
 
         <!-- STEP 1: Select a Service -->
         <div v-else-if="currentStep === 1">
-          <p class="text-center text-gray-500 mb-6">Choose a service you want to request.</p>
+          <p class="text-center text-gray-500 mb-2">Choose a service you want to request.</p>
+          <p class="text-center text-sm mb-6">
+            Prefer to schedule ahead?
+            <router-link to="/appointments" class="text-bsu-primary font-medium hover:underline">Book an appointment</router-link>
+          </p>
 
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <button
