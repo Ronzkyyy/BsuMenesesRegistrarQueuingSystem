@@ -1142,10 +1142,13 @@ try:
     assert all(r.id != booked.id for r in found), 'search should only return BOOKED appointments'
     print('Search correctly excludes checked-in appointments')
 
-    # Clean up the ticket so it does not linger as WAITING in the queue
+    # Clean up the ticket so it does not linger as WAITING in the queue.
+    # Delete the appointment first - it FK-references the ticket via
+    # ticket_id, so deleting the ticket while that reference still exists
+    # violates the FK constraint.
     from app.db_models import TicketDB
-    db.query(TicketDB).filter(TicketDB.id == ticket.id).delete()
     db.query(AppointmentDB).filter(AppointmentDB.id == booked.id).delete()
+    db.query(TicketDB).filter(TicketDB.id == ticket.id).delete()
     db.commit()
 
     # Expiry: book a slot dated yesterday directly (bypassing the future-only
