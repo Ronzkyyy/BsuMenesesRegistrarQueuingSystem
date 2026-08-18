@@ -45,6 +45,11 @@ const router = createRouter({
           component: () => import('../views/CounterView.vue')
         },
         {
+          path: 'checkin',
+          name: 'admin-checkin',
+          component: () => import('../views/CheckInView.vue')
+        },
+        {
           path: 'students',
           name: 'admin-students',
           component: () => import('../views/StudentManagementView.vue')
