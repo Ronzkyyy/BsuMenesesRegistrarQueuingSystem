@@ -36,6 +36,21 @@
             <template v-if="queue">
               <div class="text-sm text-gray-500 mb-3">
                 <p>Capacity: {{ queue.max_capacity }} | Slot: {{ queue.slot_duration_minutes }} min</p>
+                <p class="mt-1">
+                  Appointment booking:
+                  <span :class="queue.booking_enabled ? 'text-green-700 font-medium' : 'text-gray-400'">
+                    {{ queue.booking_enabled ? 'Enabled' : 'Disabled' }}
+                  </span>
+                </p>
+              </div>
+
+              <div class="flex space-x-2 mb-2">
+                <button
+                  @click="openBookingSettings(queue)"
+                  class="btn-secondary btn-sm flex-1"
+                >
+                  Manage Booking
+                </button>
               </div>
 
               <div class="flex space-x-2">
@@ -323,6 +338,66 @@
     </div>
     </Transition>
 
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-100 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+    <div v-if="showBookingSettingsModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full mx-4">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">Manage Booking - {{ bookingSettingsQueue?.name }}</h3>
+        </div>
+        <div class="px-6 py-4 space-y-4">
+          <div class="flex items-center">
+            <input
+              id="booking_enabled"
+              type="checkbox"
+              v-model="bookingSettingsForm.booking_enabled"
+              class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary"
+            />
+            <label for="booking_enabled" class="ml-2 text-sm text-gray-700">
+              Allow students to book appointments for this service
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Operating Start</label>
+              <input v-model="bookingSettingsForm.operating_start_time" type="time" class="field" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Operating End</label>
+              <input v-model="bookingSettingsForm.operating_end_time" type="time" class="field" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Slot Capacity</label>
+              <input v-model.number="bookingSettingsForm.slot_capacity" type="number" min="1" max="50" class="field" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Booking Window (days)</label>
+              <input v-model.number="bookingSettingsForm.booking_window_days" type="number" min="1" max="90" class="field" />
+            </div>
+          </div>
+
+          <div v-if="bookingSettingsError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
+            <p class="text-sm text-red-700">{{ bookingSettingsError }}</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
+          <button @click="showBookingSettingsModal = false" class="btn-secondary btn-md">Cancel</button>
+          <button @click="saveBookingSettings" :disabled="loading" class="btn-primary btn-md">Save</button>
+        </div>
+      </div>
+    </div>
+    </Transition>
+
     <ConfirmDialog
       v-model="confirmDialog.open"
       :title="confirmDialog.title"
@@ -338,6 +413,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
+import axios from 'axios'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { formatQueueType } from '@/components/icons/QueueIcons'
@@ -349,6 +425,50 @@ const loading = ref(false)
 const dashboardError = ref('')
 const createQueueError = ref('')
 const showCreateQueueModal = ref(false)
+
+const showBookingSettingsModal = ref(false)
+const bookingSettingsQueue = ref(null)
+const bookingSettingsError = ref('')
+const bookingSettingsForm = ref({
+  booking_enabled: false,
+  operating_start_time: '08:00',
+  operating_end_time: '17:00',
+  slot_capacity: 3,
+  booking_window_days: 14,
+})
+
+const openBookingSettings = (queue) => {
+  bookingSettingsQueue.value = queue
+  bookingSettingsError.value = ''
+  bookingSettingsForm.value = {
+    booking_enabled: queue.booking_enabled,
+    operating_start_time: (queue.operating_start_time || '08:00:00').slice(0, 5),
+    operating_end_time: (queue.operating_end_time || '17:00:00').slice(0, 5),
+    slot_capacity: queue.slot_capacity,
+    booking_window_days: queue.booking_window_days,
+  }
+  showBookingSettingsModal.value = true
+}
+
+const saveBookingSettings = async () => {
+  if (!bookingSettingsQueue.value) return
+  loading.value = true
+  bookingSettingsError.value = ''
+  try {
+    const payload = {
+      ...bookingSettingsForm.value,
+      operating_start_time: `${bookingSettingsForm.value.operating_start_time}:00`,
+      operating_end_time: `${bookingSettingsForm.value.operating_end_time}:00`,
+    }
+    await api_patchBookingSettings(bookingSettingsQueue.value.id, payload)
+    showBookingSettingsModal.value = false
+    await loadQueues()
+  } catch (err) {
+    bookingSettingsError.value = err.response?.data?.detail || 'Failed to save booking settings'
+  } finally {
+    loading.value = false
+  }
+}
 
 const confirmDialog = ref({ open: false, title: '', message: '', confirmLabel: 'Confirm', variant: 'primary' })
 const confirmLoading = ref(false)
@@ -568,6 +688,17 @@ const updateQueueDisplay = async () => {
   } catch (err) {
     queueDisplay.value = []
   }
+}
+
+// Booking settings is a one-off admin action with no other frontend
+// consumer, so it calls the API directly rather than adding a rarely-used
+// store action - reuses the store's auth token the same way the store's own
+// axios instance does.
+const api_patchBookingSettings = (queueId, payload) => {
+  const token = localStorage.getItem('registrar_token')
+  return axios.patch(`/api/queues/${queueId}/booking-settings`, payload, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
 }
 
 let displayRefreshTimer = null
