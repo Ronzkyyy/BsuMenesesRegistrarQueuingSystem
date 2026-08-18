@@ -1,7 +1,8 @@
 """
 SQLAlchemy database models - for actual database tables
 """
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Text
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Text, Date, Time
+from datetime import time
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .core.database import Base
@@ -37,6 +38,11 @@ class QueueDB(Base):
     allow_priority = Column(Boolean, default=True)
     max_capacity = Column(Integer, default=50)
     slot_duration_minutes = Column(Integer, default=30)
+    booking_enabled = Column(Boolean, default=False, nullable=False)
+    operating_start_time = Column(Time, default=time(8, 0), nullable=False)
+    operating_end_time = Column(Time, default=time(17, 0), nullable=False)
+    slot_capacity = Column(Integer, default=3, nullable=False)
+    booking_window_days = Column(Integer, default=14, nullable=False)
     current_ticket_number = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -180,3 +186,33 @@ class AnnouncementDB(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class AppointmentDBStatus(str, enum.Enum):
+    BOOKED = "booked"
+    CHECKED_IN = "checked_in"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"
+
+
+class AppointmentDB(Base):
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reference_code = Column(String(20), unique=True, index=True, nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    queue_id = Column(Integer, ForeignKey("queues.id"), nullable=False)
+    appointment_date = Column(Date, nullable=False)
+    slot_start_time = Column(Time, nullable=False)
+    slot_end_time = Column(Time, nullable=False)
+    purpose = Column(Text)
+    qr_token = Column(String(64), unique=True, index=True, nullable=False)
+    status = Column(Enum(AppointmentDBStatus), default=AppointmentDBStatus.BOOKED, nullable=False)
+    checked_in_at = Column(DateTime(timezone=True))
+    checked_in_by = Column(Integer, ForeignKey("users.id"))
+    ticket_id = Column(Integer, ForeignKey("tickets.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    student = relationship("StudentDB")
+    queue = relationship("QueueDB")
