@@ -30,6 +30,10 @@ celery.conf.beat_schedule = {
         "task": "app.services.notifications.check_no_show_tickets",
         "schedule": 300.0,  # every 5 minutes
     },
+    "expire-stale-appointments-every-5-minutes": {
+        "task": "app.services.notifications.expire_stale_appointments",
+        "schedule": 300.0,  # every 5 minutes
+    },
 }
 
 
@@ -198,5 +202,21 @@ def send_queue_closed_notification(queue_id: int):
 
     except Exception as exc:
         logger.error(f"Error sending queue closed notification: {exc}")
+    finally:
+        db.close()
+
+
+@celery.task
+def expire_stale_appointments():
+    """Mark booked appointments whose window has fully passed as expired"""
+    db = SessionLocal()
+    try:
+        from app.services.appointment_service import AppointmentService
+        service = AppointmentService(db)
+        count = service.expire_stale_appointments()
+        if count:
+            logger.info(f"Expired {count} stale appointment(s)")
+    except Exception as exc:
+        logger.error(f"Error expiring stale appointments: {exc}")
     finally:
         db.close()
