@@ -35,11 +35,35 @@ class QueueService:
             slot_duration_minutes=queue_data.slot_duration_minutes,
             status=QueueDBStatus.ACTIVE,
             current_ticket_number=0,
+            booking_enabled=queue_data.booking_enabled,
+            operating_start_time=queue_data.operating_start_time,
+            operating_end_time=queue_data.operating_end_time,
+            slot_capacity=queue_data.slot_capacity,
+            booking_window_days=queue_data.booking_window_days,
         )
         self.db.add(db_queue)
         self.db.commit()
         self.db.refresh(db_queue)
         return self._to_queue(db_queue)
+
+    def update_booking_settings(self, queue_id: int, settings) -> Optional[Queue]:
+        """Enable/configure appointment booking on an existing queue (admin/registrar only)"""
+        queue = self.db.query(QueueDB).filter(QueueDB.id == queue_id).first()
+        if not queue:
+            return None
+
+        if settings.operating_start_time >= settings.operating_end_time:
+            raise ValueError("operating_start_time must be before operating_end_time")
+
+        queue.booking_enabled = settings.booking_enabled
+        queue.operating_start_time = settings.operating_start_time
+        queue.operating_end_time = settings.operating_end_time
+        queue.slot_capacity = settings.slot_capacity
+        queue.booking_window_days = settings.booking_window_days
+        queue.updated_at = datetime.now()
+        self.db.commit()
+        self.db.refresh(queue)
+        return self._to_queue(queue)
 
     def get_active_queues(self) -> List[Queue]:
         """Get all active queues"""
@@ -242,4 +266,9 @@ class QueueService:
             current_ticket_number=db_queue.current_ticket_number,
             created_at=db_queue.created_at,
             updated_at=db_queue.updated_at,
+            booking_enabled=db_queue.booking_enabled,
+            operating_start_time=db_queue.operating_start_time,
+            operating_end_time=db_queue.operating_end_time,
+            slot_capacity=db_queue.slot_capacity,
+            booking_window_days=db_queue.booking_window_days,
         )
