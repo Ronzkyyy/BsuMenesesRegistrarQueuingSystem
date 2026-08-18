@@ -331,6 +331,16 @@
       </Transition>
     </div>
     </Transition>
+
+    <ConfirmDialog
+      v-model="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-label="confirmDialog.confirmLabel"
+      :variant="confirmDialog.variant"
+      :loading="confirmLoading"
+      @confirm="handleConfirm"
+    />
   </div>
 </template>
 
@@ -338,8 +348,34 @@
 import { ref, onMounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const queueStore = useQueueStore()
+
+// Shared confirm dialog (edits and deletes, media and announcements alike -
+// only one modal can be on screen at a time anyway).
+const confirmDialog = ref({ open: false, title: '', message: '', confirmLabel: 'Confirm', variant: 'primary' })
+const confirmLoading = ref(false)
+let confirmAction = null
+
+const openConfirm = ({ title, message, confirmLabel = 'Confirm', variant = 'primary', action }) => {
+  confirmAction = action
+  confirmDialog.value = { open: true, title, message, confirmLabel, variant }
+}
+
+const handleConfirm = async () => {
+  if (!confirmAction) return
+  confirmLoading.value = true
+  try {
+    await confirmAction()
+  } catch (err) {
+    // the action itself already recorded a user-facing error message
+  } finally {
+    confirmLoading.value = false
+    confirmDialog.value.open = false
+    confirmAction = null
+  }
+}
 
 // Media state
 const mediaError = ref('')
@@ -416,13 +452,7 @@ const openEditMediaModal = (item) => {
   showMediaModal.value = true
 }
 
-const saveMedia = async () => {
-  if (mediaMode.value === 'link' && !mediaForm.value.url) return
-  if (mediaMode.value === 'upload' && editingOriginalSource.value !== 'upload' && !selectedFile.value) {
-    mediaModalError.value = 'Please choose a file to upload.'
-    return
-  }
-
+const performSaveMedia = async () => {
   mediaActionLoading.value = true
   mediaModalError.value = ''
   try {
@@ -449,6 +479,28 @@ const saveMedia = async () => {
   }
 }
 
+const saveMedia = async () => {
+  if (mediaMode.value === 'link' && !mediaForm.value.url) return
+  if (mediaMode.value === 'upload' && editingOriginalSource.value !== 'upload' && !selectedFile.value) {
+    mediaModalError.value = 'Please choose a file to upload.'
+    return
+  }
+  mediaModalError.value = ''
+
+  if (editingMediaId.value) {
+    openConfirm({
+      title: 'Save changes to this media item?',
+      message: 'Confirm the updated details for this media playlist item.',
+      confirmLabel: 'Yes, Save Changes',
+      variant: 'primary',
+      action: performSaveMedia,
+    })
+    return
+  }
+
+  await performSaveMedia()
+}
+
 const toggleMediaActive = async (item) => {
   mediaActionLoading.value = true
   mediaError.value = ''
@@ -461,17 +513,24 @@ const toggleMediaActive = async (item) => {
   }
 }
 
-const removeMediaItem = async (itemId) => {
-  if (!confirm('Delete this media item? This cannot be undone.')) return
-  mediaActionLoading.value = true
-  mediaError.value = ''
-  try {
-    await queueStore.deleteMediaItem(itemId)
-  } catch (err) {
-    mediaError.value = err.response?.data?.detail || 'Failed to delete media item'
-  } finally {
-    mediaActionLoading.value = false
-  }
+const removeMediaItem = (itemId) => {
+  openConfirm({
+    title: 'Delete this media item?',
+    message: 'This cannot be undone.',
+    confirmLabel: 'Yes, Delete',
+    variant: 'danger',
+    action: async () => {
+      mediaActionLoading.value = true
+      mediaError.value = ''
+      try {
+        await queueStore.deleteMediaItem(itemId)
+      } catch (err) {
+        mediaError.value = err.response?.data?.detail || 'Failed to delete media item'
+      } finally {
+        mediaActionLoading.value = false
+      }
+    },
+  })
 }
 
 // Announcement state
@@ -499,9 +558,7 @@ const openEditAnnouncementModal = (item) => {
   showAnnouncementModal.value = true
 }
 
-const saveAnnouncement = async () => {
-  if (!announcementForm.value.text) return
-
+const performSaveAnnouncement = async () => {
   announcementActionLoading.value = true
   announcementModalError.value = ''
   try {
@@ -521,6 +578,24 @@ const saveAnnouncement = async () => {
   }
 }
 
+const saveAnnouncement = async () => {
+  if (!announcementForm.value.text) return
+  announcementModalError.value = ''
+
+  if (editingAnnouncementId.value) {
+    openConfirm({
+      title: 'Save changes to this announcement?',
+      message: 'Confirm the updated announcement text before it goes live on the display boards.',
+      confirmLabel: 'Yes, Save Changes',
+      variant: 'primary',
+      action: performSaveAnnouncement,
+    })
+    return
+  }
+
+  await performSaveAnnouncement()
+}
+
 const toggleAnnouncementActive = async (item) => {
   announcementActionLoading.value = true
   announcementError.value = ''
@@ -533,17 +608,24 @@ const toggleAnnouncementActive = async (item) => {
   }
 }
 
-const removeAnnouncement = async (itemId) => {
-  if (!confirm('Delete this announcement? This cannot be undone.')) return
-  announcementActionLoading.value = true
-  announcementError.value = ''
-  try {
-    await queueStore.deleteAnnouncement(itemId)
-  } catch (err) {
-    announcementError.value = err.response?.data?.detail || 'Failed to delete announcement'
-  } finally {
-    announcementActionLoading.value = false
-  }
+const removeAnnouncement = (itemId) => {
+  openConfirm({
+    title: 'Delete this announcement?',
+    message: 'This cannot be undone.',
+    confirmLabel: 'Yes, Delete',
+    variant: 'danger',
+    action: async () => {
+      announcementActionLoading.value = true
+      announcementError.value = ''
+      try {
+        await queueStore.deleteAnnouncement(itemId)
+      } catch (err) {
+        announcementError.value = err.response?.data?.detail || 'Failed to delete announcement'
+      } finally {
+        announcementActionLoading.value = false
+      }
+    },
+  })
 }
 
 onMounted(async () => {

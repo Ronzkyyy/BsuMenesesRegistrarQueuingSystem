@@ -2,15 +2,27 @@
 BSU Registrar Queue System - Main Application
 """
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from .core.config import settings
 from .core.limiter import limiter
 from .api import router
+
+
+def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    # slowapi's built-in handler responds with {"error": ...}, but every other
+    # error path in this API (HTTPException) responds with {"detail": ...} and
+    # the frontend only ever reads err.response.data.detail - matching that
+    # shape here is what makes a 429 show a real message instead of the
+    # generic "check your credentials" fallback.
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many attempts. Please wait a moment and try again."},
+    )
 
 app = FastAPI(
     title="BSU Registrar Queue System",

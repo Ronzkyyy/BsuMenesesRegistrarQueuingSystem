@@ -16,7 +16,7 @@ from ..core.security import (
     require_role,
 )
 from ..db_models import UserDB, UserRole
-from ..models.user import Token, TokenData, User, UserCreate, UserRole as UserRoleModel
+from ..models.user import Token, TokenData, User, UserCreate, PasswordChange, UserRole as UserRoleModel
 from ..services import QueueService, TicketService, StudentService
 
 
@@ -114,6 +114,32 @@ def register_user(
         created_at=db_user.created_at,
         updated_at=db_user.updated_at,
     )
+
+
+@router.post("/change-password")
+def change_password(
+    payload: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Change the current admin's own password (admin only)"""
+    user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    if not verify_password(payload.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+
+    from ..core.security import get_password_hash
+    user.hashed_password = get_password_hash(payload.new_password)
+    db.commit()
+    return {"message": "Password changed successfully"}
 
 
 @router.get("/users", response_model=list[User])

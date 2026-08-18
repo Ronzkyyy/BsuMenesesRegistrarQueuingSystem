@@ -211,6 +211,23 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    async changePassword(currentPassword, newPassword) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post('/auth/change-password', {
+          current_password: currentPassword,
+          new_password: newPassword,
+        })
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to change password'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     // ============ MEDIA ACTIONS ============
 
     async fetchMediaItems() {

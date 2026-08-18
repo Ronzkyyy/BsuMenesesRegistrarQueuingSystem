@@ -322,6 +322,16 @@
       </Transition>
     </div>
     </Transition>
+
+    <ConfirmDialog
+      v-model="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-label="confirmDialog.confirmLabel"
+      :variant="confirmDialog.variant"
+      :loading="confirmLoading"
+      @confirm="handleConfirm"
+    />
   </div>
 </template>
 
@@ -329,6 +339,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { formatQueueType } from '@/components/icons/QueueIcons'
 import { SERVICES } from '@/services/studentServices'
 
@@ -338,6 +349,29 @@ const loading = ref(false)
 const dashboardError = ref('')
 const createQueueError = ref('')
 const showCreateQueueModal = ref(false)
+
+const confirmDialog = ref({ open: false, title: '', message: '', confirmLabel: 'Confirm', variant: 'primary' })
+const confirmLoading = ref(false)
+let confirmAction = null
+
+const openConfirm = ({ title, message, confirmLabel = 'Confirm', variant = 'primary', action }) => {
+  confirmAction = action
+  confirmDialog.value = { open: true, title, message, confirmLabel, variant }
+}
+
+const handleConfirm = async () => {
+  if (!confirmAction) return
+  confirmLoading.value = true
+  try {
+    await confirmAction()
+  } catch (err) {
+    // the action itself already recorded a user-facing error message
+  } finally {
+    confirmLoading.value = false
+    confirmDialog.value.open = false
+    confirmAction = null
+  }
+}
 
 const queues = ref([])
 const selectedQueueId = ref(null)
@@ -444,18 +478,27 @@ const closeQueue = async (queueId) => {
   }
 }
 
-const deleteQueue = async (queueId) => {
-  if (!confirm('Are you sure you want to delete this queue? This cannot be undone.')) return
-  loading.value = true
-  try {
-    await queueStore.deleteQueue(queueId)
-    queues.value = queues.value.filter((q) => q.id !== queueId)
-    await loadQueues()
-  } catch (err) {
-    dashboardError.value = err.response?.data?.detail || 'Failed to delete queue'
-  } finally {
-    loading.value = false
-  }
+const deleteQueue = (queueId) => {
+  const queueName = queues.value.find((q) => q.id === queueId)?.name || 'this queue'
+  openConfirm({
+    title: 'Delete this queue?',
+    message: `Are you sure you want to delete "${queueName}"? This cannot be undone.`,
+    confirmLabel: 'Yes, Delete',
+    variant: 'danger',
+    action: async () => {
+      loading.value = true
+      dashboardError.value = ''
+      try {
+        await queueStore.deleteQueue(queueId)
+        queues.value = queues.value.filter((q) => q.id !== queueId)
+        await loadQueues()
+      } catch (err) {
+        dashboardError.value = err.response?.data?.detail || 'Failed to delete queue'
+      } finally {
+        loading.value = false
+      }
+    },
+  })
 }
 
 const createQueue = async () => {

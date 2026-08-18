@@ -248,12 +248,23 @@
       </Transition>
     </div>
     </Transition>
+
+    <ConfirmDialog
+      v-model="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-label="confirmDialog.confirmLabel"
+      :variant="confirmDialog.variant"
+      :loading="confirmLoading"
+      @confirm="handleConfirm"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const BIT_COURSE = 'Bachelor of Industrial Technology'
 
@@ -292,6 +303,29 @@ const formError = ref('')
 const actionLoading = ref(false)
 const showFormModal = ref(false)
 const editingStudent = ref(null)
+
+const confirmDialog = ref({ open: false, title: '', message: '', confirmLabel: 'Confirm', variant: 'primary' })
+const confirmLoading = ref(false)
+let confirmAction = null
+
+const openConfirm = ({ title, message, confirmLabel = 'Confirm', variant = 'primary', action }) => {
+  confirmAction = action
+  confirmDialog.value = { open: true, title, message, confirmLabel, variant }
+}
+
+const handleConfirm = async () => {
+  if (!confirmAction) return
+  confirmLoading.value = true
+  try {
+    await confirmAction()
+  } catch (err) {
+    // the action itself already recorded a user-facing error message
+  } finally {
+    confirmLoading.value = false
+    confirmDialog.value.open = false
+    confirmAction = null
+  }
+}
 
 const filters = ref({ query: '', course: '', year_level: '' })
 
@@ -386,20 +420,7 @@ const buildPayload = () => {
   return payload
 }
 
-const submitForm = async () => {
-  if (!form.value.student_id || !form.value.first_name || !form.value.last_name || !form.value.email) {
-    formError.value = 'Please fill in all required fields.'
-    return
-  }
-  if (!/^\d{10}$/.test(form.value.student_id)) {
-    formError.value = 'Student ID must be exactly 10 digits.'
-    return
-  }
-  if (form.value.course === BIT_COURSE && !form.value.major) {
-    formError.value = 'Major is required for Bachelor of Industrial Technology.'
-    return
-  }
-
+const performSave = async () => {
   actionLoading.value = true
   formError.value = ''
   try {
@@ -408,6 +429,7 @@ const submitForm = async () => {
       // PATCH validates against StudentBase, which requires student_id even
       // though the service ignores it for updates - keep it in the payload.
       await queueStore.updateStudent(editingStudent.value.id, payload)
+      await loadStudents()
     } else {
       await queueStore.createStudent(payload)
       await loadStudents()
@@ -423,23 +445,56 @@ const submitForm = async () => {
   }
 }
 
-const removeStudent = async (student) => {
-  if (!confirm(`Are you sure you want to delete ${student.first_name} ${student.last_name} (${student.student_id})? This cannot be undone.`)) return
-
-  actionLoading.value = true
-  listError.value = ''
-  try {
-    await queueStore.deleteStudent(student.id)
-    await loadStudents()
-    if (queueStore.students.length === 0 && page.value > 1) {
-      page.value -= 1
-      await loadStudents()
-    }
-  } catch (err) {
-    listError.value = err.response?.data?.detail || 'Failed to delete student'
-  } finally {
-    actionLoading.value = false
+const submitForm = async () => {
+  if (!form.value.student_id || !form.value.first_name || !form.value.last_name || !form.value.email) {
+    formError.value = 'Please fill in all required fields.'
+    return
   }
+  if (!/^\d{10}$/.test(form.value.student_id)) {
+    formError.value = 'Student ID must be exactly 10 digits.'
+    return
+  }
+  if (form.value.course === BIT_COURSE && !form.value.major) {
+    formError.value = 'Major is required for Bachelor of Industrial Technology.'
+    return
+  }
+  formError.value = ''
+
+  if (editingStudent.value) {
+    openConfirm({
+      title: 'Save changes to this student?',
+      message: `Confirm the updated details for ${form.value.first_name} ${form.value.last_name} (${form.value.student_id}).`,
+      confirmLabel: 'Yes, Save Changes',
+      variant: 'primary',
+      action: performSave,
+    })
+    return
+  }
+
+  // New records aren't destructive to existing data - no extra confirmation needed.
+  await performSave()
+}
+
+const removeStudent = (student) => {
+  openConfirm({
+    title: 'Delete this student?',
+    message: `Are you sure you want to delete ${student.first_name} ${student.last_name} (${student.student_id})? This cannot be undone.`,
+    confirmLabel: 'Yes, Delete',
+    variant: 'danger',
+    action: async () => {
+      listError.value = ''
+      try {
+        await queueStore.deleteStudent(student.id)
+        await loadStudents()
+        if (queueStore.students.length === 0 && page.value > 1) {
+          page.value -= 1
+          await loadStudents()
+        }
+      } catch (err) {
+        listError.value = err.response?.data?.detail || 'Failed to delete student'
+      }
+    },
+  })
 }
 
 onMounted(async () => {
