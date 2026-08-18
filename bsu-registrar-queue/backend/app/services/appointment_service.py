@@ -11,6 +11,8 @@ from ..db_models import AppointmentDB, AppointmentDBStatus, QueueDB, StudentDB
 from ..models.appointment import (
     Appointment, AppointmentBooked, AppointmentCreate, AppointmentStatus, SlotAvailability
 )
+from ..models.ticket import Ticket, TicketCreate
+from .ticket_service import TicketService
 
 
 class AppointmentWindowError(Exception):
@@ -161,6 +163,122 @@ class AppointmentService:
         self.db.refresh(appointment)
         queue = self.db.query(QueueDB).filter(QueueDB.id == appointment.queue_id).first()
         return self._to_appointment(appointment, queue)
+
+    def search(self, query: str) -> List[Appointment]:
+        """Staff manual lookup fallback - matches student ID or reference code, booked appointments only"""
+        rows = self.db.query(AppointmentDB).join(StudentDB, AppointmentDB.student_id == StudentDB.id).filter(
+            AppointmentDB.status == AppointmentDBStatus.BOOKED,
+            or_(
+                StudentDB.student_id.ilike(f"%{query}%"),
+                AppointmentDB.reference_code.ilike(f"%{query}%"),
+            )
+        ).order_by(AppointmentDB.appointment_date, AppointmentDB.slot_start_time).limit(20).all()
+
+        result = []
+        for appt in rows:
+            queue = self.db.query(QueueDB).filter(QueueDB.id == appt.queue_id).first()
+            result.append(self._to_appointment(appt, queue))
+        return result
+
+    def check_in(
+        self,
+        token: Optional[str] = None,
+        reference_code: Optional[str] = None,
+        staff_user_id: Optional[int] = None,
+        force: bool = False,
+    ) -> Ticket:
+        """Scan or manually check in an appointment, creating a normal queue ticket"""
+        if not token and not reference_code:
+            raise ValueError("Provide a QR token or reference code")
+
+        query = self.db.query(AppointmentDB)
+        appointment = (
+            query.filter(AppointmentDB.qr_token == token).first() if token
+            else query.filter(AppointmentDB.reference_code == reference_code.strip().upper()).first()
+        )
+        if not appointment:
+            raise ValueError("Appointment not found - invalid code")
+
+        if appointment.status == AppointmentDBStatus.CHECKED_IN:
+            when = appointment.checked_in_at.strftime('%I:%M %p') if appointment.checked_in_at else "an earlier time"
+            raise ValueError(f"This appointment was already checked in at {when}.")
+        if appointment.status == AppointmentDBStatus.CANCELLED:
+            raise ValueError("This appointment was cancelled.")
+        if appointment.status == AppointmentDBStatus.EXPIRED:
+            raise ValueError("This appointment has expired. Use manual lookup or take a walk-in ticket.")
+
+        now = datetime.now()
+        slot_start = datetime.combine(appointment.appointment_date, appointment.slot_start_time)
+        slot_end = datetime.combine(appointment.appointment_date, appointment.slot_end_time)
+        window_start = slot_start - timedelta(minutes=GRACE_MINUTES_BEFORE)
+        window_end = slot_end + timedelta(minutes=GRACE_MINUTES_AFTER)
+        if not force and not (window_start <= now <= window_end):
+            raise AppointmentWindowError(
+                f"This appointment is scheduled for {appointment.slot_start_time.strftime('%I:%M %p')} "
+                f"on {appointment.appointment_date.isoformat()}, outside the normal check-in window."
+            )
+
+        # Atomic status flip: guards against two counters checking in the same
+        # appointment at once. Only the request that actually flips BOOKED ->
+        # CHECKED_IN proceeds to create a ticket.
+        rows_updated = self.db.query(AppointmentDB).filter(
+            AppointmentDB.id == appointment.id,
+            AppointmentDB.status == AppointmentDBStatus.BOOKED,
+        ).update({
+            "status": AppointmentDBStatus.CHECKED_IN,
+            "checked_in_at": now,
+            "checked_in_by": staff_user_id,
+        })
+        self.db.commit()
+        if not rows_updated:
+            raise ValueError("This appointment was already checked in by another counter.")
+
+        ticket_service = TicketService(self.db)
+        ticket_data = TicketCreate(
+            student_id=appointment.student_id,
+            queue_id=appointment.queue_id,
+            purpose=appointment.purpose,
+        )
+        try:
+            ticket = ticket_service.create_ticket(ticket_data)
+        except ValueError:
+            self._revert_check_in(appointment.id)
+            raise
+
+        if not ticket:
+            self._revert_check_in(appointment.id)
+            raise ValueError(
+                "Could not create a ticket for this appointment. The queue may be full or inactive."
+            )
+
+        self.db.query(AppointmentDB).filter(AppointmentDB.id == appointment.id).update({"ticket_id": ticket.id})
+        self.db.commit()
+        return ticket
+
+    def _revert_check_in(self, appointment_id: int) -> None:
+        """Roll a check-in back to BOOKED so the appointment can be retried, e.g. when
+        ticket creation fails after the status flip already succeeded."""
+        self.db.query(AppointmentDB).filter(AppointmentDB.id == appointment_id).update({
+            "status": AppointmentDBStatus.BOOKED,
+            "checked_in_at": None,
+            "checked_in_by": None,
+        })
+        self.db.commit()
+
+    def expire_stale_appointments(self, buffer_minutes: int = EXPIRE_BUFFER_MINUTES) -> int:
+        """Mark BOOKED appointments whose window has fully passed as EXPIRED. Returns count expired."""
+        cutoff = datetime.now() - timedelta(minutes=buffer_minutes)
+        stale = self.db.query(AppointmentDB).filter(AppointmentDB.status == AppointmentDBStatus.BOOKED).all()
+        count = 0
+        for appt in stale:
+            slot_end = datetime.combine(appt.appointment_date, appt.slot_end_time)
+            if slot_end < cutoff:
+                appt.status = AppointmentDBStatus.EXPIRED
+                appt.updated_at = datetime.now()
+                count += 1
+        if count:
+            self.db.commit()
+        return count
 
     def _generate_reference_code(self) -> str:
         for _ in range(10):
