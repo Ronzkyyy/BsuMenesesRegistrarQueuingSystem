@@ -2053,7 +2053,7 @@ and replace it with:
                   <option :value="null">Select a service</option>
                   <option v-for="q in bookableQueues" :key="q.id" :value="q.id">{{ q.name }}</option>
                 </select>
-                <p v-if="selectedQueueId && bookableQueues.length === 0" class="text-sm text-gray-500 mt-1.5">
+                <p v-if="bookableQueues.length === 0" class="text-sm text-gray-500 mt-1.5">
                   No services currently accept appointment bookings.
                 </p>
               </div>
