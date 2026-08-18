@@ -97,7 +97,7 @@ const videoEl = ref(null)
 const scanning = ref(false)
 let scanner = null
 
-const startScanning = () => {
+const startScanning = async () => {
   if (!videoEl.value) return
   scanner = new QrScanner(
     videoEl.value,
@@ -107,8 +107,15 @@ const startScanning = () => {
     },
     { highlightScanRegion: true, highlightCodeOutline: true }
   )
-  scanner.start()
-  scanning.value = true
+  try {
+    await scanner.start()
+    scanning.value = true
+  } catch (err) {
+    scanner?.destroy()
+    scanner = null
+    scanning.value = false
+    error.value = 'Could not start the camera. Check camera permissions or use manual lookup below.'
+  }
 }
 
 const stopScanning = () => {
