@@ -45,8 +45,12 @@ class AppointmentService:
         delta = timedelta(minutes=queue.slot_duration_minutes)
         current = datetime.combine(target_date, queue.operating_start_time)
         day_end = datetime.combine(target_date, queue.operating_end_time)
+        now = datetime.now()
 
         while current + delta <= day_end:
+            if target_date == date.today() and current < now:
+                current += delta
+                continue
             slot_start = current.time()
             slot_end = (current + delta).time()
             booked = self.db.query(func.count(AppointmentDB.id)).filter(
@@ -85,6 +89,7 @@ class AppointmentService:
         existing = self.db.query(AppointmentDB).filter(
             AppointmentDB.student_id == data.student_id,
             AppointmentDB.status == AppointmentDBStatus.BOOKED,
+            AppointmentDB.appointment_date >= today,
         ).first()
         if existing:
             raise ValueError(
@@ -103,6 +108,8 @@ class AppointmentService:
         )
         if not is_valid_slot:
             raise ValueError("That time is not a valid slot for this service")
+        if data.appointment_date == today and slot_start_dt < datetime.now():
+            raise ValueError("That time slot has already passed today")
 
         booked_count = self.db.query(func.count(AppointmentDB.id)).filter(
             AppointmentDB.queue_id == data.queue_id,
@@ -241,7 +248,7 @@ class AppointmentService:
         )
         try:
             ticket = ticket_service.create_ticket(ticket_data)
-        except ValueError:
+        except Exception:
             self._revert_check_in(appointment.id)
             raise
 
