@@ -17,8 +17,31 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 _env_values = dotenv_values(BACKEND_DIR / ".env")
 _base_url = _env_values.get("DATABASE_URL") or os.environ["DATABASE_URL"]
 _parsed = urlparse(_base_url)
-TEST_DATABASE_URL = urlunparse(_parsed._replace(path="/bsu_queue_test"))
+TEST_DB_NAME = "bsu_queue_test"
+TEST_DATABASE_URL = urlunparse(_parsed._replace(path=f"/{TEST_DB_NAME}"))
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+
+
+def _ensure_test_database_exists():
+    """Create the disposable test database if it doesn't exist yet.
+
+    True on a fresh CI Postgres container every run (only the default
+    `postgres` maintenance database exists), and was true locally the first
+    time this suite was ever set up - so this makes the suite
+    self-provisioning everywhere instead of relying on a one-off manual step.
+    """
+    import psycopg2
+
+    maintenance_url = urlunparse(_parsed._replace(path="/postgres"))
+    conn = psycopg2.connect(maintenance_url)
+    conn.autocommit = True
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (TEST_DB_NAME,))
+            if not cur.fetchone():
+                cur.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
+    finally:
+        conn.close()
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
@@ -39,6 +62,8 @@ def _apply_migrations():
     project), so an empty-database assumption isn't safe. Truncating here
     guarantees a byte-for-byte clean slate every run regardless of cause.
     """
+    _ensure_test_database_exists()
+
     alembic_cfg = Config(str(BACKEND_DIR / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
     command.upgrade(alembic_cfg, "head")
