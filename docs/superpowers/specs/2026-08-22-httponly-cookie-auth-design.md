@@ -42,7 +42,7 @@ An httpOnly cookie can't be read by frontend JS, so `isAuthenticated` can no lon
 **Backend:**
 - `app/core/security.py` — replace `oauth2_scheme`/`OAuth2PasswordBearer` dependency in `get_current_user` with a cookie-reading dependency. `create_access_token`/`decode_access_token` unchanged.
 - `app/api/auth.py` — `login` sets the cookie via `Response.set_cookie(...)` and returns `User`; `logout` clears it via `Response.delete_cookie(...)`.
-- `app/models/user.py` — remove the now-unused `Token`/`TokenData` response models.
+- `app/models/user.py` — remove the now-unused `Token` response model (`TokenData` stays — `decode_access_token` still returns it internally).
 
 **Frontend:**
 - `src/stores/queue.js` — `api` axios instance gets `withCredentials: true`; delete the `Authorization` request interceptor and all `localStorage`/`TOKEN_KEY` code; `login()` sets `currentUser` from the response directly instead of calling `fetchCurrentUser()`; `isAuthenticated` getter becomes `!!state.currentUser`.
