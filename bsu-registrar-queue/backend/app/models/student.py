@@ -77,6 +77,24 @@ class StudentInDB(Student):
         return f"{self.first_name} {self.last_name}"
 
 
+class StudentPublic(BaseModel):
+    """Minimal-disclosure shape for the unauthenticated kiosk lookup endpoint.
+
+    The full Student model includes course/major/year_level and the
+    is_scholar/is_varsity/is_graduating flags - none of that is needed to
+    prefill the ticket-taking form, and it shouldn't be exposed to an
+    anonymous caller who only supplied a guessable 10-digit student number.
+    """
+    id: int
+    student_id: str
+    first_name: str
+    last_name: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
+
 class StudentListResponse(BaseModel):
     items: List[Student]
     total: int

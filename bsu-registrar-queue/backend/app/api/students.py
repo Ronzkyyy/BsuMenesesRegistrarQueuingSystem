@@ -1,14 +1,15 @@
 """
 Student management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..core.database import get_db
+from ..core.limiter import limiter
 from ..core.security import get_current_active_user, require_role
 from ..db_models import UserRole, Course, YearLevel, StudentDBType
-from ..models.student import Student, StudentCreate, StudentBase, StudentListResponse
+from ..models.student import Student, StudentCreate, StudentBase, StudentListResponse, StudentPublic
 from ..models.user import User
 from ..services import StudentService
 
@@ -29,12 +30,20 @@ def create_student(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/search", response_model=Student)
+@router.get("/search", response_model=StudentPublic)
+@limiter.limit("20/minute")
 def search_student(
+    request: Request,
     student_id: str = Query(..., description="10-digit student number (e.g., 2021000001)"),
     db: Session = Depends(get_db)
 ):
-    """Search student by student ID number (public endpoint - used by the kiosk ticket flow)"""
+    """Search student by student ID number (public endpoint - used by the kiosk ticket flow).
+
+    Returns only the fields the kiosk UI actually needs (name/email to
+    confirm identity before taking a ticket) - not course, year level, or
+    the is_scholar/is_varsity/is_graduating flags, since this is reachable
+    by anyone who can guess a 10-digit student number, with no login.
+    """
     service = StudentService(db)
     student = service.get_student_by_student_id(student_id)
     if not student:
