@@ -43,6 +43,10 @@ celery.conf.beat_schedule = {
         "task": "app.services.notifications.send_reminder_check",
         "schedule": 300.0,
     },
+    "expire-stale-appointments-every-5-minutes": {
+        "task": "app.services.notifications.expire_stale_appointments",
+        "schedule": 300.0,
+    },
 }
 
 
