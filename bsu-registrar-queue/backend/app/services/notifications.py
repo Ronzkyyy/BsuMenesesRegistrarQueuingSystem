@@ -177,6 +177,34 @@ def check_no_show_tickets():
         db.close()
 
 
+# How close to the front of the line a waiting ticket must be before it's
+# considered "coming up soon" and worth reminding the student about.
+REMINDER_POSITION_THRESHOLD = 3
+
+
+@celery.task
+def send_reminder_check():
+    """Find waiting tickets close to being served and dispatch a reminder for each"""
+    db = SessionLocal()
+    try:
+        tickets = db.query(TicketDB).filter(
+            TicketDB.status == TicketDBStatus.WAITING,
+            TicketDB.position.isnot(None),
+            TicketDB.position <= REMINDER_POSITION_THRESHOLD,
+        ).all()
+
+        for ticket in tickets:
+            send_ticket_reminder.delay(ticket.id)
+
+        if tickets:
+            logger.info(f"Dispatched reminders for {len(tickets)} ticket(s) coming up soon")
+
+    except Exception as exc:
+        logger.error(f"Error checking tickets for reminders: {exc}")
+    finally:
+        db.close()
+
+
 @celery.task
 def send_queue_closed_notification(queue_id: int):
     """Notify all waiting students when a queue is closed"""
