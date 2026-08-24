@@ -57,8 +57,25 @@
                 <input v-model="selectedDate" @change="loadAvailability" type="date" :min="minDate" :max="maxDate" class="field" />
               </div>
 
-              <div v-if="selectedSlot" class="text-sm text-gray-600">
-                Assigned time: <span class="font-semibold text-bsu-ink">{{ formatTime(selectedSlot.slot_start_time) }}</span>
+              <div v-if="hourlySlots.length > 0">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Time</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    v-for="slot in hourlySlots"
+                    :key="slot.slot_start_time"
+                    type="button"
+                    @click="selectedSlot = slot"
+                    :disabled="slot.is_full"
+                    class="px-3 py-2 rounded-xl text-sm border"
+                    :class="[
+                      slot.is_full ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'hover:border-bsu-primary',
+                      selectedSlot === slot ? 'border-bsu-primary bg-bsu-primary/10 font-semibold' : 'border-gray-200',
+                    ]"
+                  >
+                    {{ formatTime(slot.slot_start_time) }}
+                    <span v-if="slot.is_full" class="block text-xs">Full</span>
+                  </button>
+                </div>
               </div>
               <div v-else-if="selectedDate && !checkingAvailability" class="text-sm text-gray-500">No bookable slots for this date.</div>
 
@@ -175,6 +192,7 @@ const minDate = today.toISOString().slice(0, 10)
 
 const selectedQueue = computed(() => bookableQueues.value.find((q) => q.id === selectedQueueId.value))
 const isDocumentRequest = computed(() => selectedQueue.value?.queue_type === 'document_request')
+const hourlySlots = computed(() => slots.value.filter((slot) => slot.slot_start_time.endsWith(':00:00')))
 
 const maxDate = computed(() => {
   const windowDays = selectedQueue.value?.booking_window_days ?? 14
@@ -217,7 +235,7 @@ const loadAvailability = async () => {
   checkingAvailability.value = true
   try {
     slots.value = await queueStore.fetchAppointmentAvailability(selectedQueueId.value, selectedDate.value)
-    selectedSlot.value = slots.value.find((slot) => !slot.is_full) || null
+    selectedSlot.value = hourlySlots.value.find((slot) => !slot.is_full) || null
   } catch (err) {
     error.value = err.response?.data?.detail || 'Failed to load available slots'
     slots.value = []
