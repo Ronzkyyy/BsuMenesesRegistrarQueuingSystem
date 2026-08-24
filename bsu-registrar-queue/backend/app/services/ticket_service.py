@@ -82,8 +82,17 @@ class TicketService:
 
         return max(base_wait, 0)
 
-    def create_ticket(self, ticket_data: TicketCreate) -> Optional[Ticket]:
-        """Create a new ticket for a student"""
+    def create_ticket(
+        self, ticket_data: TicketCreate, minimum_priority: Optional[PriorityLevel] = None
+    ) -> Optional[Ticket]:
+        """Create a new ticket for a student.
+
+        minimum_priority, when given, raises the student's calculated priority
+        up to at least that level (e.g. QR appointment check-ins are
+        guaranteed at least PRIORITY) - it never lowers a priority the
+        student already qualifies for, and is ignored if the queue has
+        priority handling disabled.
+        """
         # Verify student exists
         student = self.db.query(StudentDB).filter(StudentDB.id == ticket_data.student_id).first()
         if not student:
@@ -128,6 +137,10 @@ class TicketService:
         priority = self.calculate_priority(student)
         if not queue.allow_priority:
             priority = PriorityLevel.NORMAL
+        elif minimum_priority:
+            priority_rank = {PriorityLevel.NORMAL: 1, PriorityLevel.PRIORITY: 2, PriorityLevel.URGENT: 3}
+            if priority_rank[minimum_priority] > priority_rank[priority]:
+                priority = minimum_priority
 
         # Get next ticket number
         next_ticket_number = self._get_next_ticket_number(queue.id)

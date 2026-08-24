@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional
 
-from ..db_models import AppointmentDB, AppointmentDBStatus, QueueDB, StudentDB
+from ..db_models import AppointmentDB, AppointmentDBStatus, PriorityLevel, QueueDB, StudentDB
 from ..models.appointment import (
     Appointment, AppointmentBooked, AppointmentCreate, AppointmentStatus, SlotAvailability
 )
@@ -247,7 +247,7 @@ class AppointmentService:
             purpose=appointment.purpose,
         )
         try:
-            ticket = ticket_service.create_ticket(ticket_data)
+            ticket = ticket_service.create_ticket(ticket_data, minimum_priority=PriorityLevel.PRIORITY)
         except Exception:
             self._revert_check_in(appointment.id)
             raise

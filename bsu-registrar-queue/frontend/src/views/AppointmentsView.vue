@@ -57,26 +57,10 @@
                 <input v-model="selectedDate" @change="loadAvailability" type="date" :min="minDate" :max="maxDate" class="field" />
               </div>
 
-              <div v-if="selectedDate && slots.length > 0">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Time Slot</label>
-                <div class="grid grid-cols-3 gap-2">
-                  <button
-                    v-for="slot in slots"
-                    :key="slot.slot_start_time"
-                    @click="selectedSlot = slot"
-                    :disabled="slot.is_full"
-                    class="px-3 py-2 rounded-xl text-sm border"
-                    :class="[
-                      slot.is_full ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'hover:border-bsu-primary',
-                      selectedSlot === slot ? 'border-bsu-primary bg-bsu-primary/10 font-semibold' : 'border-gray-200',
-                    ]"
-                  >
-                    {{ formatTime(slot.slot_start_time) }}
-                    <span v-if="slot.is_full" class="block text-xs">Full</span>
-                  </button>
-                </div>
+              <div v-if="selectedSlot" class="text-sm text-gray-600">
+                Assigned time: <span class="font-semibold text-bsu-ink">{{ formatTime(selectedSlot.slot_start_time) }}</span>
               </div>
-              <div v-else-if="selectedDate" class="text-sm text-gray-500">No bookable slots for this date.</div>
+              <div v-else-if="selectedDate && !checkingAvailability" class="text-sm text-gray-500">No bookable slots for this date.</div>
 
               <div v-if="selectedSlot">
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Purpose (optional)</label>
@@ -172,6 +156,7 @@ const selectedQueueId = ref(null)
 const selectedDate = ref('')
 const slots = ref([])
 const selectedSlot = ref(null)
+const checkingAvailability = ref(false)
 const purpose = ref('')
 const bookedAppointment = ref(null)
 const qrDataUrl = ref('')
@@ -216,11 +201,15 @@ const loadAvailability = async () => {
   selectedSlot.value = null
   if (!selectedQueueId.value || !selectedDate.value) return
   error.value = ''
+  checkingAvailability.value = true
   try {
     slots.value = await queueStore.fetchAppointmentAvailability(selectedQueueId.value, selectedDate.value)
+    selectedSlot.value = slots.value.find((slot) => !slot.is_full) || null
   } catch (err) {
     error.value = err.response?.data?.detail || 'Failed to load available slots'
     slots.value = []
+  } finally {
+    checkingAvailability.value = false
   }
 }
 
