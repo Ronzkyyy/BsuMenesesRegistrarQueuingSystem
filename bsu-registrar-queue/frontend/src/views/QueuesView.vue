@@ -119,7 +119,7 @@
               :key="service.key"
               type="button"
               @click="selectService(service.key)"
-              class="service-card relative text-left p-4 rounded-2xl bg-gradient-to-br from-bsu-primary to-bsu-peach text-white shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 active:scale-[0.97] active:duration-75"
+              class="service-card relative text-left p-4 rounded-2xl bg-bsu-primary text-white shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:bg-bsu-primary-dark active:scale-[0.97] active:duration-75"
               :class="selectedServiceKey === service.key ? 'ring-4 ring-white shadow-lg' : 'hover:shadow-lg'"
             >
               <div
