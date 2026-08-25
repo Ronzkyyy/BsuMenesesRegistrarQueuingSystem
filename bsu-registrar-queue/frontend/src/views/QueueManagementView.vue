@@ -46,6 +46,12 @@
 
               <div class="flex space-x-2 mb-2">
                 <button
+                  @click="openEditQueueSettings(queue)"
+                  class="btn-secondary btn-sm flex-1"
+                >
+                  Edit
+                </button>
+                <button
                   @click="openBookingSettings(queue)"
                   class="btn-secondary btn-sm flex-1"
                 >
@@ -93,31 +99,12 @@
                 >
                   Display Board
                 </router-link>
-                <button
-                  @click="deleteQueue(queue.id)"
-                  :disabled="loading"
-                  class="btn-danger-solid btn-sm flex-1"
-                >
-                  Delete
-                </button>
               </div>
             </template>
             <p v-else class="text-sm text-gray-500 italic">
-              No "{{ formatQueueType(service.queueType) }}" queue exists yet - create it below to enable this service.
+              No "{{ formatQueueType(service.queueType) }}" queue is configured for this service.
             </p>
           </div>
-        </div>
-
-        <div v-if="queueStore.currentUser?.role === 'admin'" class="mt-6">
-          <button
-            @click="showCreateQueueModal = true"
-            class="btn-primary btn-md"
-          >
-            <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Create New Queue
-          </button>
         </div>
       </div>
     </div>
@@ -225,135 +212,6 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-    <div v-if="showCreateQueueModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50">
-      <Transition
-        appear
-        enter-active-class="transition duration-200 ease-out"
-        enter-from-class="opacity-0 scale-95"
-        enter-to-class="opacity-100 scale-100"
-        leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100 scale-100"
-        leave-to-class="opacity-0 scale-95"
-      >
-      <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b border-gray-100">
-          <h3 class="text-lg font-bold text-bsu-ink">Create New Queue</h3>
-        </div>
-        <div class="px-6 py-4 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Queue Name</label>
-            <input
-              v-model="newQueueForm.name"
-              type="text"
-              class="field"
-              placeholder="e.g., Document Request"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Queue Type</label>
-            <select
-              v-model="newQueueForm.queue_type"
-              @change="onQueueTypeChange"
-              class="field"
-            >
-              <option :value="type.value" v-for="type in queueTypeOptions" :key="type.value">
-                {{ type.label }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Ticket Letter</label>
-            <input
-              v-model="newQueueForm.ticket_letter"
-              @input="onTicketLetterInput"
-              type="text"
-              maxlength="1"
-              class="field w-24 uppercase"
-              placeholder="E"
-            />
-            <p class="text-xs text-gray-500 mt-1">Prefixes this queue's tickets (e.g. E-007). Must be unique across all queues.</p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-            <textarea
-              v-model="newQueueForm.description"
-              rows="2"
-              class="field"
-              placeholder="Brief description of the service"
-            ></textarea>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Max Capacity</label>
-              <input
-                v-model.number="newQueueForm.max_capacity"
-                type="number"
-                min="1"
-                max="200"
-                class="field"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Slot Duration (min)</label>
-              <input
-                v-model.number="newQueueForm.slot_duration_minutes"
-                type="number"
-                min="5"
-                max="120"
-                class="field"
-              />
-            </div>
-          </div>
-
-          <div class="flex items-center">
-            <input
-              id="allow_priority"
-              type="checkbox"
-              v-model="newQueueForm.allow_priority"
-              class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary"
-            />
-            <label for="allow_priority" class="ml-2 text-sm text-gray-700">
-              Allow Priority Access
-            </label>
-          </div>
-
-          <div v-if="createQueueError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
-            <p class="text-sm text-red-700">{{ createQueueError }}</p>
-          </div>
-        </div>
-
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
-          <button
-            @click="showCreateQueueModal = false"
-            class="btn-secondary btn-md"
-          >
-            Cancel
-          </button>
-          <button
-            @click="createQueue"
-            :disabled="loading"
-            class="btn-primary btn-md"
-          >
-            Create
-          </button>
-        </div>
-      </div>
-      </Transition>
-    </div>
-    </Transition>
-
-    <Transition
-      enter-active-class="transition duration-150 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition duration-100 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
     <div v-if="showBookingSettingsModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full mx-4">
         <div class="px-6 py-4 border-b border-gray-100">
@@ -406,6 +264,43 @@
     </div>
     </Transition>
 
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-100 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+    <div v-if="showEditQueueSettingsModal" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-sm w-full mx-4">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">Edit - {{ editQueueSettingsQueue?.name }}</h3>
+        </div>
+        <div class="px-6 py-4 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Slots Available</label>
+            <input v-model.number="editQueueSettingsForm.max_capacity" type="number" min="1" max="200" class="field" />
+            <p class="text-xs text-gray-500 mt-1">Maximum tickets that can be waiting or serving at once.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Wait Time per Slot (min)</label>
+            <input v-model.number="editQueueSettingsForm.slot_duration_minutes" type="number" min="5" max="120" class="field" />
+            <p class="text-xs text-gray-500 mt-1">Used to estimate each student's wait time based on their position.</p>
+          </div>
+
+          <div v-if="editQueueSettingsError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
+            <p class="text-sm text-red-700">{{ editQueueSettingsError }}</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3">
+          <button @click="showEditQueueSettingsModal = false" class="btn-secondary btn-md">Cancel</button>
+          <button @click="saveQueueSettings" :disabled="loading" class="btn-primary btn-md">Save</button>
+        </div>
+      </div>
+    </div>
+    </Transition>
+
     <ConfirmDialog
       v-model="confirmDialog.open"
       :title="confirmDialog.title"
@@ -431,8 +326,6 @@ const queueStore = useQueueStore()
 
 const loading = ref(false)
 const dashboardError = ref('')
-const createQueueError = ref('')
-const showCreateQueueModal = ref(false)
 
 const showBookingSettingsModal = ref(false)
 const bookingSettingsQueue = ref(null)
@@ -481,6 +374,42 @@ const saveBookingSettings = async () => {
   }
 }
 
+const showEditQueueSettingsModal = ref(false)
+const editQueueSettingsQueue = ref(null)
+const editQueueSettingsError = ref('')
+const editQueueSettingsForm = ref({
+  max_capacity: 50,
+  slot_duration_minutes: 30,
+})
+
+const openEditQueueSettings = (queue) => {
+  editQueueSettingsQueue.value = queue
+  editQueueSettingsError.value = ''
+  editQueueSettingsForm.value = {
+    max_capacity: queue.max_capacity,
+    slot_duration_minutes: queue.slot_duration_minutes,
+  }
+  showEditQueueSettingsModal.value = true
+}
+
+const saveQueueSettings = async () => {
+  if (!editQueueSettingsQueue.value) return
+  loading.value = true
+  editQueueSettingsError.value = ''
+  try {
+    await api_patchQueueSettings(editQueueSettingsQueue.value.id, editQueueSettingsForm.value)
+    showEditQueueSettingsModal.value = false
+    await loadQueues()
+  } catch (err) {
+    const detail = err.response?.data?.detail
+    editQueueSettingsError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to save queue settings'
+  } finally {
+    loading.value = false
+  }
+}
+
 const confirmDialog = ref({ open: false, title: '', message: '', confirmLabel: 'Confirm', variant: 'primary' })
 const confirmLoading = ref(false)
 let confirmAction = null
@@ -520,53 +449,6 @@ const serviceCards = computed(() =>
 )
 const queueDisplay = ref([])
 const servingTicket = ref(null)
-
-const newQueueForm = ref({
-  name: '',
-  queue_type: 'enrollment',
-  ticket_letter: 'E',
-  description: '',
-  max_capacity: 50,
-  slot_duration_minutes: 30,
-  allow_priority: true,
-})
-
-const queueTypeOptions = [
-  { value: 'enrollment', label: 'Enrollment' },
-  { value: 'document_request', label: 'Document Request' },
-  { value: 'clearance', label: 'Clearance' },
-  { value: 'scholarship', label: 'Scholarship' },
-  { value: 'others', label: 'Others' },
-  { value: 'adding_dropping', label: 'Adding & Dropping' },
-  { value: 'petition_class', label: 'Petition Class' },
-  { value: 'other_concerns', label: 'Others (Miscellaneous)' },
-]
-
-const TYPE_TO_DEFAULT_LETTER = {
-  enrollment: 'E',
-  document_request: 'D',
-  clearance: 'C',
-  scholarship: 'S',
-  others: 'O',
-  adding_dropping: 'A',
-  petition_class: 'P',
-  other_concerns: 'X',
-}
-
-// Tracks whether the admin has typed their own letter, so picking a new
-// Queue Type doesn't clobber a deliberate override.
-const ticketLetterTouched = ref(false)
-
-const onQueueTypeChange = () => {
-  if (!ticketLetterTouched.value) {
-    newQueueForm.value.ticket_letter = TYPE_TO_DEFAULT_LETTER[newQueueForm.value.queue_type] || ''
-  }
-}
-
-const onTicketLetterInput = () => {
-  ticketLetterTouched.value = true
-  newQueueForm.value.ticket_letter = newQueueForm.value.ticket_letter.toUpperCase().slice(0, 1)
-}
 
 const loadQueues = async () => {
   dashboardError.value = ''
@@ -656,68 +538,6 @@ const confirmCloseQueue = (queueId) => {
   })
 }
 
-const deleteQueue = (queueId) => {
-  const queueName = queues.value.find((q) => q.id === queueId)?.name || 'this queue'
-  openConfirm({
-    title: 'Delete this queue?',
-    message: `Are you sure you want to delete "${queueName}"?`,
-    confirmLabel: 'Yes, Delete',
-    variant: 'danger',
-    action: async () => {
-      openConfirm({
-        title: 'This cannot be undone',
-        message: `Really delete "${queueName}"? All of its tickets and history will be gone for good.`,
-        confirmLabel: 'Yes, Delete Permanently',
-        variant: 'danger',
-        action: async () => {
-          loading.value = true
-          dashboardError.value = ''
-          try {
-            await queueStore.deleteQueue(queueId)
-            queues.value = queues.value.filter((q) => q.id !== queueId)
-            await loadQueues()
-          } catch (err) {
-            const detail = err.response?.data?.detail
-            dashboardError.value = Array.isArray(detail)
-              ? detail.map((d) => d.msg).join('; ')
-              : detail || 'Failed to delete queue'
-          } finally {
-            loading.value = false
-          }
-        },
-      })
-    },
-  })
-}
-
-const createQueue = async () => {
-  if (!newQueueForm.value.name) return
-
-  loading.value = true
-  createQueueError.value = ''
-  try {
-    await queueStore.createQueue(newQueueForm.value)
-    showCreateQueueModal.value = false
-    newQueueForm.value = {
-      name: '',
-      queue_type: 'enrollment',
-      ticket_letter: 'E',
-      description: '',
-      max_capacity: 50,
-      slot_duration_minutes: 30,
-      allow_priority: true,
-    }
-    ticketLetterTouched.value = false
-    await loadQueues()
-  } catch (err) {
-    const detail = err.response?.data?.detail
-    createQueueError.value = Array.isArray(detail)
-      ? detail.map((d) => d.msg).join('; ')
-      : detail || 'Failed to create queue'
-  } finally {
-    loading.value = false
-  }
-}
 
 const serveNextTicket = async () => {
   if (!selectedQueueId.value) return
@@ -775,6 +595,14 @@ const updateQueueDisplay = async () => {
 const api_patchBookingSettings = (queueId, payload) => {
   const token = localStorage.getItem('registrar_token')
   return axios.patch(`/api/queues/${queueId}/booking-settings`, payload, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+}
+
+// Same one-off-admin-action reasoning as api_patchBookingSettings above.
+const api_patchQueueSettings = (queueId, payload) => {
+  const token = localStorage.getItem('registrar_token')
+  return axios.patch(`/api/queues/${queueId}/settings`, payload, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
 }

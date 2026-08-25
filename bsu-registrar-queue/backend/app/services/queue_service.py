@@ -65,6 +65,19 @@ class QueueService:
         self.db.refresh(queue)
         return self._to_queue(queue)
 
+    def update_queue_settings(self, queue_id: int, settings) -> Optional[Queue]:
+        """Update a queue's capacity and per-slot wait time (admin only)"""
+        queue = self.db.query(QueueDB).filter(QueueDB.id == queue_id).first()
+        if not queue:
+            return None
+
+        queue.max_capacity = settings.max_capacity
+        queue.slot_duration_minutes = settings.slot_duration_minutes
+        queue.updated_at = datetime.now()
+        self.db.commit()
+        self.db.refresh(queue)
+        return self._to_queue(queue)
+
     def get_active_queues(self) -> List[Queue]:
         """Get all active queues"""
         queues = self.db.query(QueueDB).filter(

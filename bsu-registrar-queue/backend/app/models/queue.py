@@ -73,3 +73,8 @@ class QueueBookingSettings(BaseModel):
     operating_end_time: time
     slot_capacity: int = Field(ge=1, le=50)
     booking_window_days: int = Field(ge=1, le=90)
+
+
+class QueueSettingsUpdate(BaseModel):
+    max_capacity: int = Field(ge=1, le=200)
+    slot_duration_minutes: int = Field(ge=5, le=120)

@@ -8,7 +8,7 @@ from typing import List
 from ..core.database import get_db
 from ..core.security import get_current_active_user, require_role
 from ..db_models import UserRole
-from ..models.queue import Queue, QueueCreate, QueueStatus, QueueInDB, QueueBookingSettings
+from ..models.queue import Queue, QueueCreate, QueueStatus, QueueInDB, QueueBookingSettings, QueueSettingsUpdate
 from ..models.user import User
 from ..services import QueueService
 
@@ -102,6 +102,21 @@ def update_booking_settings(
         queue = service.update_booking_settings(queue_id, settings)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    if not queue:
+        raise HTTPException(status_code=404, detail="Queue not found")
+    return queue
+
+
+@router.patch("/{queue_id}/settings", response_model=Queue)
+def update_queue_settings(
+    queue_id: int,
+    settings: QueueSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Update a queue's capacity and per-slot wait time (admin only)"""
+    service = QueueService(db)
+    queue = service.update_queue_settings(queue_id, settings)
     if not queue:
         raise HTTPException(status_code=404, detail="Queue not found")
     return queue
