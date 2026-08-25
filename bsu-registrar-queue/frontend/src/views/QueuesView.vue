@@ -149,17 +149,6 @@
             </select>
           </div>
 
-          <div v-if="selectedServiceKey === 'others'" class="mt-6">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Please specify your purpose</label>
-            <textarea
-              v-model="othersReason"
-              rows="3"
-              maxlength="200"
-              placeholder="Describe your concern"
-              class="field"
-            ></textarea>
-          </div>
-
           <p v-if="selectedServiceKey && !selectedQueueId" class="text-sm text-red-600 mt-4">
             This service is currently unavailable. Please check back later.
           </p>
@@ -435,7 +424,6 @@ const error = ref('')
 const currentStep = ref(1)
 const selectedServiceKey = ref(null)
 const selectedDocumentType = ref('')
-const othersReason = ref('')
 const purpose = ref('')
 
 const studentNumberInput = ref('')
@@ -511,13 +499,11 @@ const canProceedStep1 = computed(() => {
   if (!selectedServiceKey.value) return false
   if (!selectedQueueId.value) return false
   if (selectedServiceKey.value === 'request_documents') return !!selectedDocumentType.value
-  if (selectedServiceKey.value === 'others') return othersReason.value.trim().length > 0
   return true
 })
 
 const canProceedStep2 = computed(() => {
   if (!studentLookedUp.value) return false
-  if (selectedServiceKey.value === 'others' && !purpose.value.trim()) return false
   if (!studentFound.value) {
     const f = registrationForm.value
     if (!f.first_name.trim() || !f.last_name.trim() || !f.email.trim()) return false
@@ -529,7 +515,6 @@ const canProceedStep2 = computed(() => {
 const selectService = (key) => {
   selectedServiceKey.value = key
   selectedDocumentType.value = ''
-  othersReason.value = ''
 }
 
 const checkExistingTicketForSelectedService = async () => {
@@ -554,9 +539,7 @@ const goToStep2 = async () => {
   const service = selectedService.value
   purpose.value = selectedServiceKey.value === 'request_documents'
     ? selectedDocumentType.value
-    : selectedServiceKey.value === 'others'
-      ? othersReason.value
-      : service.defaultPurpose
+    : service.defaultPurpose
 
   studentNumberInput.value = ''
   studentLookedUp.value = false
@@ -645,7 +628,6 @@ const takeAnotherTicket = () => {
   ticketResult.value = null
   selectedServiceKey.value = null
   selectedDocumentType.value = ''
-  othersReason.value = ''
   purpose.value = ''
   currentStep.value = 1
 }
