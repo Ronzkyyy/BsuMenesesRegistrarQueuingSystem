@@ -64,15 +64,23 @@
                 </button>
                 <button
                   v-else-if="queue.status === 'paused'"
-                  @click="resumeQueue(queue.id)"
+                  @click="confirmResumeQueue(queue.id)"
                   :disabled="loading"
                   class="btn-success btn-sm flex-1"
                 >
                   Resume
                 </button>
                 <button
+                  v-else-if="queue.status === 'closed'"
+                  @click="confirmReopenQueue(queue.id)"
+                  :disabled="loading"
+                  class="btn-success btn-sm flex-1"
+                >
+                  Reopen
+                </button>
+                <button
                   v-if="queue.status !== 'closed'"
-                  @click="closeQueue(queue.id)"
+                  @click="confirmCloseQueue(queue.id)"
                   :disabled="loading"
                   class="btn-danger btn-sm flex-1"
                 >
@@ -603,6 +611,26 @@ const resumeQueue = async (queueId) => {
   }
 }
 
+const confirmResumeQueue = (queueId) => {
+  openConfirm({
+    title: 'Resume this queue?',
+    message: 'Students will be able to take tickets and book appointments again.',
+    confirmLabel: 'Yes, Resume',
+    variant: 'primary',
+    action: () => resumeQueue(queueId),
+  })
+}
+
+const confirmReopenQueue = (queueId) => {
+  openConfirm({
+    title: 'Reopen this queue?',
+    message: 'Students will be able to take tickets and book appointments again.',
+    confirmLabel: 'Yes, Reopen',
+    variant: 'primary',
+    action: () => resumeQueue(queueId),
+  })
+}
+
 const closeQueue = async (queueId) => {
   loading.value = true
   try {
@@ -616,6 +644,16 @@ const closeQueue = async (queueId) => {
   } finally {
     loading.value = false
   }
+}
+
+const confirmCloseQueue = (queueId) => {
+  openConfirm({
+    title: 'Close this queue?',
+    message: "Students won't be able to take new tickets or book appointments until it's reopened.",
+    confirmLabel: 'Yes, Close',
+    variant: 'danger',
+    action: () => closeQueue(queueId),
+  })
 }
 
 const deleteQueue = (queueId) => {
