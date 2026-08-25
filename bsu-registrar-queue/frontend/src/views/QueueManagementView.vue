@@ -464,7 +464,10 @@ const saveBookingSettings = async () => {
     showBookingSettingsModal.value = false
     await loadQueues()
   } catch (err) {
-    bookingSettingsError.value = err.response?.data?.detail || 'Failed to save booking settings'
+    const detail = err.response?.data?.detail
+    bookingSettingsError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to save booking settings'
   } finally {
     loading.value = false
   }
@@ -563,7 +566,10 @@ const loadQueues = async () => {
     await queueStore.fetchQueues()
     queues.value = queueStore.queues
   } catch (err) {
-    dashboardError.value = err.response?.data?.detail || 'Failed to load queues'
+    const detail = err.response?.data?.detail
+    dashboardError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to load queues'
   }
 }
 
@@ -573,7 +579,10 @@ const pauseQueue = async (queueId) => {
     await queueStore.pauseQueue(queueId)
     await loadQueues()
   } catch (err) {
-    dashboardError.value = err.response?.data?.detail || 'Failed to pause queue'
+    const detail = err.response?.data?.detail
+    dashboardError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to pause queue'
   } finally {
     loading.value = false
   }
@@ -585,7 +594,10 @@ const resumeQueue = async (queueId) => {
     await queueStore.resumeQueue(queueId)
     await loadQueues()
   } catch (err) {
-    dashboardError.value = err.response?.data?.detail || 'Failed to resume queue'
+    const detail = err.response?.data?.detail
+    dashboardError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to resume queue'
   } finally {
     loading.value = false
   }
@@ -597,7 +609,10 @@ const closeQueue = async (queueId) => {
     await queueStore.closeQueue(queueId)
     await loadQueues()
   } catch (err) {
-    dashboardError.value = err.response?.data?.detail || 'Failed to close queue'
+    const detail = err.response?.data?.detail
+    dashboardError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to close queue'
   } finally {
     loading.value = false
   }
@@ -624,7 +639,10 @@ const deleteQueue = (queueId) => {
             queues.value = queues.value.filter((q) => q.id !== queueId)
             await loadQueues()
           } catch (err) {
-            dashboardError.value = err.response?.data?.detail || 'Failed to delete queue'
+            const detail = err.response?.data?.detail
+            dashboardError.value = Array.isArray(detail)
+              ? detail.map((d) => d.msg).join('; ')
+              : detail || 'Failed to delete queue'
           } finally {
             loading.value = false
           }
@@ -654,7 +672,10 @@ const createQueue = async () => {
     ticketLetterTouched.value = false
     await loadQueues()
   } catch (err) {
-    createQueueError.value = err.response?.data?.detail || 'Failed to create queue'
+    const detail = err.response?.data?.detail
+    createQueueError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to create queue'
   } finally {
     loading.value = false
   }
@@ -669,7 +690,10 @@ const serveNextTicket = async () => {
     servingTicket.value = result
     await updateQueueDisplay()
   } catch (err) {
-    dashboardError.value = err.response?.data?.detail || 'No waiting tickets'
+    const detail = err.response?.data?.detail
+    dashboardError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'No waiting tickets'
   } finally {
     loading.value = false
   }
@@ -684,7 +708,10 @@ const completeCurrentTicket = async () => {
     servingTicket.value = null
     await updateQueueDisplay()
   } catch (err) {
-    dashboardError.value = err.response?.data?.detail || 'Failed to complete ticket'
+    const detail = err.response?.data?.detail
+    dashboardError.value = Array.isArray(detail)
+      ? detail.map((d) => d.msg).join('; ')
+      : detail || 'Failed to complete ticket'
   } finally {
     loading.value = false
   }

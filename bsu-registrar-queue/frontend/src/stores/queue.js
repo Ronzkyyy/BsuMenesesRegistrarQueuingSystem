@@ -467,7 +467,7 @@ export const useQueueStore = defineStore('queue', {
       this.loading = true
       this.error = null
       try {
-        const response = await api.patch(`/queues/${queueId}/status`, status)
+        const response = await api.patch(`/queues/${queueId}/status`, null, { params: { status } })
         const index = this.queues.findIndex(q => q.id === queueId)
         if (index !== -1) this.queues[index] = response.data
         if (this.currentQueue?.id === queueId) this.currentQueue = response.data

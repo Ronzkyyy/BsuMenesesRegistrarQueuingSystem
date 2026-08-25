@@ -146,6 +146,22 @@ describe('queue actions', () => {
 
     expect(store.queues).toEqual([{ id: 1, name: 'Existing' }, created])
   })
+
+  it('closeQueue sends the new status as a query param, not a request body', async () => {
+    // The backend declares `status` as a plain (non-Body) parameter, which
+    // FastAPI binds as a required query param - sending it as the request
+    // body 422s with "Field required" and the button silently does nothing.
+    mockApi.patch.mockReturnValueOnce(ok({ id: 3, status: 'closed' }))
+    const store = useQueueStore()
+
+    await store.closeQueue(3)
+
+    expect(mockApi.patch).toHaveBeenCalledWith(
+      '/queues/3/status',
+      null,
+      { params: { status: 'closed' } }
+    )
+  })
 })
 
 describe('ticket actions', () => {
