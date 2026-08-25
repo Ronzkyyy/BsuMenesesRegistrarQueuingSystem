@@ -177,6 +177,16 @@
       </Transition>
     </div>
     </Transition>
+
+    <ConfirmDialog
+      v-model="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-label="confirmDialog.confirmLabel"
+      :variant="confirmDialog.variant"
+      :loading="confirmLoading"
+      @confirm="handleConfirm"
+    />
   </div>
 </template>
 
@@ -186,14 +196,57 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQueueStore } from '@/stores/queue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const queueStore = useQueueStore()
 const router = useRouter()
 const route = useRoute()
 
+const confirmDialog = ref({ open: false, title: '', message: '', confirmLabel: 'Confirm', variant: 'primary' })
+const confirmLoading = ref(false)
+let confirmAction = null
+
+const openConfirm = ({ title, message, confirmLabel = 'Confirm', variant = 'primary', action }) => {
+  confirmAction = action
+  confirmDialog.value = { open: true, title, message, confirmLabel, variant }
+}
+
+const handleConfirm = async () => {
+  if (!confirmAction) return
+  const runningAction = confirmAction
+  confirmLoading.value = true
+  try {
+    await runningAction()
+  } finally {
+    confirmLoading.value = false
+    // Skip closing if the action itself chained to a new confirmation
+    // (openConfirm reassigns confirmAction to the next step).
+    if (confirmAction === runningAction) {
+      confirmDialog.value.open = false
+      confirmAction = null
+    }
+  }
+}
+
 const logout = () => {
-  queueStore.logout()
-  router.push('/login')
+  openConfirm({
+    title: 'Log out?',
+    message: 'Are you sure you want to log out?',
+    confirmLabel: 'Yes, Log Out',
+    variant: 'danger',
+    action: async () => {
+      openConfirm({
+        title: 'Confirm logout',
+        message: "You'll need to log back in to access the staff dashboard. Continue?",
+        confirmLabel: 'Log Out',
+        variant: 'danger',
+        action: async () => {
+          queueStore.logout()
+          router.push('/login')
+        },
+      })
+    },
+  })
 }
 
 const showChangePasswordModal = ref(false)

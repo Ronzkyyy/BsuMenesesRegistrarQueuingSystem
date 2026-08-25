@@ -481,15 +481,20 @@ const openConfirm = ({ title, message, confirmLabel = 'Confirm', variant = 'prim
 
 const handleConfirm = async () => {
   if (!confirmAction) return
+  const runningAction = confirmAction
   confirmLoading.value = true
   try {
-    await confirmAction()
+    await runningAction()
   } catch (err) {
     // the action itself already recorded a user-facing error message
   } finally {
     confirmLoading.value = false
-    confirmDialog.value.open = false
-    confirmAction = null
+    // Skip closing if the action itself chained to a new confirmation
+    // (openConfirm reassigns confirmAction to the next step).
+    if (confirmAction === runningAction) {
+      confirmDialog.value.open = false
+      confirmAction = null
+    }
   }
 }
 
@@ -602,21 +607,29 @@ const deleteQueue = (queueId) => {
   const queueName = queues.value.find((q) => q.id === queueId)?.name || 'this queue'
   openConfirm({
     title: 'Delete this queue?',
-    message: `Are you sure you want to delete "${queueName}"? This cannot be undone.`,
+    message: `Are you sure you want to delete "${queueName}"?`,
     confirmLabel: 'Yes, Delete',
     variant: 'danger',
     action: async () => {
-      loading.value = true
-      dashboardError.value = ''
-      try {
-        await queueStore.deleteQueue(queueId)
-        queues.value = queues.value.filter((q) => q.id !== queueId)
-        await loadQueues()
-      } catch (err) {
-        dashboardError.value = err.response?.data?.detail || 'Failed to delete queue'
-      } finally {
-        loading.value = false
-      }
+      openConfirm({
+        title: 'This cannot be undone',
+        message: `Really delete "${queueName}"? All of its tickets and history will be gone for good.`,
+        confirmLabel: 'Yes, Delete Permanently',
+        variant: 'danger',
+        action: async () => {
+          loading.value = true
+          dashboardError.value = ''
+          try {
+            await queueStore.deleteQueue(queueId)
+            queues.value = queues.value.filter((q) => q.id !== queueId)
+            await loadQueues()
+          } catch (err) {
+            dashboardError.value = err.response?.data?.detail || 'Failed to delete queue'
+          } finally {
+            loading.value = false
+          }
+        },
+      })
     },
   })
 }
