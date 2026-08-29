@@ -181,6 +181,34 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 Response models keep `EmailStr` too, so a malformed email reaching the DB by
 any other route surfaces as a `500` rather than being served silently.
 
+## Database Access & SQL Safety
+
+- **ORM only.** All runtime DB access goes through the SQLAlchemy ORM query
+  builder (`.filter(Model.col == value)`, `.ilike(...)`), which sends values as
+  bound parameters — SQL text and user data stay separated. Do not add
+  `cursor.execute`, string-formatted queries, or `text()` with f-strings.
+- If a raw statement is genuinely unavoidable, use bound params:
+  `db.execute(text("... WHERE x = :x"), {"x": value})` — never an f-string.
+- **LIKE searches** must escape user wildcards:
+  `.ilike(f"%{escape_like(term)}%", escape=LIKE_ESCAPE)` from
+  `app/services/search_utils.py`. Used by `student_service.search_students`
+  and `appointment_service.search`.
+- Alembic migrations that only interpolate hardcoded constants into
+  `op.execute()` are acceptable, but new migrations touching row data should
+  parameterize via `op.get_bind().execute(text(...), {...})`.
+
+## Deployment Hardening
+
+- **Containers run as non-root.** `backend/Dockerfile` creates `appuser`
+  (uid 1000) and drops to it before `CMD`; the `worker` service reuses that
+  image so Celery is unprivileged too. `frontend/Dockerfile` (nginx) already
+  runs workers as `nginx`.
+- `db` and `redis` are **not** published to the host in `docker-compose.yml` —
+  only `backend`/`worker` reach them over the internal compose network. Add a
+  `ports:` mapping back temporarily if you need a local client.
+- Interactive API docs (`/docs`, `/redoc`, `/openapi.json`) are served only
+  when `DEBUG=True`; security headers are set by middleware in `app/main.py`.
+
 ## Frontend State (Pinia)
 - `stores/queue.js` - Manages queues, tickets, and display data
 

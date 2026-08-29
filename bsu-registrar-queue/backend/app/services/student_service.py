@@ -9,6 +9,7 @@ from ..db_models import (
     StudentDB, StudentDBType, Course, Major, YearLevel
 )
 from ..models.student import Student, StudentCreate, StudentBase
+from .search_utils import LIKE_ESCAPE, escape_like
 
 
 class StudentService:
@@ -66,12 +67,13 @@ class StudentService:
         q = self.db.query(StudentDB)
 
         if query:
+            pattern = f"%{escape_like(query)}%"
             q = q.filter(
                 or_(
-                    StudentDB.student_id.ilike(f"%{query}%"),
-                    StudentDB.first_name.ilike(f"%{query}%"),
-                    StudentDB.last_name.ilike(f"%{query}%"),
-                    StudentDB.email.ilike(f"%{query}%"),
+                    StudentDB.student_id.ilike(pattern, escape=LIKE_ESCAPE),
+                    StudentDB.first_name.ilike(pattern, escape=LIKE_ESCAPE),
+                    StudentDB.last_name.ilike(pattern, escape=LIKE_ESCAPE),
+                    StudentDB.email.ilike(pattern, escape=LIKE_ESCAPE),
                 )
             )
 
