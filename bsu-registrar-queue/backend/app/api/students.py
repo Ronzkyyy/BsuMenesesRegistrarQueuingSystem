@@ -1,7 +1,7 @@
 """
 Student management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -34,7 +34,7 @@ def create_student(
 @limiter.limit("20/minute")
 def search_student(
     request: Request,
-    student_id: str = Query(..., description="10-digit student number (e.g., 2021000001)"),
+    student_id: str = Query(..., pattern=r"^\d{10}$", description="10-digit student number (e.g., 2021000001)"),
     db: Session = Depends(get_db)
 ):
     """Search student by student ID number (public endpoint - used by the kiosk ticket flow).
@@ -53,7 +53,7 @@ def search_student(
 
 @router.get("/{student_id}", response_model=Student)
 def get_student(
-    student_id: int,
+    student_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -67,11 +67,11 @@ def get_student(
 
 @router.get("", response_model=StudentListResponse)
 def list_students(
-    query: str = "",
+    query: str = Query("", max_length=100),
     course: Optional[Course] = None,
     year_level: Optional[YearLevel] = None,
-    skip: int = 0,
-    limit: int = 25,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
 ):
@@ -89,8 +89,8 @@ def list_students(
 
 @router.patch("/{student_id}", response_model=Student)
 def update_student(
-    student_id: int,
     student_data: StudentBase,
+    student_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
 ):
@@ -104,7 +104,7 @@ def update_student(
 
 @router.delete("/{student_id}")
 def delete_student(
-    student_id: int,
+    student_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
 ):

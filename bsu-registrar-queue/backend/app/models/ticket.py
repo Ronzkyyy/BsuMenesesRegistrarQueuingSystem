@@ -3,7 +3,7 @@ Ticket model for queue tickets
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
 
 
@@ -22,10 +22,12 @@ class PriorityLevel(str, Enum):
 
 
 class TicketBase(BaseModel):
-    student_id: int
-    queue_id: int
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    student_id: int = Field(..., gt=0)
+    queue_id: int = Field(..., gt=0)
     priority: PriorityLevel = PriorityLevel.NORMAL
-    purpose: Optional[str] = None
+    purpose: Optional[str] = Field(default=None, max_length=500)
 
 
 class TicketCreate(TicketBase):

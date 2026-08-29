@@ -1,7 +1,7 @@
 """
 Ticket management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -44,8 +44,8 @@ def create_ticket(
 @limiter.limit("30/minute")
 def get_my_ticket(
     request: Request,
-    student_id: int,
-    queue_id: Optional[int] = None,
+    student_id: int = Query(..., gt=0),
+    queue_id: Optional[int] = Query(None, gt=0),
     db: Session = Depends(get_db)
 ):
     """Get student's current ticket, optionally scoped to one queue (public endpoint)"""

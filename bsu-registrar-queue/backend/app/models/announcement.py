@@ -3,10 +3,12 @@ Announcement model for display-board ticker
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AnnouncementBase(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     text: str = Field(..., min_length=1, max_length=500)
     display_order: int = 0
     is_active: bool = True
@@ -17,6 +19,8 @@ class AnnouncementCreate(AnnouncementBase):
 
 
 class AnnouncementUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     text: Optional[str] = Field(default=None, min_length=1, max_length=500)
     display_order: Optional[int] = None
     is_active: Optional[bool] = None

@@ -1,7 +1,7 @@
 """
 Queue management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -32,8 +32,8 @@ def create_queue(
 
 @router.get("", response_model=List[Queue])
 def list_queues(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):

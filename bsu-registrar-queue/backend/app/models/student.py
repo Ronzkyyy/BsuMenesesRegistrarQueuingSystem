@@ -3,7 +3,7 @@ Student model for BSU student records
 """
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from enum import Enum
 
 
@@ -35,10 +35,12 @@ class YearLevel(str, Enum):
 
 
 class StudentBase(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     student_id: str = Field(..., pattern=r"^\d{10}$", description="10-digit student number, e.g. 2020201163")
-    first_name: str
-    last_name: str
-    email: str
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: str = Field(..., min_length=1, max_length=50)
+    email: EmailStr = Field(..., max_length=100)
     student_type: StudentType
     course: Course
     major: Optional[Major] = None
@@ -61,12 +63,11 @@ class StudentCreate(StudentBase):
 
 
 class Student(StudentBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class StudentInDB(Student):
@@ -85,14 +86,13 @@ class StudentPublic(BaseModel):
     prefill the ticket-taking form, and it shouldn't be exposed to an
     anonymous caller who only supplied a guessable 10-digit student number.
     """
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     student_id: str
     first_name: str
     last_name: str
-    email: str
-
-    class Config:
-        from_attributes = True
+    email: EmailStr
 
 
 class StudentListResponse(BaseModel):

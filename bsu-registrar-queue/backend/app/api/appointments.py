@@ -2,7 +2,7 @@
 Appointment booking and check-in endpoints
 """
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -23,8 +23,8 @@ router = APIRouter()
 
 @router.get("/availability", response_model=List[SlotAvailability])
 def get_availability(
-    queue_id: int,
-    appointment_date: date,
+    queue_id: int = Query(..., gt=0),
+    appointment_date: date = Query(...),
     db: Session = Depends(get_db)
 ):
     """List bookable slots and remaining capacity for a queue/date (public)"""
@@ -49,8 +49,8 @@ def create_appointment(
 
 @router.get("/lookup", response_model=Appointment)
 def lookup_appointment(
-    student_id: str = Query(..., description="10-digit student number"),
-    reference_code: str = Query(...),
+    student_id: str = Query(..., pattern=r"^\d{10}$", description="10-digit student number"),
+    reference_code: str = Query(..., min_length=1, max_length=20),
     db: Session = Depends(get_db)
 ):
     """Student re-views their booking (public endpoint)"""
@@ -65,8 +65,8 @@ def lookup_appointment(
 @limiter.limit("10/minute")
 def cancel_appointment(
     request: Request,
-    appointment_id: int,
-    student_id: str = Query(..., description="10-digit student number"),
+    appointment_id: int = Path(..., gt=0),
+    student_id: str = Query(..., pattern=r"^\d{10}$", description="10-digit student number"),
     db: Session = Depends(get_db)
 ):
     """Student cancels their own booked appointment (public endpoint)"""
@@ -82,7 +82,7 @@ def cancel_appointment(
 
 @router.get("/search", response_model=List[Appointment])
 def search_appointments(
-    query: str = Query(..., min_length=1),
+    query: str = Query(..., min_length=1, max_length=50),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
 ):
