@@ -197,9 +197,12 @@ any other route surfaces as a `500` rather than being served silently.
   `.ilike(f"%{escape_like(term)}%", escape=LIKE_ESCAPE)` from
   `app/services/search_utils.py`. Used by `student_service.search_students`
   and `appointment_service.search`.
-- Alembic migrations that only interpolate hardcoded constants into
-  `op.execute()` are acceptable, but new migrations touching row data should
-  parameterize via `op.get_bind().execute(text(...), {...})`.
+- **No SQL by string concatenation / f-string**, anywhere — including data
+  migrations. Existing data migrations use
+  `op.execute(sa.text("... :x").bindparams(x=value))`; follow that form.
+  The only interpolation that remains is SQL *identifiers* (a database or
+  table name in `tests/conftest.py`) which cannot be bind parameters and are
+  hardcoded constants / schema metadata, never user input.
 
 ## Deployment Hardening
 

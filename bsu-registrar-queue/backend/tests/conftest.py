@@ -39,6 +39,9 @@ def _ensure_test_database_exists():
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (TEST_DB_NAME,))
             if not cur.fetchone():
+                # A database name is a SQL identifier, not a value, so it cannot
+                # be a bind parameter. TEST_DB_NAME is a hardcoded constant in
+                # this file (never user input), so interpolating it is safe.
                 cur.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
     finally:
         conn.close()
@@ -73,6 +76,9 @@ def _apply_migrations():
 
     engine = create_engine(TEST_DATABASE_URL)
     with engine.begin() as connection:
+        # Table names are SQL identifiers (not bindable values) and come from
+        # SQLAlchemy's own schema metadata, not from any request/user input, so
+        # interpolating them into this teardown DDL is safe.
         table_names = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
         if table_names:
             connection.exec_driver_sql(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE")

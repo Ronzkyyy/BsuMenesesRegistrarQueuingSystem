@@ -26,13 +26,18 @@ _ID_MAP = {
 }
 
 
+_UPDATE = sa.text(
+    "UPDATE students SET student_id = :new WHERE student_id = :old"
+)
+
+
 def upgrade() -> None:
     for old_id, new_id in _ID_MAP.items():
-        op.execute(f"UPDATE students SET student_id = '{new_id}' WHERE student_id = '{old_id}'")
+        op.execute(_UPDATE.bindparams(new=new_id, old=old_id))
     op.alter_column('students', 'student_id', existing_type=sa.String(length=20), type_=sa.String(length=10))
 
 
 def downgrade() -> None:
     op.alter_column('students', 'student_id', existing_type=sa.String(length=10), type_=sa.String(length=20))
     for old_id, new_id in _ID_MAP.items():
-        op.execute(f"UPDATE students SET student_id = '{old_id}' WHERE student_id = '{new_id}'")
+        op.execute(_UPDATE.bindparams(new=old_id, old=new_id))
