@@ -18,7 +18,9 @@ router = APIRouter()
 
 
 @router.post("", response_model=Student)
+@limiter.limit("10/minute")
 def create_student(
+    request: Request,
     student: StudentCreate,
     db: Session = Depends(get_db)
 ):

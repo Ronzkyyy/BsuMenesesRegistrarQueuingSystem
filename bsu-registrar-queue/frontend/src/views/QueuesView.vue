@@ -522,9 +522,9 @@ const checkExistingTicketForSelectedService = async () => {
   try {
     // Unscoped from any single queue - a student can only ever hold one
     // active ticket at a time, in any queue, so check across all of them.
-    await queueStore.fetchMyTicket(queueStore.currentStudent.id)
+    await queueStore.fetchMyTicket(queueStore.currentStudent.student_id)
     if (queueStore.myTicket && !['completed', 'cancelled', 'no_show'].includes(queueStore.myTicket.status)) {
-      queueStore.startPollingMyTicket(queueStore.currentStudent.id)
+      queueStore.startPollingMyTicket(queueStore.currentStudent.student_id)
       showMyQueueStatus.value = true
     }
   } catch (err) {
@@ -607,7 +607,7 @@ const confirmRegistration = async () => {
     }
     const ticket = await queueStore.takeTicket(selectedQueueId.value, queueStore.currentStudent.id, purpose.value)
     ticketResult.value = ticket
-    queueStore.startPollingMyTicket(queueStore.currentStudent.id, selectedQueueId.value)
+    queueStore.startPollingMyTicket(queueStore.currentStudent.student_id, selectedQueueId.value)
     showConfirmModal.value = false
     currentStep.value = 4
   } catch (err) {
@@ -633,11 +633,11 @@ const takeAnotherTicket = () => {
 }
 
 const cancelTicket = async () => {
-  if (!myTicket.value) return
+  if (!myTicket.value || !queueStore.currentStudent) return
   loading.value = true
   error.value = ''
   try {
-    await queueStore.cancelTicket(myTicket.value.id)
+    await queueStore.cancelTicket(myTicket.value.id, queueStore.currentStudent.student_id)
     queueStore.stopPolling()
     takeAnotherTicket()
   } catch (err) {
@@ -652,7 +652,7 @@ const refreshTicket = async () => {
   loading.value = true
   error.value = ''
   try {
-    await queueStore.fetchMyTicket(queueStore.currentStudent.id)
+    await queueStore.fetchMyTicket(queueStore.currentStudent.student_id)
   } catch (err) {
     if (err.response?.status !== 404) {
       error.value = err.response?.data?.detail || 'Failed to refresh ticket status.'

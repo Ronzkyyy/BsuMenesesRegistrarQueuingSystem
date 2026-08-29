@@ -339,9 +339,26 @@ class TicketService:
 
         return self._to_ticket(ticket, student, queue)
 
-    def cancel_ticket(self, ticket_id: int) -> Optional[Ticket]:
-        """Cancel a student's ticket"""
-        ticket = self.db.query(TicketDB).filter(TicketDB.id == ticket_id).first()
+    def cancel_ticket(self, ticket_id: int, student_number: str) -> Optional[Ticket]:
+        """Cancel a ticket, but only if it belongs to the student proving
+        ownership with their 10-digit student number.
+
+        This endpoint is public (no login), so the student number is the only
+        authorization check standing between a caller and cancelling someone
+        else's place in line - without it, any ticket id could be cancelled by
+        anyone. A wrong/unknown number returns None (caller renders a generic
+        404) so ticket existence isn't leaked.
+        """
+        student = self.db.query(StudentDB).filter(
+            StudentDB.student_id == student_number
+        ).first()
+        if not student:
+            return None
+
+        ticket = self.db.query(TicketDB).filter(
+            TicketDB.id == ticket_id,
+            TicketDB.student_id == student.id,
+        ).first()
         if not ticket:
             return None
 
@@ -358,7 +375,6 @@ class TicketService:
 
         self.db.refresh(ticket)
 
-        student = self.db.query(StudentDB).filter(StudentDB.id == ticket.student_id).first()
         queue = self.db.query(QueueDB).filter(QueueDB.id == ticket.queue_id).first()
 
         return self._to_ticket(ticket, student, queue)
@@ -391,16 +407,25 @@ class TicketService:
             result.append(self._to_ticket(ticket, student, queue))
         return result
 
-    def get_student_ticket(self, student_id: int, queue_id: Optional[int] = None) -> Optional[Ticket]:
-        """Get student's current active ticket, optionally scoped to one queue.
+    def get_student_ticket(self, student_number: str, queue_id: Optional[int] = None) -> Optional[Ticket]:
+        """Get a student's current active ticket by their 10-digit student
+        number, optionally scoped to one queue.
 
-        A student can hold at most one active ticket at a time, across all
+        Takes the student number (not the internal id) because this endpoint is
+        public: keying on a small sequential internal id would let anyone read
+        any student's ticket - including its free-text `purpose` - by counting
+        up. A student can hold at most one active ticket at a time across all
         queues (enforced in create_ticket), so an unscoped call is
-        deterministic - callers may omit queue_id to check for any active
-        ticket regardless of which queue it's in.
+        deterministic.
         """
+        student = self.db.query(StudentDB).filter(
+            StudentDB.student_id == student_number
+        ).first()
+        if not student:
+            return None
+
         query = self.db.query(TicketDB).filter(
-            TicketDB.student_id == student_id,
+            TicketDB.student_id == student.id,
             TicketDB.status.in_([TicketDBStatus.WAITING, TicketDBStatus.SERVING])
         )
         if queue_id is not None:
@@ -410,7 +435,6 @@ class TicketService:
         if not ticket:
             return None
 
-        student = self.db.query(StudentDB).filter(StudentDB.id == ticket.student_id).first()
         queue = self.db.query(QueueDB).filter(QueueDB.id == ticket.queue_id).first()
 
         return self._to_ticket(ticket, student, queue)

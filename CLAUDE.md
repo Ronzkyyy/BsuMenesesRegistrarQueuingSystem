@@ -124,6 +124,28 @@ Defined in `app/worker.py` with Redis broker:
 - Role-based access: `Admin` > `Registrar` > `Staff`
 - Dependency injection: `get_current_active_user`, `require_role(UserRole.ADMIN, UserRole.REGISTRAR)`
 
+**Authorize every sensitive action on the server** — the UI hiding a button is
+not a control.
+
+- Every staff/admin mutation declares `Depends(require_role(...))`; read-only
+  staff endpoints use `Depends(get_current_active_user)`. A new `@router`
+  method without one of these is a bug unless it is deliberately public.
+- Deliberately public endpoints: `POST /auth/login`, `GET /queues/active`,
+  `GET /queues/{id}`, the display-board reads (`/tickets/queue/{id}/display`,
+  `/tickets/now-serving-overview`, `/announcements/active`, `/media/active`),
+  student self-service (`POST /students`, `GET /students/search`,
+  `POST /tickets`, `GET /tickets/my-ticket`, `POST /tickets/{id}/cancel`,
+  the `/appointments` booking/lookup/cancel routes).
+- **Public student-flow endpoints that read or mutate one student's data must
+  verify ownership** by requiring that student's 10-digit `student_id` and
+  matching it against the row — never key on the internal numeric id, which is
+  small and enumerable. Pattern: `service.cancel_ticket(id, student_number)` /
+  `get_student_ticket(student_number)` / `appointment_service.cancel(id,
+  student_number)`. A mismatch returns the same 404 as "not found" so
+  existence isn't leaked.
+- Public endpoints are rate-limited (`@limiter.limit(...)` + a `request:
+  Request` param).
+
 ## Key Configuration
 
 ### Environment Variables (backend/.env.example)

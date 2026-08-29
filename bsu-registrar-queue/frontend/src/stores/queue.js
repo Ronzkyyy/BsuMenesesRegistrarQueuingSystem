@@ -539,11 +539,14 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
-    async fetchMyTicket(studentId, queueId = null) {
+    // studentNumber is the 10-digit student number (not the internal id) -
+    // the public my-ticket / cancel endpoints key on it so a caller can't
+    // read or cancel another student's ticket by guessing internal ids.
+    async fetchMyTicket(studentNumber, queueId = null) {
       this.loading = true
       this.error = null
       try {
-        const params = { student_id: studentId }
+        const params = { student_id: studentNumber }
         if (queueId) params.queue_id = queueId
         const response = await api.get('/tickets/my-ticket', { params })
         this.myTicket = response.data
@@ -559,11 +562,13 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
-    async cancelTicket(ticketId) {
+    async cancelTicket(ticketId, studentNumber) {
       this.loading = true
       this.error = null
       try {
-        const response = await api.post(`/tickets/${ticketId}/cancel`)
+        const response = await api.post(`/tickets/${ticketId}/cancel`, null, {
+          params: { student_id: studentNumber },
+        })
         this.myTicket = null
         return response.data
       } catch (err) {
@@ -922,13 +927,13 @@ export const useQueueStore = defineStore('queue', {
 
     // ============ POLLING ACTIONS ============
 
-    startPollingMyTicket(studentId, queueId = null, interval = 10000) {
+    startPollingMyTicket(studentNumber, queueId = null, interval = 10000) {
       this.stopPolling()
       this.pollingInterval = setInterval(() => {
-        this.fetchMyTicket(studentId, queueId).catch(() => {})
+        this.fetchMyTicket(studentNumber, queueId).catch(() => {})
       }, interval)
       // Initial fetch
-      this.fetchMyTicket(studentId, queueId).catch(() => {})
+      this.fetchMyTicket(studentNumber, queueId).catch(() => {})
     },
 
     startPollingQueueDisplay(queueId, interval = 5000) {

@@ -51,7 +51,7 @@ def test_urgent_ticket_jumps_ahead_of_normal_ticket_in_position(db_session, make
     # lower-priority tickets' positions, so the object returned at its own
     # creation time is now a stale snapshot.
     service = TicketService(db_session)
-    normal_ticket_now = service.get_student_ticket(normal_student.id, queue.id)
+    normal_ticket_now = service.get_student_ticket(normal_student.student_id, queue.id)
 
     assert urgent_ticket.position < normal_ticket_now.position
 
@@ -120,11 +120,33 @@ def test_cancel_waiting_ticket_shifts_positions_behind_it(db_session, make_queue
     assert second_ticket.position == first_ticket.position + 1
 
     service = TicketService(db_session)
-    cancelled = service.cancel_ticket(first_ticket.id)
+    cancelled = service.cancel_ticket(first_ticket.id, first_student.student_id)
     assert cancelled.status == "cancelled"
 
-    refreshed_second = service.get_student_ticket(second_student.id, queue.id)
+    refreshed_second = service.get_student_ticket(second_student.student_id, queue.id)
     assert refreshed_second.position == first_ticket.position
+
+
+def test_cancel_ticket_rejects_wrong_student_number(db_session, make_queue, make_student):
+    """A caller can only cancel a ticket by proving ownership with the owner's
+    10-digit student number - the endpoint is public, so this is the only
+    authorization gate."""
+    queue = make_queue()
+    owner = make_student()
+    other = make_student()
+    ticket = _ticket_for(db_session, owner, queue)
+
+    service = TicketService(db_session)
+
+    assert service.cancel_ticket(ticket.id, other.student_id) is None
+    assert service.cancel_ticket(ticket.id, "0000000000") is None
+    # still cancellable by the real owner
+    assert service.cancel_ticket(ticket.id, owner.student_id).status == "cancelled"
+
+
+def test_get_student_ticket_unknown_number_returns_none(db_session):
+    service = TicketService(db_session)
+    assert service.get_student_ticket("0000000000") is None
 
 
 def test_mark_no_show(db_session, make_queue, make_student):

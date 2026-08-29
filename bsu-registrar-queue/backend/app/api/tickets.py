@@ -1,7 +1,7 @@
 """
 Ticket management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -44,11 +44,16 @@ def create_ticket(
 @limiter.limit("30/minute")
 def get_my_ticket(
     request: Request,
-    student_id: int = Query(..., gt=0),
+    student_id: str = Query(..., pattern=r"^\d{10}$", description="10-digit student number"),
     queue_id: Optional[int] = Query(None, gt=0),
     db: Session = Depends(get_db)
 ):
-    """Get student's current ticket, optionally scoped to one queue (public endpoint)"""
+    """Get student's current ticket, optionally scoped to one queue (public endpoint).
+
+    Keyed on the 10-digit student number, not the internal id - this is
+    unauthenticated, so it must not let a caller enumerate other students'
+    tickets (and their free-text purpose) by counting up internal ids.
+    """
     service = TicketService(db)
     ticket = service.get_student_ticket(student_id, queue_id)
     if not ticket:
@@ -60,12 +65,17 @@ def get_my_ticket(
 @limiter.limit("10/minute")
 def cancel_ticket(
     request: Request,
-    ticket_id: int,
+    ticket_id: int = Path(..., gt=0),
+    student_id: str = Query(..., pattern=r"^\d{10}$", description="10-digit student number of the ticket owner"),
     db: Session = Depends(get_db)
 ):
-    """Student cancels their ticket (public endpoint)"""
+    """Student cancels their own ticket (public endpoint).
+
+    Requires the owner's 10-digit student number: this is unauthenticated, so
+    without an ownership check any ticket id could be cancelled by anyone.
+    """
     service = TicketService(db)
-    ticket = service.cancel_ticket(ticket_id)
+    ticket = service.cancel_ticket(ticket_id, student_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found or cannot be cancelled")
     return ticket
