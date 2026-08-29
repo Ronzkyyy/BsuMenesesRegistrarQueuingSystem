@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
+from ..core.audit import log_security_event
 from ..core.database import get_db
 from ..core.limiter import limiter
 from ..core.security import get_current_active_user, require_role
@@ -106,6 +107,7 @@ def update_student(
 
 @router.delete("/{student_id}")
 def delete_student(
+    request: Request,
     student_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
@@ -117,6 +119,10 @@ def delete_student(
             raise HTTPException(status_code=404, detail="Student not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    log_security_event(
+        "student.deleted", outcome="success", request=request,
+        actor=current_user.username, target=f"student#{student_id}",
+    )
     return {"message": "Student deleted successfully"}
 
 
@@ -132,6 +138,7 @@ def get_student_stats(
 
 @router.post("/bulk-import")
 def bulk_import_students(
+    request: Request,
     students: List[StudentCreate],
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
@@ -148,6 +155,11 @@ def bulk_import_students(
         except ValueError as e:
             errors.append({"index": i, "error": str(e)})
 
+    log_security_event(
+        "student.bulk_imported", outcome="success", request=request,
+        actor=current_user.username,
+        detail=f"imported={len(results)} errors={len(errors)}",
+    )
     return {
         "imported": len(results),
         "errors": len(errors),

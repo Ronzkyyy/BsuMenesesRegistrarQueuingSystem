@@ -126,6 +126,18 @@ Defined in `app/worker.py` with Redis broker:
   (15) — the correct password is refused while locked. Any successful login
   clears both fields. This is per-account; the `@limiter.limit("5/minute")`
   on the same route is the complementary per-IP layer.
+- **Security audit log** (`app/core/audit.py`): `log_security_event(event, *,
+  outcome, request=None, actor=…, target=…, detail=…)` emits one JSON line on
+  the `bsu.security` logger (stdout, INFO, never suppressed by `LOG_LEVEL`).
+  Never pass a password, token, or request body. Events currently emitted:
+  `auth.login` (success / failure / blocked / denied), `auth.account_locked`,
+  `auth.portal_denied`, `auth.user_created`, `auth.password_changed`,
+  `auth.user_deactivated` / `auth.user_activated`, `authz.denied` (role check
+  failed, from `require_role`), `student.deleted`, `student.bulk_imported`,
+  `queue.deleted`, `security.rate_limited`. Add a `log_security_event` call
+  when you add any new sensitive action.
+  - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
+    so running migrations in-process (tests) doesn't switch this logger off.
 - JWT tokens (HS256, 30 min expiry) via `app/core/security.py`
 - Role-based access: `Admin` > `Registrar` > `Staff`
 - Dependency injection: `get_current_active_user`, `require_role(UserRole.ADMIN, UserRole.REGISTRAR)`

@@ -1,10 +1,11 @@
 """
 Queue management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List
 
+from ..core.audit import log_security_event
 from ..core.database import get_db
 from ..core.security import get_current_active_user, require_role
 from ..db_models import UserRole
@@ -180,6 +181,7 @@ def get_queue_stats(
 
 @router.delete("/{queue_id}")
 def delete_queue(
+    request: Request,
     queue_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
@@ -193,4 +195,8 @@ def delete_queue(
     if not deleted:
         raise HTTPException(status_code=404, detail="Queue not found")
 
+    log_security_event(
+        "queue.deleted", outcome="success", request=request,
+        actor=current_user.username, target=f"queue#{queue_id}",
+    )
     return {"message": "Queue deleted successfully"}

@@ -5,10 +5,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from .audit import log_security_event
 from .config import settings
 from .database import SessionLocal
 from ..db_models import UserDB
@@ -111,8 +112,16 @@ def create_user_token(user: UserDB) -> str:
 
 def require_role(*allowed_roles):
     """Dependency to require specific role(s)"""
-    def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
+    def role_checker(
+        request: Request,
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
         if current_user.role not in allowed_roles:
+            log_security_event(
+                "authz.denied", outcome="denied", request=request,
+                actor=current_user.username, actor_role=getattr(current_user.role, "value", str(current_user.role)),
+                detail="requires one of: " + ", ".join(getattr(r, "value", str(r)) for r in allowed_roles),
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions"

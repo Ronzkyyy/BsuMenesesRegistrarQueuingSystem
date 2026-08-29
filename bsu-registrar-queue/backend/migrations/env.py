@@ -16,9 +16,11 @@ from app.db_models import QueueDB, StudentDB, TicketDB, UserDB
 config = context.config
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# disable_existing_loggers=False: the default (True) would switch off every
+# logger already created by importing the app above - including the security
+# audit logger - whenever migrations run in-process (e.g. the test suite).
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Use the app's own DATABASE_URL (from .env/pydantic-settings) instead of
 # requiring a separate sqlalchemy.url entry in alembic.ini.

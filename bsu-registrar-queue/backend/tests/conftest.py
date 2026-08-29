@@ -211,10 +211,15 @@ def client(db_session):
     logic (e.g. account lockout) without tripping slowapi first."""
     from fastapi.testclient import TestClient
     from app.main import app
-    from app.core.database import get_db
+    from app.core.database import get_db as db_get_db
+    from app.core.security import get_db as security_get_db
     from app.core.limiter import limiter
 
-    app.dependency_overrides[get_db] = lambda: db_session
+    # Two get_db callables exist (app.core.database and a duplicate in
+    # app.core.security used by get_current_user) - override both so every
+    # request in a test shares the one transactional session.
+    for dep in (db_get_db, security_get_db):
+        app.dependency_overrides[dep] = lambda: db_session
     limiter_was_enabled = limiter.enabled
     limiter.enabled = False
     try:
@@ -222,4 +227,5 @@ def client(db_session):
             yield c
     finally:
         limiter.enabled = limiter_was_enabled
-        app.dependency_overrides.pop(get_db, None)
+        for dep in (db_get_db, security_get_db):
+            app.dependency_overrides.pop(dep, None)

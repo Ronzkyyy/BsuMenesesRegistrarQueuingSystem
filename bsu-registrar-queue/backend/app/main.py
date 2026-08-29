@@ -8,9 +8,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from .core.audit import configure_security_logging, log_security_event
 from .core.config import settings
 from .core.limiter import limiter
 from .api import router
+
+configure_security_logging()
 
 
 def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
@@ -19,6 +22,10 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     # the frontend only ever reads err.response.data.detail - matching that
     # shape here is what makes a 429 show a real message instead of the
     # generic "check your credentials" fallback.
+    log_security_event(
+        "security.rate_limited", outcome="blocked", request=request,
+        actor="anonymous", detail=str(exc.limit.limit) if exc.limit else None,
+    )
     return JSONResponse(
         status_code=429,
         content={"detail": "Too many attempts. Please wait a moment and try again."},

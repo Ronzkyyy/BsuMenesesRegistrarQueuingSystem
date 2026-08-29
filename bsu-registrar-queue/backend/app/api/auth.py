@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from math import ceil
 
+from ..core.audit import log_security_event
 from ..core.config import settings
 from ..core.database import get_db
 from ..core.limiter import limiter
@@ -49,6 +50,10 @@ def login(
             locked_until = locked_until.replace(tzinfo=timezone.utc)
         if locked_until > now:
             minutes_left = max(1, ceil((locked_until - now).total_seconds() / 60))
+            log_security_event(
+                "auth.login", outcome="blocked", request=request,
+                actor=form_data.username, detail="account locked",
+            )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=(
@@ -63,7 +68,17 @@ def login(
             if user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
                 user.locked_until = now + timedelta(minutes=settings.ACCOUNT_LOCKOUT_MINUTES)
                 user.failed_login_attempts = 0
+                log_security_event(
+                    "auth.account_locked", outcome="blocked", request=request,
+                    actor=user.username,
+                    detail=f"{settings.MAX_FAILED_LOGIN_ATTEMPTS} consecutive failed attempts",
+                )
             db.commit()
+        log_security_event(
+            "auth.login", outcome="failure", request=request,
+            actor=form_data.username,
+            detail="unknown username" if user is None else "bad password",
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -76,12 +91,20 @@ def login(
         db.commit()
 
     if not user.is_active:
+        log_security_event(
+            "auth.login", outcome="denied", request=request,
+            actor=user.username, detail="inactive account",
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user account"
         )
 
     if portal == "admin" and user.role != UserRole.ADMIN:
+        log_security_event(
+            "auth.portal_denied", outcome="denied", request=request,
+            actor=user.username, actor_role=user.role.value, detail="admin portal",
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This account does not have Admin portal access."
@@ -93,6 +116,10 @@ def login(
         expires_delta=access_token_expires
     )
 
+    log_security_event(
+        "auth.login", outcome="success", request=request,
+        actor=user.username, actor_role=user.role.value,
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -112,6 +139,7 @@ def get_current_user_info(
 
 @router.post("/register", response_model=User)
 def register_user(
+    request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
@@ -139,6 +167,11 @@ def register_user(
     db.commit()
     db.refresh(db_user)
 
+    log_security_event(
+        "auth.user_created", outcome="success", request=request,
+        actor=current_user.username, target=db_user.username,
+        detail=f"role={db_user.role.value}",
+    )
     return User(
         id=db_user.id,
         username=db_user.username,
@@ -152,6 +185,7 @@ def register_user(
 
 @router.post("/change-password")
 def change_password(
+    request: Request,
     payload: PasswordChange,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
@@ -165,6 +199,10 @@ def change_password(
         )
 
     if not verify_password(payload.current_password, user.hashed_password):
+        log_security_event(
+            "auth.password_changed", outcome="failure", request=request,
+            actor=user.username, detail="current password incorrect",
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
@@ -173,6 +211,10 @@ def change_password(
     from ..core.security import get_password_hash
     user.hashed_password = get_password_hash(payload.new_password)
     db.commit()
+    log_security_event(
+        "auth.password_changed", outcome="success", request=request,
+        actor=user.username,
+    )
     return {"message": "Password changed successfully"}
 
 
@@ -199,6 +241,7 @@ def list_users(
 
 @router.patch("/users/{user_id}/deactivate")
 def deactivate_user(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
@@ -219,11 +262,16 @@ def deactivate_user(
 
     user.is_active = False
     db.commit()
+    log_security_event(
+        "auth.user_deactivated", outcome="success", request=request,
+        actor=current_user.username, target=user.username,
+    )
     return {"message": "User deactivated successfully"}
 
 
 @router.patch("/users/{user_id}/activate")
 def activate_user(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
@@ -238,4 +286,8 @@ def activate_user(
 
     user.is_active = True
     db.commit()
+    log_security_event(
+        "auth.user_activated", outcome="success", request=request,
+        actor=current_user.username, target=user.username,
+    )
     return {"message": "User activated successfully"}
