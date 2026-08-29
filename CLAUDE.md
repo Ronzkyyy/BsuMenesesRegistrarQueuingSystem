@@ -146,6 +146,41 @@ Proxies `/api` requests to `http://localhost:8000` during development.
 - **Serve next ticket**: Ordered by priority (desc) then position (asc)
 - **Wait time estimation**: Based on queue slot duration and position
 
+## Input Validation
+
+All request input is treated as untrusted and validated at the edge (Pydantic
+models + FastAPI `Query`/`Path` params). Reject unexpected input with `422` —
+never coerce or sanitize-then-accept. Constraints currently enforced:
+
+| Model / param | Field | Constraint |
+|---|---|---|
+| `StudentBase` | `student_id` | `^\d{10}$` |
+| | `first_name`, `last_name` | 1–50 chars, whitespace-stripped, non-blank |
+| | `email` | `EmailStr` (also on `Student`/`StudentInDB`/`StudentPublic` responses) |
+| `TicketBase` | `student_id`, `queue_id` | `> 0` |
+| | `purpose` | ≤ 500 chars |
+| `QueueBase` | `name` | 1–100 chars, non-blank |
+| | `description` | ≤ 1000 chars |
+| | `max_capacity` / `slot_duration_minutes` / `slot_capacity` / `booking_window_days` | bounded `ge`/`le` (see model) |
+| | `ticket_letter` | single `A`–`Z` (validator) |
+| `AppointmentCreate` | `student_id`, `queue_id` | `> 0` |
+| | `purpose` | ≤ 500 chars |
+| `AppointmentCheckInRequest` | `token` / `reference_code` | ≤ 64 / ≤ 20 chars |
+| `UserBase` | `username` | 3–50 chars, `^[A-Za-z0-9_.-]+$` |
+| | `full_name` | 1–100 chars |
+| `UserCreate` / `PasswordChange` | `password` / `new_password` | 8–72 chars (72 = bcrypt limit) |
+| `AnnouncementBase` | `text` | 1–500 chars, whitespace-stripped |
+| `MediaItemBase` / `MediaItemUpdate` | `url` | ≤ 2048 chars; must start `http://`, `https://`, or `/api/uploads/media/` (blocks `javascript:`/`data:`/`file:` — rendered as `src` on the public display board) |
+| Query params | `student_id` (search/lookup/cancel) | `^\d{10}$` |
+| | `skip` / `limit` (student & queue lists) | `skip ≥ 0`; `limit` bounded (`1–100` students, `1–200` queues) |
+| | `my-ticket` `student_id` / `queue_id` | `> 0` |
+| | id path params (`get`/`update`/`delete` student, `cancel` appointment) | `> 0` |
+| | appointment `search` `query` | 1–50 chars |
+
+`EmailStr` requires the `email-validator` package (in `requirements.txt`).
+Response models keep `EmailStr` too, so a malformed email reaching the DB by
+any other route surfaces as a `500` rather than being served silently.
+
 ## Frontend State (Pinia)
 - `stores/queue.js` - Manages queues, tickets, and display data
 
@@ -157,9 +192,11 @@ Proxies `/api` requests to `http://localhost:8000` during development.
 3. Create migration: `alembic revision --autogenerate -m "add queue type"`
 
 ### Adding API Endpoints
-1. Create Pydantic models in `app/models/`
+1. Create Pydantic models in `app/models/` — constrain every field (type, length,
+   format, allowed values); see **Input Validation** above
 2. Add service methods in `app/services/`
-3. Create router in `app/api/`
+3. Create router in `app/api/` — bound `Query`/`Path` params (`ge`/`le`/`gt`,
+   `pattern`, `max_length`)
 4. Include router in `app/api/router.py`
 
 ### Running Tests
