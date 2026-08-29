@@ -274,6 +274,27 @@ any other route surfaces as a `500` rather than being served silently.
   - The frontend API client uses a relative `/api` base URL, so it inherits
     the page's scheme — keep it that way, never hardcode a host.
 
+## Dependency Hygiene
+
+- **Dependabot** (`.github/dependabot.yml`) opens weekly PRs for `pip`, `npm`,
+  `docker` (base images) and `github-actions`. Minor/patch bumps are grouped
+  into one PR per ecosystem to cut noise.
+- **CI gates** (`.github/workflows/ci.yml`) fail the build on a known-vulnerable
+  dependency:
+  - backend: `pip-audit --ignore-vuln PYSEC-2026-1325`
+  - frontend: `npm audit --omit=dev --audit-level=high` (audits only what ships
+    in the bundle)
+- Run the same checks locally: `pip-audit` in `backend/`, `npm audit` in
+  `frontend/`.
+- **Known exceptions:**
+  - `PYSEC-2026-1325` — timing side-channel in `ecdsa` (via `python-jose`), no
+    upstream fix. Unreachable here: tokens are HS256 (HMAC), the ECDSA signing
+    path is never called. The real fix is to move auth off `python-jose` to
+    `PyJWT` — worth doing in its own PR.
+  - `vite` / `esbuild` dev-server advisories — build tooling only
+    (`devDependencies`), not in the deployed app. The vite 5→8 major bump is
+    left for a dedicated Dependabot PR so it can be tested in isolation.
+
 ## Frontend State (Pinia)
 - `stores/queue.js` - Manages queues, tickets, and display data
 
