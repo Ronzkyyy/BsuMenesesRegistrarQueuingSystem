@@ -21,5 +21,7 @@ fi
 # load balancer / nginx) so request.url.scheme is "https" in production and
 # the HTTPS-only response headers actually fire. Safe because this container
 # is never published directly - it's only reachable through that proxy.
+# --no-server-header: don't emit "Server: uvicorn"; the security-headers
+# middleware sets a generic "Server: api" instead.
 exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" \
-    --proxy-headers --forwarded-allow-ips="*"
+    --proxy-headers --forwarded-allow-ips="*" --no-server-header

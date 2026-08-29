@@ -242,7 +242,22 @@ any other route surfaces as a `500` rather than being served silently.
   only `backend`/`worker` reach them over the internal compose network. Add a
   `ports:` mapping back temporarily if you need a local client.
 - Interactive API docs (`/docs`, `/redoc`, `/openapi.json`) are served only
-  when `DEBUG=True`; security headers are set by middleware in `app/main.py`.
+  when `DEBUG=True`.
+- **Secure HTTP headers** are set in two places, by design:
+  - `app/main.py` middleware → every API / static response:
+    `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+    `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy: same-site`,
+    a locked-down `Content-Security-Policy: default-src 'none'; …` (relaxed
+    only for the DEBUG-only docs routes), `Server: api`, and HSTS when
+    `DEBUG=False`.
+  - `frontend/nginx.conf` `location /` → the SPA document and assets: the same
+    baseline plus a real `Content-Security-Policy` (`default-src 'self'`,
+    `script-src 'self'`, `style-src` adds `'unsafe-inline'` + Google Fonts,
+    `img-src 'self' data: https:`, `frame-ancestors 'none'`, …),
+    `Permissions-Policy` (camera allowed for QR check-in, everything else
+    denied), HSTS, and `server_tokens off`.
+  - If you add an off-origin dependency (font host, CDN, analytics), the CSP in
+    `nginx.conf` must be widened for it or the browser will block it.
 - **HTTPS everywhere.** TLS is terminated by the platform proxy in front of the
   containers; both apps sit behind it on plain HTTP internally.
   - `frontend/nginx.conf` 301-redirects any request whose `X-Forwarded-Proto`

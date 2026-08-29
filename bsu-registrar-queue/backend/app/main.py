@@ -39,24 +39,35 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
+_DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
+
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
-    # Cheap, universally-safe hardening headers - none of these constrain
-    # anything this app actually does (no iframes, no cross-origin embeds),
-    # so there's no compatibility risk. A reverse proxy in front of this in
-    # production may also set these; duplicates are harmless.
+    # Hardening headers for every API/static response. The browser-facing SPA
+    # gets its own (broader) header set from nginx in front of the frontend;
+    # these cover the API surface and anything that reaches the backend directly.
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    # HTTPS-everywhere headers, prod only (DEBUG=False). Skipped in local dev
-    # because it runs over plain http://localhost. HSTS tells browsers to
-    # never speak HTTP to this host again; upgrade-insecure-requests makes
-    # them rewrite any stray http:// subresource (e.g. a link-type media
-    # item) to https:// instead of blocking it as mixed content.
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+    # Don't advertise the server stack.
+    response.headers["Server"] = "api"
+
+    # API responses render no HTML and load no subresources, so lock the CSP
+    # all the way down. Swagger/ReDoc (DEBUG only) pull assets from a CDN, so
+    # they're exempted.
+    if not request.url.path.startswith(_DOCS_PATHS):
+        csp = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        if not settings.DEBUG:
+            csp += "; upgrade-insecure-requests"
+        response.headers["Content-Security-Policy"] = csp
+
+    # HSTS: prod only (DEBUG=False) - local dev runs over plain http://localhost.
     if not settings.DEBUG:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
     return response
 
 
