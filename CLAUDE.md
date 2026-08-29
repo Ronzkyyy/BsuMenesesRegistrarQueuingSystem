@@ -116,6 +116,10 @@ Defined in `app/worker.py` with Redis broker:
 - `send_ticket_reminder` / `send_ticket_called` - On-demand tasks
 
 ### Authentication & Authorization
+- Passwords hashed with **bcrypt** via passlib `CryptContext(schemes=["bcrypt"])`
+  in `app/core/security.py`. All storage goes through `get_password_hash`,
+  all checks through `verify_password` — never compare or store plaintext.
+  Password inputs are capped at 72 bytes (bcrypt's limit) in the Pydantic models.
 - JWT tokens (HS256, 30 min expiry) via `app/core/security.py`
 - Role-based access: `Admin` > `Registrar` > `Staff`
 - Dependency injection: `get_current_active_user`, `require_role(UserRole.ADMIN, UserRole.REGISTRAR)`
