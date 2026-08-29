@@ -243,6 +243,21 @@ any other route surfaces as a `500` rather than being served silently.
   `ports:` mapping back temporarily if you need a local client.
 - Interactive API docs (`/docs`, `/redoc`, `/openapi.json`) are served only
   when `DEBUG=True`; security headers are set by middleware in `app/main.py`.
+- **HTTPS everywhere.** TLS is terminated by the platform proxy in front of the
+  containers; both apps sit behind it on plain HTTP internally.
+  - `frontend/nginx.conf` 301-redirects any request whose `X-Forwarded-Proto`
+    is `http` to `https` (no-op in local compose, where that header is absent).
+  - `start.sh` runs uvicorn with `--proxy-headers --forwarded-allow-ips="*"`
+    so `request.url.scheme` reflects the external HTTPS.
+  - `app/main.py` sends `Strict-Transport-Security` (1 year, includeSubDomains)
+    and `Content-Security-Policy: upgrade-insecure-requests` **when
+    `DEBUG=False`** — never in local http dev.
+  - Media item `url`s must be `https://` or the local `/api/uploads/media/`
+    path (`app/models/media.py`); plain `http://` is rejected as future mixed
+    content on the HTTPS display board.
+  - In production `.env`, `ALLOWED_ORIGINS` must list `https://` origins only.
+  - The frontend API client uses a relative `/api` base URL, so it inherits
+    the page's scheme — keep it that way, never hardcode a host.
 
 ## Frontend State (Pinia)
 - `stores/queue.js` - Manages queues, tickets, and display data

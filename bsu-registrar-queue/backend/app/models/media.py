@@ -7,21 +7,23 @@ from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
-_ALLOWED_URL_PREFIXES = ("http://", "https://", "/api/uploads/media/")
+_ALLOWED_URL_PREFIXES = ("https://", "/api/uploads/media/")
 
 
 def _validate_media_url(v: str) -> str:
-    """Reject anything that isn't a plain http(s) URL or an app-hosted upload path.
+    """Reject anything that isn't an HTTPS URL or an app-hosted upload path.
 
     The display board renders this value as an <img>/<video> src, so schemes
-    like javascript:, data:, or file: must never get through.
+    like javascript:, data:, or file: must never get through. Plain http:// is
+    also rejected: the board is served over HTTPS, so an http:// source is
+    mixed content the browser would block anyway.
     """
     v = v.strip()
     if not v:
         raise ValueError("url cannot be blank")
     if not v.startswith(_ALLOWED_URL_PREFIXES):
         raise ValueError(
-            "url must be an http(s) URL or an /api/uploads/media/ path"
+            "url must be an https:// URL or an /api/uploads/media/ path"
         )
     return v
 
