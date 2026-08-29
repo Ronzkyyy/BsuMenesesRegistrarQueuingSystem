@@ -120,6 +120,12 @@ Defined in `app/worker.py` with Redis broker:
   in `app/core/security.py`. All storage goes through `get_password_hash`,
   all checks through `verify_password` — never compare or store plaintext.
   Password inputs are capped at 72 bytes (bcrypt's limit) in the Pydantic models.
+- **Failed-login lockout.** `POST /auth/login` counts consecutive bad passwords
+  in `users.failed_login_attempts`; after `MAX_FAILED_LOGIN_ATTEMPTS` (5) it
+  sets `users.locked_until` and returns `429` for `ACCOUNT_LOCKOUT_MINUTES`
+  (15) — the correct password is refused while locked. Any successful login
+  clears both fields. This is per-account; the `@limiter.limit("5/minute")`
+  on the same route is the complementary per-IP layer.
 - JWT tokens (HS256, 30 min expiry) via `app/core/security.py`
 - Role-based access: `Admin` > `Registrar` > `Staff`
 - Dependency injection: `get_current_active_user`, `require_role(UserRole.ADMIN, UserRole.REGISTRAR)`

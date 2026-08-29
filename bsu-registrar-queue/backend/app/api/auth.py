@@ -4,8 +4,10 @@ Authentication endpoints for registrar staff
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+from math import ceil
 
+from ..core.config import settings
 from ..core.database import get_db
 from ..core.limiter import limiter
 from ..core.security import (
@@ -31,15 +33,47 @@ def login(
     portal: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
-    """Staff login endpoint - returns JWT token"""
+    """Staff login endpoint - returns JWT token.
+
+    On top of the per-IP rate limit above, an account is locked for
+    ACCOUNT_LOCKOUT_MINUTES after MAX_FAILED_LOGIN_ATTEMPTS consecutive failed
+    passwords - blocking brute force even from a rotating set of IPs. Any
+    successful login clears the counter.
+    """
+    now = datetime.now(timezone.utc)
     user = db.query(UserDB).filter(UserDB.username == form_data.username).first()
 
+    if user and user.locked_until is not None:
+        locked_until = user.locked_until
+        if locked_until.tzinfo is None:
+            locked_until = locked_until.replace(tzinfo=timezone.utc)
+        if locked_until > now:
+            minutes_left = max(1, ceil((locked_until - now).total_seconds() / 60))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=(
+                    f"Too many failed attempts for this account. "
+                    f"Try again in about {minutes_left} minute(s)."
+                ),
+            )
+
     if not user or not verify_password(form_data.password, user.hashed_password):
+        if user is not None:
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            if user.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
+                user.locked_until = now + timedelta(minutes=settings.ACCOUNT_LOCKOUT_MINUTES)
+                user.failed_login_attempts = 0
+            db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if user.failed_login_attempts or user.locked_until is not None:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.commit()
 
     if not user.is_active:
         raise HTTPException(

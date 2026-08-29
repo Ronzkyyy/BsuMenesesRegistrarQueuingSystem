@@ -174,3 +174,52 @@ def make_student(db_session):
         return service.create_student(StudentCreate(**defaults))
 
     return _make
+
+
+_username_counter = itertools.count(1)
+
+
+@pytest.fixture()
+def make_user(db_session):
+    """Factory for a persisted staff UserDB with a known plaintext password."""
+    from app.db_models import UserDB, UserRole
+    from app.core.security import get_password_hash
+
+    def _make(password="secret-pass-123", role=UserRole.STAFF, **overrides):
+        defaults = dict(
+            username=overrides.pop("username", f"user{next(_username_counter)}"),
+            full_name="Test User",
+            role=role,
+            hashed_password=get_password_hash(password),
+            is_active=True,
+        )
+        defaults.update(overrides)
+        user = UserDB(**defaults)
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        user._plain_password = password
+        return user
+
+    return _make
+
+
+@pytest.fixture()
+def client(db_session):
+    """FastAPI TestClient wired to the per-test transactional session, with
+    the per-IP rate limiter disabled so tests can exercise the app's own
+    logic (e.g. account lockout) without tripping slowapi first."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.database import get_db
+    from app.core.limiter import limiter
+
+    app.dependency_overrides[get_db] = lambda: db_session
+    limiter_was_enabled = limiter.enabled
+    limiter.enabled = False
+    try:
+        with TestClient(app) as c:
+            yield c
+    finally:
+        limiter.enabled = limiter_was_enabled
+        app.dependency_overrides.pop(get_db, None)

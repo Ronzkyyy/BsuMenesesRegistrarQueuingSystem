@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     LOG_LEVEL: str = "info"
 
+    # Brute-force protection for staff login: lock an account after this many
+    # consecutive failed attempts, for this many minutes.
+    MAX_FAILED_LOGIN_ATTEMPTS: int = 5
+    ACCOUNT_LOCKOUT_MINUTES: int = 15
+
     # Comma-separated list of origins allowed to call the API cross-origin.
     # Set this to the real deployed frontend domain(s) in production.
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
