@@ -35,6 +35,14 @@ class YearLevel(str, Enum):
 
 
 class StudentBase(BaseModel):
+    """Identity/enrollment fields any caller may provide - deliberately excludes
+    is_scholar/is_varsity/is_graduating. Those flags feed straight into
+    TicketService.calculate_priority (is_graduating -> URGENT, the others ->
+    PRIORITY), so they must never be settable by the public, unauthenticated
+    kiosk self-registration endpoint (POST /students uses this model) - a
+    self-declared "Graduating Student" checkbox would let anyone jump every
+    queue. Only StudentCreate (below) - used by the registrar-gated PATCH and
+    the admin-only bulk-import - can set them."""
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     student_id: str = Field(..., pattern=r"^\d{10}$", description="10-digit student number, e.g. 2020201163")
@@ -45,9 +53,6 @@ class StudentBase(BaseModel):
     course: Course
     major: Optional[Major] = None
     year_level: YearLevel
-    is_scholar: bool = False
-    is_varsity: bool = False
-    is_graduating: bool = False
 
     @model_validator(mode="after")
     def validate_major(self) -> "StudentBase":
@@ -59,10 +64,13 @@ class StudentBase(BaseModel):
 
 
 class StudentCreate(StudentBase):
-    pass
+    """For trusted (staff-authenticated) callers only - see StudentBase."""
+    is_scholar: bool = False
+    is_varsity: bool = False
+    is_graduating: bool = False
 
 
-class Student(StudentBase):
+class Student(StudentCreate):
     model_config = ConfigDict(from_attributes=True)
 
     id: int

@@ -828,9 +828,19 @@ export const useQueueStore = defineStore('queue', {
       this.loading = true
       this.error = null
       try {
-        const response = await api.post('/students', studentData)
-        this.students.push(response.data)
-        return response.data
+        // is_scholar/is_varsity/is_graduating drive queue priority, so the
+        // public create endpoint (shared with kiosk self-registration)
+        // never accepts them - create without them, then a follow-up PATCH
+        // (registrar-only) sets them if the admin form requested any.
+        const { is_scholar, is_varsity, is_graduating, ...createPayload } = studentData
+        const response = await api.post('/students', createPayload)
+        let student = response.data
+        if (is_scholar || is_varsity || is_graduating) {
+          const patchResponse = await api.patch(`/students/${student.id}`, studentData)
+          student = patchResponse.data
+        }
+        this.students.push(student)
+        return student
       } catch (err) {
         this.error = err.response?.data?.detail || 'Failed to create student'
         throw err

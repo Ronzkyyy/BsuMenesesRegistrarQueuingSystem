@@ -16,8 +16,15 @@ class StudentService:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_student(self, student_data: StudentCreate) -> Student:
-        """Register a new student"""
+    def create_student(self, student_data: StudentBase) -> Student:
+        """Register a new student.
+
+        student_data is StudentBase, not StudentCreate, at the type level -
+        callers may pass either, but StudentBase alone (the public
+        self-registration path) has no is_scholar/is_varsity/is_graduating
+        attributes at all, so getattr's False default is what an untrusted
+        caller always gets, never a value they supplied.
+        """
         # Check if student_id already exists
         existing = self.db.query(StudentDB).filter(
             StudentDB.student_id == student_data.student_id
@@ -34,9 +41,9 @@ class StudentService:
             course=Course(student_data.course.value),
             major=Major(student_data.major.value) if student_data.major else None,
             year_level=YearLevel(student_data.year_level.value),
-            is_scholar=student_data.is_scholar,
-            is_varsity=student_data.is_varsity,
-            is_graduating=student_data.is_graduating,
+            is_scholar=getattr(student_data, "is_scholar", False),
+            is_varsity=getattr(student_data, "is_varsity", False),
+            is_graduating=getattr(student_data, "is_graduating", False),
         )
         self.db.add(db_student)
         self.db.commit()
@@ -87,7 +94,7 @@ class StudentService:
         students = q.order_by(StudentDB.id).offset(skip).limit(limit).all()
         return [self._to_student(s) for s in students], total
 
-    def update_student(self, student_id: int, student_data: StudentBase) -> Optional[Student]:
+    def update_student(self, student_id: int, student_data: StudentCreate) -> Optional[Student]:
         """Update student information"""
         student = self.db.query(StudentDB).filter(StudentDB.id == student_id).first()
         if not student:

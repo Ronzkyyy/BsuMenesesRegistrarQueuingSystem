@@ -267,20 +267,6 @@
                   <option :value="major.value" v-for="major in majorOptions" :key="major.value">{{ major.label }}</option>
                 </select>
               </div>
-              <div class="flex flex-wrap gap-x-6 gap-y-2">
-                <div class="flex items-center">
-                  <input id="is_scholar" type="checkbox" v-model="registrationForm.is_scholar" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
-                  <label for="is_scholar" class="ml-2 text-sm text-gray-700">Scholar</label>
-                </div>
-                <div class="flex items-center">
-                  <input id="is_varsity" type="checkbox" v-model="registrationForm.is_varsity" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
-                  <label for="is_varsity" class="ml-2 text-sm text-gray-700">Varsity Athlete</label>
-                </div>
-                <div class="flex items-center">
-                  <input id="is_graduating" type="checkbox" v-model="registrationForm.is_graduating" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
-                  <label for="is_graduating" class="ml-2 text-sm text-gray-700">Graduating Student</label>
-                </div>
-              </div>
             </template>
 
             <div v-if="studentLookedUp">
@@ -444,9 +430,9 @@ const emptyRegistrationForm = () => ({
   course: 'Bachelor of Science in Information Technology',
   major: null,
   year_level: '1st_year',
-  is_scholar: false,
-  is_varsity: false,
-  is_graduating: false,
+  // No is_scholar/is_varsity/is_graduating here - those drive queue priority
+  // and can only be set by staff (Student Management), never self-declared
+  // at the public kiosk. The backend rejects them on this endpoint too.
 })
 const registrationForm = ref(emptyRegistrationForm())
 

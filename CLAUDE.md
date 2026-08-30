@@ -210,6 +210,7 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 | `StudentBase` | `student_id` | `^\d{10}$` |
 | | `first_name`, `last_name` | 1–50 chars, whitespace-stripped, non-blank |
 | | `email` | `EmailStr` (also on `Student`/`StudentInDB`/`StudentPublic` responses) |
+| | *(no `is_scholar`/`is_varsity`/`is_graduating` — see **Avoid Trusting User Input**)* | |
 | `TicketBase` | `student_id`, `queue_id` | `> 0` |
 | | `purpose` | ≤ 500 chars |
 | `QueueBase` | `name` | 1–100 chars, non-blank |
@@ -233,6 +234,44 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 `EmailStr` requires the `email-validator` package (in `requirements.txt`).
 Response models keep `EmailStr` too, so a malformed email reaching the DB by
 any other route surfaces as a `500` rather than being served silently.
+
+## Avoid Trusting User Input
+
+Passing shape/type/length validation isn't the same as being safe to act on —
+a field can be well-formed and still be a value the caller shouldn't be
+trusted to set. One real case fixed here:
+
+- **`is_scholar`/`is_varsity`/`is_graduating` are not on `StudentBase`
+  anymore — only on `StudentCreate(StudentBase)`.** These three flags feed
+  directly into `TicketService.calculate_priority()`
+  (`is_graduating` → **URGENT**, `is_scholar`/`is_varsity` → **PRIORITY**,
+  ahead of every `NORMAL` ticket). `POST /students` is the *public,
+  unauthenticated* kiosk self-registration endpoint — until this fix, its
+  request model included these flags with no verification, and the kiosk
+  registration form (`QueuesView.vue`) literally had "Scholar" / "Varsity
+  Athlete" / "Graduating Student" checkboxes anyone could tick before taking
+  a ticket, self-escalating to the front of every queue. Fixed by splitting
+  the model: `StudentBase` (identity/enrollment fields only) is what the
+  public endpoint accepts — sending the flags there is a `422`, not a
+  silently-ignored claim. `StudentCreate` adds the three flags back for
+  trusted callers only: the registrar-gated `PATCH /students/{id}` and the
+  admin-only `POST /students/bulk-import`. `StudentService.create_student`
+  reads them via `getattr(student_data, "is_scholar", False)` etc., so a
+  caller passing bare `StudentBase` (no such attribute at all) always gets
+  `False` — never a value it tried to supply.
+  - The admin "Add Student" UI (`StudentManagementView.vue`) still needs to
+    set these flags for a legitimately-verified new student in one click:
+    `stores/queue.js`'s `createStudent` action does `POST /students` without
+    the flags, then a follow-up `PATCH /students/{id}` (registrar-gated) if
+    any flag was requested — two backend calls, one admin click.
+  - Test coverage: `tests/test_student_priority_trust.py` (public register
+    rejects the flags with 422; a public register without them defaults to
+    `False`; registrar can set them via PATCH; staff — below registrar — is
+    403'd from that route).
+- When adding a new field that feeds a privilege, priority, or trust
+  decision anywhere in the app, ask which endpoints can set it and whether
+  every one of those callers is actually authorized to make that call before
+  wiring it into the same model a public endpoint accepts.
 
 ## Error Handling
 

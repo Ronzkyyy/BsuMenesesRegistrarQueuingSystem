@@ -22,10 +22,15 @@ router = APIRouter()
 @limiter.limit("10/minute")
 def create_student(
     request: Request,
-    student: StudentCreate,
+    student: StudentBase,
     db: Session = Depends(get_db)
 ):
-    """Register a new student (public endpoint - students self-register at the kiosk before taking a ticket)"""
+    """Register a new student (public endpoint - students self-register at the kiosk before taking a ticket).
+
+    Takes StudentBase, not StudentCreate - is_scholar/is_varsity/is_graduating
+    are never accepted here (see StudentBase's docstring); an anonymous kiosk
+    caller sending them gets a 422, not a silently-ignored priority claim.
+    """
     service = StudentService(db)
     try:
         return service.create_student(student)
@@ -92,12 +97,14 @@ def list_students(
 
 @router.patch("/{student_id}", response_model=Student)
 def update_student(
-    student_data: StudentBase,
+    student_data: StudentCreate,
     student_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
-    """Update student information (admin/registrar only)"""
+    """Update student information (admin/registrar only) - StudentCreate here
+    (not StudentBase), so staff can set/correct is_scholar/is_varsity/
+    is_graduating for a verified student; see StudentBase's docstring."""
     service = StudentService(db)
     student = service.update_student(student_id, student_data)
     if not student:
