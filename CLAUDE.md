@@ -175,6 +175,11 @@ DEBUG=True
 LOG_LEVEL=info
 CAMPUS_NAME=Bulacan State University - Meneses Campus
 ```
+`.env.example` sets `DEBUG=True` for local dev convenience, but the code
+default (when a var is absent entirely, as in a bare production environment)
+is `DEBUG=False` — see **Secure Defaults** above. Production deployments may
+also set `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` to bootstrap the
+first admin account.
 
 ### Frontend Proxy (vite.config.js)
 Proxies `/api` requests to `http://localhost:8000` during development.
@@ -260,6 +265,35 @@ any other route surfaces as a `500` rather than being served silently.
   `err.response?.data?.detail`, falling back to a hardcoded generic string
   per action when `detail` is absent (e.g. a non-JSON error body) — no
   frontend change was needed for this principle.
+
+## Secure Defaults
+
+- **`Settings.DEBUG` defaults to `False`** (`app/core/config.py`). `DEBUG` is
+  the master switch for docs exposure, the relaxed CSP, and HSTS (see
+  Deployment Hardening below) — an operator who forgets to set it in a
+  production environment now gets the locked-down posture, not the permissive
+  dev one. Local dev is unaffected: `backend/.env` (via `dev.ps1`'s template)
+  and the test `.env` both set `DEBUG=True` explicitly.
+- **`SECRET_KEY` fails fast if left at its placeholder value in production.**
+  `app/core/config.py` raises `RuntimeError` at import time if
+  `SECRET_KEY == "your-secret-key-here"` (the shipped default) while
+  `DEBUG=False` — otherwise every JWT would be signed with a secret anyone
+  can read in this public repo. Not enforced when `DEBUG=True`, so local dev
+  can leave `SECRET_KEY` unset.
+- **No hardcoded demo credentials in production.** `app/core/init_db.py`'s
+  `seed_initial_data()` only creates the three demo accounts
+  (`admin`/`admin123`, `registrar`/`registrar123`, `staff`/`staff123`) when
+  `settings.DEBUG` is `True`. This matters because `start.sh` (the production
+  container entrypoint) runs this seeder unconditionally on every boot — a
+  well-known default admin password was previously a standing backdoor into
+  any real deployment. For production, set `INITIAL_ADMIN_USERNAME` +
+  `INITIAL_ADMIN_PASSWORD` (≥ 8 chars, checked before use) to have the
+  seeder create exactly one admin account from those env vars instead; if
+  neither DEBUG nor those vars are set, no admin account is created at all
+  and the seeder logs that one must be added manually.
+- Queue and sample-student seeding (`Enrollment`, `Document Request`, …,
+  `Juan Dela Cruz` et al.) is unconditional — it's placeholder business data,
+  not a credential, so it isn't gated by `DEBUG`.
 
 ## Database Access & SQL Safety
 

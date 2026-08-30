@@ -9,6 +9,7 @@ except Exception:  # pragma: no cover - fallback for editors or missing deps
         def query(self, *args, **kwargs):
             raise RuntimeError("SQLAlchemy not available in this environment")
 from ..db_models import Base, QueueDB, QueueDBType, QueueDBStatus, UserDB, UserRole, StudentDB, StudentDBType, Course, Major, YearLevel
+from ..core.config import settings
 from ..core.database import engine, SessionLocal
 from ..core.security import get_password_hash
 
@@ -106,35 +107,52 @@ def seed_initial_data(db: Session) -> None:
     for queue in queues:
         db.add(queue)
 
-    # Create default admin user
-    admin = UserDB(
-        username="admin",
-        full_name="System Administrator",
-        role=UserRole.ADMIN,
-        hashed_password=get_password_hash("admin123"),
-        is_active=True,
-    )
-    db.add(admin)
-
-    # Create sample registrar staff
-    registrar = UserDB(
-        username="registrar",
-        full_name="Registrar Staff",
-        role=UserRole.REGISTRAR,
-        hashed_password=get_password_hash("registrar123"),
-        is_active=True,
-    )
-    db.add(registrar)
-
-    # Create sample staff
-    staff = UserDB(
-        username="staff",
-        full_name="Front Desk Staff",
-        role=UserRole.STAFF,
-        hashed_password=get_password_hash("staff123"),
-        is_active=True,
-    )
-    db.add(staff)
+    # Demo accounts with well-known passwords are for local/dev use only -
+    # start.sh runs this seeder on every production boot too, and a
+    # publicly-documented admin/admin123 would be a standing backdoor into
+    # any real deployment. Only ever create them when DEBUG=True.
+    if settings.DEBUG:
+        db.add(UserDB(
+            username="admin",
+            full_name="System Administrator",
+            role=UserRole.ADMIN,
+            hashed_password=get_password_hash("admin123"),
+            is_active=True,
+        ))
+        db.add(UserDB(
+            username="registrar",
+            full_name="Registrar Staff",
+            role=UserRole.REGISTRAR,
+            hashed_password=get_password_hash("registrar123"),
+            is_active=True,
+        ))
+        db.add(UserDB(
+            username="staff",
+            full_name="Front Desk Staff",
+            role=UserRole.STAFF,
+            hashed_password=get_password_hash("staff123"),
+            is_active=True,
+        ))
+    elif settings.INITIAL_ADMIN_USERNAME and settings.INITIAL_ADMIN_PASSWORD:
+        # Explicit, deliberate bootstrap for a real deployment's first admin -
+        # set once via env vars, never a guessable built-in default.
+        if len(settings.INITIAL_ADMIN_PASSWORD) < 8:
+            print("INITIAL_ADMIN_PASSWORD is too short (min 8 chars) - skipping admin bootstrap")
+        else:
+            db.add(UserDB(
+                username=settings.INITIAL_ADMIN_USERNAME,
+                full_name="System Administrator",
+                role=UserRole.ADMIN,
+                hashed_password=get_password_hash(settings.INITIAL_ADMIN_PASSWORD),
+                is_active=True,
+            ))
+            print(f"Created initial admin account '{settings.INITIAL_ADMIN_USERNAME}' from INITIAL_ADMIN_* env vars")
+    else:
+        print(
+            "No admin account created (DEBUG=False and INITIAL_ADMIN_USERNAME/"
+            "INITIAL_ADMIN_PASSWORD not set) - create one manually or set those "
+            "env vars and redeploy."
+        )
 
     # Create sample students
     students = [
