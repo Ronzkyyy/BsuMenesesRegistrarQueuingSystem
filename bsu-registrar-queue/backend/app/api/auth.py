@@ -1,7 +1,7 @@
 """
 Authentication endpoints for registrar staff
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
@@ -17,24 +17,26 @@ from ..core.security import (
     get_current_active_user,
     create_user_token,
     require_role,
+    COOKIE_NAME,
 )
 from ..db_models import UserDB, UserRole
-from ..models.user import Token, TokenData, User, UserCreate, PasswordChange, UserRole as UserRoleModel
+from ..models.user import User, UserCreate, PasswordChange, UserRole as UserRoleModel
 from ..services import QueueService, TicketService, StudentService
 
 
 router = APIRouter()
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=User)
 @limiter.limit("5/minute")
 def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     portal: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
-    """Staff login endpoint - returns JWT token.
+    """Staff login endpoint - sets an httpOnly session cookie.
 
     On top of the per-IP rate limit above, an account is locked for
     ACCOUNT_LOCKOUT_MINUTES after MAX_FAILED_LOGIN_ATTEMPTS consecutive failed
@@ -82,7 +84,6 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     if user.failed_login_attempts or user.locked_until is not None:
@@ -110,22 +111,44 @@ def login(
             detail="This account does not have Admin portal access."
         )
 
-    access_token_expires = timedelta(minutes=30)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role, "user_id": user.id},
         expires_delta=access_token_expires
+    )
+
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=access_token,
+        httponly=True,
+        # Secure only in production (DEBUG=False) - local dev and the test
+        # suite run over plain http, matching how HSTS/upgrade-insecure-
+        # requests are already gated on settings.DEBUG elsewhere in this app.
+        secure=not settings.DEBUG,
+        samesite="strict",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
     )
 
     log_security_event(
         "auth.login", outcome="success", request=request,
         actor=user.username, actor_role=user.role.value,
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return User(
+        id=user.id,
+        username=user.username,
+        full_name=user.full_name,
+        role=UserRoleModel(user.role.value),
+        is_active=user.is_active,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
 
 
 @router.post("/logout")
-def logout():
-    """Staff logout endpoint (client-side token removal)"""
+def logout(response: Response):
+    """Staff logout endpoint - clears the session cookie"""
+    response.delete_cookie(key=COOKIE_NAME, path="/")
     return {"message": "Successfully logged out"}
 
 

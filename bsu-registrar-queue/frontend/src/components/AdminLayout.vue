@@ -241,7 +241,7 @@ const logout = () => {
         confirmLabel: 'Log Out',
         variant: 'danger',
         action: async () => {
-          queueStore.logout()
+          await queueStore.logout()
           router.push('/login')
         },
       })
@@ -299,7 +299,7 @@ onMounted(async () => {
   try {
     await queueStore.fetchCurrentUser()
   } catch (err) {
-    queueStore.logout()
+    await queueStore.logout()
     router.push('/login')
   }
 })

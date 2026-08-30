@@ -8,16 +8,8 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: '/api',
   timeout: 10000,
-})
-
-const TOKEN_KEY = 'registrar_token'
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
+  // Auth rides in an httpOnly cookie, not a token this JS can read or attach.
+  withCredentials: true,
 })
 
 export const useQueueStore = defineStore('queue', {
@@ -49,7 +41,6 @@ export const useQueueStore = defineStore('queue', {
     checkInResult: null,
 
     // Auth
-    token: localStorage.getItem(TOKEN_KEY) || null,
     currentUser: null,
 
     // Dashboard
@@ -81,7 +72,7 @@ export const useQueueStore = defineStore('queue', {
     estimatedWaitTime: (state) => state.myTicket?.estimated_wait_time_minutes ?? 0,
 
     // Auth getters
-    isAuthenticated: (state) => !!state.token,
+    isAuthenticated: (state) => !!state.currentUser,
 
     // Student getters
     isStudentRegistered: (state) => !!state.currentStudent,
@@ -109,9 +100,7 @@ export const useQueueStore = defineStore('queue', {
         const response = await api.post('/auth/login', form, {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })
-        this.token = response.data.access_token
-        localStorage.setItem(TOKEN_KEY, this.token)
-        await this.fetchCurrentUser()
+        this.currentUser = response.data
         return response.data
       } catch (err) {
         this.error = err.response?.data?.detail || 'Invalid username or password'
@@ -132,10 +121,13 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
-    logout() {
-      this.token = null
+    async logout() {
+      try {
+        await api.post('/auth/logout')
+      } catch (err) {
+        // Cookie may already be expired/cleared - not a reason to block local cleanup.
+      }
       this.currentUser = null
-      localStorage.removeItem(TOKEN_KEY)
       this.stopPolling()
     },
 

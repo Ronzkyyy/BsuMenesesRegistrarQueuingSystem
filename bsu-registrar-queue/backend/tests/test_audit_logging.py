@@ -64,10 +64,11 @@ def test_successful_login_is_logged(client, make_user, audit):
 def test_role_denial_is_logged(client, make_user, audit):
     from app.db_models import UserRole
     staff = make_user(role=UserRole.STAFF)
-    token = _login(client, staff.username, staff._plain_password).json()["access_token"]
+    _login(client, staff.username, staff._plain_password)
 
-    # STAFF hitting an ADMIN-only route
-    r = client.get("/api/auth/users", headers={"Authorization": f"Bearer {token}"})
+    # STAFF hitting an ADMIN-only route - the session cookie set by _login
+    # above rides along automatically via the TestClient's cookie jar.
+    r = client.get("/api/auth/users")
     assert r.status_code == 403
 
     denied = [e for e in audit() if e["event"] == "authz.denied"]

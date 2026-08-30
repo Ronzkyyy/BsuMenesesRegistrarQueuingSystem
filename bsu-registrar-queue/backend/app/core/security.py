@@ -6,7 +6,6 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from .audit import log_security_event
@@ -17,7 +16,26 @@ from ..models.user import User, TokenData, UserRole
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# The JWT rides in an httpOnly cookie rather than an Authorization header, so
+# it's never readable by page JavaScript - closes off token theft via XSS,
+# a second, independent layer beyond the CSP that already blocks injected
+# scripts from running in the first place. SameSite=Strict (set where this
+# cookie is issued, in app/api/auth.py) is the CSRF defense for it - this app
+# is same-origin with no legitimate cross-site request pattern, so that alone
+# is a complete mitigation here, not a partial one.
+COOKIE_NAME = "registrar_token"
+
+
+def get_token_from_cookie(request: Request) -> str:
+    """Extract the JWT from the httpOnly session cookie, 401 if absent."""
+    token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+    return token
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -64,14 +82,13 @@ def get_db():
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_token_from_cookie),
     db: Session = Depends(get_db)
 ) -> User:
     """Get the current authenticated user from JWT token"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
     token_data = decode_access_token(token)
     if token_data is None:

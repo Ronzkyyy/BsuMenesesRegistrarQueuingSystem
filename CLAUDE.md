@@ -138,7 +138,10 @@ Defined in `app/worker.py` with Redis broker:
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.
-- JWT tokens (HS256, 30 min expiry) via `app/core/security.py`
+- JWT tokens (HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`-minute expiry, default 30)
+  via `app/core/security.py`, transported in an httpOnly `registrar_token`
+  cookie — never in the response body or an `Authorization` header. See
+  **Defense in Depth** below.
 - Role-based access: `Admin` > `Registrar` > `Staff`
 - Dependency injection: `get_current_active_user`, `require_role(UserRole.REGISTRAR)`
   (pass the *minimum* role a route needs — see **Principle of Least Astonishment**)
@@ -295,6 +298,60 @@ any other route surfaces as a `500` rather than being served silently.
 - Queue and sample-student seeding (`Enrollment`, `Document Request`, …,
   `Juan Dela Cruz` et al.) is unconditional — it's placeholder business data,
   not a credential, so it isn't gated by `DEBUG`.
+
+## Defense in Depth
+
+- **Staff auth uses an httpOnly cookie, not `localStorage` + `Authorization`
+  header.** `POST /api/auth/login` sets the JWT via `Set-Cookie:
+  registrar_token=…; HttpOnly; SameSite=Strict; Max-Age=<ACCESS_TOKEN_EXPIRE_
+  MINUTES*60>; Path=/` (`Secure` added too when `DEBUG=False` — see below) and
+  returns the `User` body, never the token; `POST /api/auth/logout` clears it
+  server-side via `Response.delete_cookie`. The JWT itself, its algorithm, and
+  its expiry are unchanged — only the transport. This closes a real class of
+  attack this app didn't have an incident for, but was flagged as a standing
+  risk: `localStorage` is readable by any JavaScript on the page, so a single
+  successful XSS bug (anywhere in the app or a dependency) could previously
+  exfiltrate a staff session outright; an httpOnly cookie can't be read by
+  injected script at all, adding a second, independent barrier behind the CSP
+  that already tries to stop the script from running in the first place — the
+  essence of defense in depth: one control failing (XSS bypassing CSP)
+  shouldn't automatically mean full account compromise.
+  - **`SameSite=Strict` is the CSRF defense**, not a double-submit token. This
+    app is same-origin (frontend and API share an origin behind the platform
+    proxy/nginx, per **HTTPS everywhere**) with no legitimate cross-site
+    request pattern, so `SameSite=Strict` alone means a cross-site page's
+    request never carries the cookie — a complete mitigation for this app's
+    shape, not a partial one. Revisit if the deployment ever becomes
+    cross-origin/cross-subdomain.
+  - **`Secure` is gated on `not settings.DEBUG`**, matching the existing
+    HSTS/`upgrade-insecure-requests` convention (see **HTTPS everywhere**) —
+    local dev and the pytest suite run over plain `http`, where a `Secure`
+    cookie would simply never be sent/stored.
+  - `get_current_user` (`app/core/security.py`) reads the cookie via
+    `get_token_from_cookie` (401 if absent) instead of
+    `OAuth2PasswordBearer` — `oauth2_scheme` and the now-dead `Token`
+    response model were removed. A side effect: the DEBUG-only `/docs`
+    Swagger UI no longer has a one-click "Authorize" button; exercise
+    authenticated routes through the real frontend or a cookie-jar-aware
+    client instead.
+  - Frontend: `stores/queue.js`'s axios instance sets `withCredentials: true`
+    and no longer reads/writes any token; `isAuthenticated` is
+    `!!currentUser`, resolved via `GET /auth/me` (see `router/index.js`'s
+    `requiresAuth` guard) since an httpOnly cookie can't be read by frontend
+    JS the way a `localStorage` flag could. The two direct-`axios` call sites
+    in `QueueManagementView.vue` (booking/queue settings) also set
+    `withCredentials: true` instead of manually attaching a bearer header.
+- **Brute-force login protection is two independent layers**, not one:
+  `@limiter.limit("5/minute")` per-IP (slowapi) *and* the per-account
+  `failed_login_attempts`/`locked_until` lockout (see **Limit failed login
+  attempts** in Authentication & Authorization) — an attacker rotating IPs
+  doesn't bypass the account lock, and one blocked IP doesn't stop a
+  different attacker from trying a different account.
+- **SQL injection has two independent layers**: the ORM-only rule (bound
+  parameters by construction) *and* `escape_like` for `LIKE` wildcards (see
+  **Database Access & SQL Safety**) — either one failing to be followed in a
+  future change doesn't automatically mean an injectable query, since the
+  other layer (parameterization) still holds.
 
 ## Database Access & SQL Safety
 
