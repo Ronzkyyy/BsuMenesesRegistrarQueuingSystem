@@ -225,6 +225,42 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 Response models keep `EmailStr` too, so a malformed email reaching the DB by
 any other route surfaces as a `500` rather than being served silently.
 
+## Error Handling
+
+- **Unhandled exceptions never reach the client.** `app/main.py` registers a
+  catch-all `add_exception_handler(Exception, ...)`: it logs the real
+  exception with its full traceback server-side on the `bsu.app` logger (INFO
+  level `bsu.security` is for security events specifically — this is a
+  separate, ERROR-level logger for bugs) and returns a generic
+  `{"detail": "An unexpected error occurred. Please try again later."}` 500 —
+  never the exception type, message, or stack trace. Without this, an
+  uncaught exception (e.g. a `ValueError`-only `except` block letting an
+  unexpected `IntegrityError` or similar through) fell through to Starlette's
+  default plain-text 500, which is inconsistent with the API's `{"detail":
+  ...}` shape and untracked in any log.
+- **Validation-error responses never echo sensitive field values back.**
+  `app/main.py` also overrides FastAPI's default `RequestValidationError`
+  handler to strip Pydantic's `"input"` key from every error entry before
+  returning it. Pydantic v2 includes the client's raw rejected value in
+  `"input"` by default — for most fields (a malformed `student_id`) that's
+  harmless, but for `UserCreate.password` / `PasswordChange.new_password` /
+  `PasswordChange.current_password` (length-constrained fields on a JSON
+  body), a too-short or too-long password would otherwise be reflected
+  verbatim in the 422 response body. Stripped globally rather than
+  allowlisting field names, so any future sensitive field is covered
+  automatically.
+- Deliberate `except ValueError as e: raise HTTPException(400, detail=str(e))`
+  conversions in `app/api/{queues,students,tickets,appointments}.py` are
+  fine as-is — every `ValueError` they catch is raised by our own service
+  layer with a hand-written, non-sensitive message (e.g. "Queue not found",
+  "That time slot has already passed today"). This pattern is safe *only*
+  because those call sites raise `ValueError` deliberately for expected
+  failure cases — don't extend it to wrap arbitrary/unexpected exceptions.
+- The frontend's Pinia store (`stores/queue.js`) already only ever reads
+  `err.response?.data?.detail`, falling back to a hardcoded generic string
+  per action when `detail` is absent (e.g. a non-JSON error body) — no
+  frontend change was needed for this principle.
+
 ## Database Access & SQL Safety
 
 - **ORM only.** All runtime DB access goes through the SQLAlchemy ORM query

@@ -1,8 +1,11 @@
 """
 BSU Registrar Queue System - Main Application
 """
+import logging
+import sys
 from pathlib import Path
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +17,36 @@ from .core.limiter import limiter
 from .api import router
 
 configure_security_logging()
+
+app_logger = logging.getLogger("bsu.app")
+if not app_logger.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    app_logger.addHandler(_handler)
+    app_logger.setLevel(logging.ERROR)
+    app_logger.propagate = False
+
+
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Anything reaching here is a bug, not an expected/validated failure - log the
+    # real exception (with traceback) server-side for diagnosis, but never let the
+    # client see internals (stack trace, exception type, DB/library error text).
+    app_logger.error(
+        "Unhandled exception on %s %s", request.method, request.url.path, exc_info=exc,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred. Please try again later."},
+    )
+
+
+async def _validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # FastAPI's default handler echoes each field's rejected raw value back as
+    # "input" - fine for a student ID, not fine for a password that failed a
+    # length check (e.g. PasswordChange.new_password, UserCreate.password).
+    # Strip it everywhere rather than allowlisting field names one by one.
+    errors = [{k: v for k, v in error.items() if k != "input"} for error in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors})
 
 
 def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
@@ -80,6 +113,8 @@ async def add_security_headers(request: Request, call_next):
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RequestValidationError, _validation_exception_handler)
+app.add_exception_handler(Exception, _unhandled_exception_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # CORS for frontend
