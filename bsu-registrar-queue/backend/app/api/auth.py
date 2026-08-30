@@ -20,7 +20,7 @@ from ..core.security import (
     COOKIE_NAME,
 )
 from ..db_models import UserDB, UserRole
-from ..models.user import User, UserCreate, PasswordChange, UserRole as UserRoleModel
+from ..models.user import User, UserCreate, PasswordChange
 from ..services import QueueService, TicketService, StudentService
 
 
@@ -134,15 +134,7 @@ def login(
         "auth.login", outcome="success", request=request,
         actor=user.username, actor_role=user.role.value,
     )
-    return User(
-        id=user.id,
-        username=user.username,
-        full_name=user.full_name,
-        role=UserRoleModel(user.role.value),
-        is_active=user.is_active,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-    )
+    return User.model_validate(user)
 
 
 @router.post("/logout")
@@ -195,15 +187,7 @@ def register_user(
         actor=current_user.username, target=db_user.username,
         detail=f"role={db_user.role.value}",
     )
-    return User(
-        id=db_user.id,
-        username=db_user.username,
-        full_name=db_user.full_name,
-        role=UserRoleModel(db_user.role.value),
-        is_active=db_user.is_active,
-        created_at=db_user.created_at,
-        updated_at=db_user.updated_at,
-    )
+    return User.model_validate(db_user)
 
 
 @router.post("/change-password")
@@ -248,18 +232,7 @@ def list_users(
 ):
     """List all staff users (admin only)"""
     users = db.query(UserDB).all()
-    return [
-        User(
-            id=u.id,
-            username=u.username,
-            full_name=u.full_name,
-            role=UserRoleModel(u.role.value),
-            is_active=u.is_active,
-            created_at=u.created_at,
-            updated_at=u.updated_at,
-        )
-        for u in users
-    ]
+    return [User.model_validate(u) for u in users]
 
 
 @router.patch("/users/{user_id}/deactivate")

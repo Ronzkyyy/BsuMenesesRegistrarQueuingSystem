@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .audit import log_security_event
 from .config import settings
-from .database import SessionLocal
+from .database import get_db
 from ..db_models import UserDB
 from ..models.user import User, TokenData, UserRole
 
@@ -72,15 +72,6 @@ def decode_access_token(token: str) -> Optional[TokenData]:
         return None
 
 
-def get_db():
-    """Dependency to get database session"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 async def get_current_user(
     token: str = Depends(get_token_from_cookie),
     db: Session = Depends(get_db)
@@ -98,15 +89,7 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
-    return User(
-        id=user.id,
-        username=user.username,
-        full_name=user.full_name,
-        role=user.role,
-        is_active=user.is_active,
-        created_at=user.created_at,
-        updated_at=user.updated_at
-    )
+    return User.model_validate(user)
 
 
 async def get_current_active_user(

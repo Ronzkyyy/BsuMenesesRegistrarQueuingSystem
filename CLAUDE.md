@@ -353,6 +353,31 @@ any other route surfaces as a `500` rather than being served silently.
   future change doesn't automatically mean an injectable query, since the
   other layer (parameterization) still holds.
 
+## Keep Security Simple
+
+- **One `get_db` dependency, not two.** `app/core/security.py` used to define
+  its own byte-for-byte copy of `app/core/database.py`'s `get_db()` — the
+  same open/yield/close session logic, duplicated. Every API route already
+  imported the one in `database.py`; only `get_current_user` and the test
+  `client` fixture (which had to override *both* copies) touched the
+  duplicate. `security.py` now imports `get_db` from `.database` instead of
+  redefining it. Two parallel definitions of a security-relevant dependency
+  is exactly the kind of complexity this principle targets — a future change
+  to session handling could get applied to one copy and not the other, and
+  nothing would catch the drift until it caused a real bug.
+- **`User.model_validate(user)`, not a hand-copied field list.**
+  `get_current_user` (`app/core/security.py`) and `login`/`register_user`/
+  `list_users` (`app/api/auth.py`) each used to manually copy 6–7 fields
+  from a `UserDB` row into a `User` model by hand — and three of the four
+  additionally did an unnecessary manual enum conversion
+  (`UserRoleModel(user.role.value)`) that the fourth site didn't bother
+  with. `User` already has `from_attributes=True` configured (needed for
+  every other read path), so `User.model_validate(user)` does the same
+  mapping in one line, correctly and consistently. Four inconsistent
+  hand-written copies of the same mapping in authentication code is the
+  kind of place a future field addition (e.g. a new `User` attribute) is
+  most likely to get updated in three places and missed in the fourth.
+
 ## Database Access & SQL Safety
 
 - **ORM only.** All runtime DB access goes through the SQLAlchemy ORM query
