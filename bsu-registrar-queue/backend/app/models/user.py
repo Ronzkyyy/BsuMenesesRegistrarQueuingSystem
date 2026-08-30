@@ -14,7 +14,7 @@ class UserRole(str, Enum):
 
 
 class UserBase(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     username: str = Field(..., min_length=3, max_length=50, pattern=r"^[A-Za-z0-9_.-]+$")
     full_name: str = Field(..., min_length=1, max_length=100)
@@ -40,6 +40,8 @@ class UserInDB(User):
 
 
 class PasswordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     current_password: str = Field(..., min_length=1, max_length=72)
     new_password: str = Field(..., min_length=8, max_length=72)
 

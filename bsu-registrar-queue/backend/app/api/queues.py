@@ -55,7 +55,7 @@ def list_active_queues(
 @router.get("/dashboard-summary")
 def get_dashboard_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Get aggregate stats for the admin dashboard overview"""
     service = QueueService(db)
@@ -80,7 +80,7 @@ def update_queue_status(
     queue_id: int,
     status: QueueStatus,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Update queue status (admin/registrar only)"""
     service = QueueService(db)
@@ -95,7 +95,7 @@ def update_booking_settings(
     queue_id: int,
     settings: QueueBookingSettings,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Enable/configure appointment booking for a queue (admin/registrar only)"""
     service = QueueService(db)
@@ -127,7 +127,7 @@ def update_queue_settings(
 def pause_queue(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Pause a queue - no new tickets allowed"""
     service = QueueService(db)
@@ -141,7 +141,7 @@ def pause_queue(
 def resume_queue(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Resume a paused queue"""
     service = QueueService(db)
@@ -155,7 +155,7 @@ def resume_queue(
 def close_queue(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Close queue for the day"""
     service = QueueService(db)
@@ -169,7 +169,7 @@ def close_queue(
 def get_queue_stats(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Get queue statistics"""
     service = QueueService(db)

@@ -3,7 +3,7 @@ Media item model for display-board media playlist
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from enum import Enum
 
 
@@ -39,6 +39,8 @@ class MediaSource(str, Enum):
 
 
 class MediaItemBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     media_type: MediaType
     url: str = Field(..., min_length=1, max_length=2048)
     source: MediaSource = MediaSource.LINK
@@ -57,6 +59,8 @@ class MediaItemCreate(MediaItemBase):
 
 
 class MediaItemUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     media_type: Optional[MediaType] = None
     url: Optional[str] = Field(default=None, min_length=1, max_length=2048)
     source: Optional[MediaSource] = None

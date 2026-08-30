@@ -76,7 +76,7 @@ def list_students(
     skip: int = Query(0, ge=0),
     limit: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """List students with filters (staff only)"""
     service = StudentService(db)
@@ -95,7 +95,7 @@ def update_student(
     student_data: StudentBase,
     student_id: int = Path(..., gt=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Update student information (admin/registrar only)"""
     service = StudentService(db)
@@ -129,7 +129,7 @@ def delete_student(
 @router.get("/stats/summary")
 def get_student_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Get student statistics"""
     service = StudentService(db)

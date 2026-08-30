@@ -35,7 +35,7 @@ class YearLevel(str, Enum):
 
 
 class StudentBase(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     student_id: str = Field(..., pattern=r"^\d{10}$", description="10-digit student number, e.g. 2020201163")
     first_name: str = Field(..., min_length=1, max_length=50)

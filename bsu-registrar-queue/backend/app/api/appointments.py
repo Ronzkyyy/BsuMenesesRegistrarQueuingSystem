@@ -84,7 +84,7 @@ def cancel_appointment(
 def search_appointments(
     query: str = Query(..., min_length=1, max_length=50),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Manual lookup fallback for staff - matches student ID or reference code (staff only)"""
     service = AppointmentService(db)
@@ -95,7 +95,7 @@ def search_appointments(
 def check_in(
     payload: AppointmentCheckInRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Scan or manually check in an appointment, creating a queue ticket (staff only)"""
     service = AppointmentService(db)

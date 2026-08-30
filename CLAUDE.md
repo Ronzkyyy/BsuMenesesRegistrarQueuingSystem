@@ -140,7 +140,8 @@ Defined in `app/worker.py` with Redis broker:
     so running migrations in-process (tests) doesn't switch this logger off.
 - JWT tokens (HS256, 30 min expiry) via `app/core/security.py`
 - Role-based access: `Admin` > `Registrar` > `Staff`
-- Dependency injection: `get_current_active_user`, `require_role(UserRole.ADMIN, UserRole.REGISTRAR)`
+- Dependency injection: `get_current_active_user`, `require_role(UserRole.REGISTRAR)`
+  (pass the *minimum* role a route needs — see **Principle of Least Astonishment**)
 
 **Authorize every sensitive action on the server** — the UI hiding a button is
 not a control.
@@ -376,6 +377,58 @@ any other route surfaces as a `500` rather than being served silently.
   - `vite` / `esbuild` dev-server advisories — build tooling only
     (`devDependencies`), not in the deployed app. The vite 5→8 major bump is
     left for a dedicated Dependabot PR so it can be tested in isolation.
+
+## Software Supply Chain
+
+- **`backend/requirements.txt` pins every dependency to an exact `==` version**
+  (no bare `>=` floors). A floor-only range means a fresh `pip install -r
+  requirements.txt` — every CI run, every Docker build, every Render deploy —
+  re-resolves to whatever is newest on PyPI *at that moment*, with zero review;
+  an exact pin makes every install reproducible and means Dependabot (already
+  configured, grouped minor/patch) is the only path a version ever changes,
+  each via its own CI-gated PR. `frontend/package-lock.json` + `npm ci`
+  (already used in both `frontend/Dockerfile` and CI) gives the frontend the
+  same guarantee for its whole dependency tree, hashes included — no
+  equivalent change was needed there.
+- **`.github/workflows/ci.yml` pins third-party GitHub Actions to a commit SHA**,
+  not a movable tag (`actions/checkout@11d5960a…  # v4.4.0`, etc.). A tag like
+  `@v4` can be repointed — by a compromised maintainer account or a hijacked
+  repo, as happened to `tj-actions/changed-files` in 2025 — and every workflow
+  referencing it silently runs the new code with the job's full permissions
+  and secrets on the next trigger. Dependabot's `github-actions` ecosystem
+  (already configured) bumps these SHAs by PR when a new release ships.
+- **Docker base images are pinned to an exact patch tag**, not a floating
+  major/minor one: `python:3.11.16-slim` (`backend/Dockerfile`),
+  `node:20.20.2-alpine` and `nginx:1.27.5-alpine` (`frontend/Dockerfile`) —
+  previously `python:3.11-slim`, `node:20-alpine`, `nginx:1.27-alpine`. A
+  floating tag can resolve to a different underlying image weeks apart with no
+  record of what changed; Dependabot's `docker` ecosystem (already configured
+  for both directories) needs an explicit version segment to track and PR
+  bumps against, same as the pip/npm ecosystems above.
+
+## Principle of Least Astonishment
+
+- **`require_role()` (`app/core/security.py`) enforces an actual role
+  hierarchy**, matching what this doc already claims ("Role-based access:
+  Admin > Registrar > Staff") instead of silently being a flat allow-list.
+  Call it with the *minimum* role a route needs — `require_role(UserRole.
+  REGISTRAR)` permits Registrar and Admin, not just an exact match — rather
+  than listing every permitted role. Before this fix the mechanism was a bare
+  `role not in allowed_roles` check: every existing call site happened to list
+  roles correctly, but nothing stopped a future endpoint written as
+  `require_role(UserRole.REGISTRAR)` alone (trusting the documented hierarchy)
+  from silently locking out Admins — the mechanism didn't match the promise.
+- **Every request-body Pydantic model sets `extra="forbid"`** (`StudentBase`,
+  `QueueBase`/`QueueBookingSettings`/`QueueSettingsUpdate`, `TicketBase`,
+  `UserBase`/`PasswordChange`, `AnnouncementBase`/`AnnouncementUpdate`,
+  `MediaItemBase`/`MediaItemUpdate`, `AppointmentCreate`/
+  `AppointmentCheckInRequest`). Pydantic v2's default is to silently *ignore*
+  unexpected JSON fields rather than reject them — surprising to a caller who
+  sends a field expecting it to do something, and inconsistent with this doc's
+  own **Input Validation** rule ("reject unexpected input with 422 — never
+  coerce or sanitize-then-accept"). Response-only models (`*Public`, and
+  read models built with `from_attributes=True` from an ORM row) don't need
+  this — there's no untrusted caller-supplied dict to police there.
 
 ## Frontend State (Pinia)
 - `stores/queue.js` - Manages queues, tickets, and display data

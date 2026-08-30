@@ -85,7 +85,7 @@ def cancel_ticket(
 def complete_ticket(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Registrar marks ticket as completed"""
     service = TicketService(db)
@@ -99,7 +99,7 @@ def complete_ticket(
 def serve_ticket(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Mark ticket as currently being served"""
     service = TicketService(db)
@@ -113,7 +113,7 @@ def serve_ticket(
 def call_ticket(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Record that staff called this ticket again (does not change status)"""
     service = TicketService(db)
@@ -127,7 +127,7 @@ def call_ticket(
 def mark_no_show(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Mark ticket as no-show"""
     service = TicketService(db)
@@ -179,7 +179,7 @@ def get_now_serving_overview(
 def serve_next_ticket(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Serve the next ticket in queue (considering priority)"""
     service = TicketService(db)

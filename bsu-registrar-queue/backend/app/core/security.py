@@ -13,7 +13,7 @@ from .audit import log_security_event
 from .config import settings
 from .database import SessionLocal
 from ..db_models import UserDB
-from ..models.user import User, TokenData
+from ..models.user import User, TokenData, UserRole
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -110,17 +110,28 @@ def create_user_token(user: UserDB) -> str:
     )
 
 
-def require_role(*allowed_roles):
-    """Dependency to require specific role(s)"""
+# Ascending privilege - CLAUDE.md documents this as "Admin > Registrar > Staff",
+# so require_role() enforces an actual hierarchy rather than a flat allow-list:
+# passing REGISTRAR permits Registrar *and* Admin, matching that documented
+# mental model instead of silently locking Admins out of a Registrar-only
+# route the way a bare `role != required` check would.
+_ROLE_HIERARCHY = [UserRole.STAFF, UserRole.REGISTRAR, UserRole.ADMIN]
+
+
+def require_role(minimum_role: UserRole):
+    """Dependency to require at least `minimum_role`, per the Admin > Registrar >
+    Staff hierarchy - any role at or above it is allowed."""
+    minimum_level = _ROLE_HIERARCHY.index(minimum_role)
+
     def role_checker(
         request: Request,
         current_user: User = Depends(get_current_active_user),
     ) -> User:
-        if current_user.role not in allowed_roles:
+        if _ROLE_HIERARCHY.index(current_user.role) < minimum_level:
             log_security_event(
                 "authz.denied", outcome="denied", request=request,
                 actor=current_user.username, actor_role=getattr(current_user.role, "value", str(current_user.role)),
-                detail="requires one of: " + ", ".join(getattr(r, "value", str(r)) for r in allowed_roles),
+                detail=f"requires at least: {minimum_role.value}",
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

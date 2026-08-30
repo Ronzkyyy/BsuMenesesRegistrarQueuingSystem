@@ -28,7 +28,7 @@ def list_active_announcements(
 @router.get("", response_model=List[Announcement])
 def list_announcements(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """List all announcements, including inactive (admin/registrar only)"""
     service = AnnouncementService(db)
@@ -39,7 +39,7 @@ def list_announcements(
 def create_announcement(
     data: AnnouncementCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Create a new announcement (admin/registrar only)"""
     service = AnnouncementService(db)
@@ -51,7 +51,7 @@ def update_announcement(
     item_id: int,
     data: AnnouncementUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Update an announcement (admin/registrar only)"""
     service = AnnouncementService(db)
@@ -65,7 +65,7 @@ def update_announcement(
 def delete_announcement(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Delete an announcement (admin/registrar only)"""
     service = AnnouncementService(db)

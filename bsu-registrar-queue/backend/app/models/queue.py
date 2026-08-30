@@ -26,7 +26,7 @@ class QueueType(str, Enum):
 
 
 class QueueBase(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     name: str = Field(..., min_length=1, max_length=100)
     queue_type: QueueType
@@ -70,6 +70,8 @@ class QueueInDB(Queue):
 
 
 class QueueBookingSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     booking_enabled: bool
     operating_start_time: time
     operating_end_time: time
@@ -78,5 +80,7 @@ class QueueBookingSettings(BaseModel):
 
 
 class QueueSettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     max_capacity: int = Field(ge=1, le=200)
     slot_duration_minutes: int = Field(ge=5, le=120)

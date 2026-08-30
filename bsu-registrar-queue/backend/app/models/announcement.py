@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AnnouncementBase(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     text: str = Field(..., min_length=1, max_length=500)
     display_order: int = 0
@@ -19,7 +19,7 @@ class AnnouncementCreate(AnnouncementBase):
 
 
 class AnnouncementUpdate(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     text: Optional[str] = Field(default=None, min_length=1, max_length=500)
     display_order: Optional[int] = None

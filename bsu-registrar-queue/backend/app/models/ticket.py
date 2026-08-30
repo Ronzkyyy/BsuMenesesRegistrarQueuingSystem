@@ -22,7 +22,7 @@ class PriorityLevel(str, Enum):
 
 
 class TicketBase(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     student_id: int = Field(..., gt=0)
     queue_id: int = Field(..., gt=0)

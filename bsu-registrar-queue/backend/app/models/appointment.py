@@ -15,7 +15,7 @@ class AppointmentStatus(str, Enum):
 
 
 class AppointmentCreate(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     student_id: int = Field(..., gt=0)
     queue_id: int = Field(..., gt=0)
@@ -58,7 +58,7 @@ class SlotAvailability(BaseModel):
 
 
 class AppointmentCheckInRequest(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     token: Optional[str] = Field(default=None, max_length=64)
     reference_code: Optional[str] = Field(default=None, max_length=20)
