@@ -496,8 +496,10 @@ trusted to set. One real case fixed here:
     path is never called. The real fix is to move auth off `python-jose` to
     `PyJWT` — worth doing in its own PR.
   - `vite` / `esbuild` dev-server advisories — build tooling only
-    (`devDependencies`), not in the deployed app. The vite 5→8 major bump is
-    left for a dedicated Dependabot PR so it can be tested in isolation.
+    (`devDependencies`), not in the deployed app. The vite 5→8 major bump was
+    done in its own PR (`vite@^8` + `@vitejs/plugin-vue@^6` together — vite 8
+    needs plugin-vue 6; `vitest@4` already supports it). vite 8 builds with
+    Rolldown.
 
 ## Software Supply Chain
 
