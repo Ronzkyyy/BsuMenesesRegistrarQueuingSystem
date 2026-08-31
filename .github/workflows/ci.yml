@@ -25,6 +25,10 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      # The test suite runs against the dev posture (see tests/test_security_headers.py);
+      # locally that comes from backend/.env, which doesn't exist in CI. Without this,
+      # config.py's fail-fast (placeholder SECRET_KEY + DEBUG=False) aborts collection.
+      DEBUG: "True"
     defaults:
       run:
         working-directory: bsu-registrar-queue/backend
