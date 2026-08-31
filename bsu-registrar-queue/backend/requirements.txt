@@ -18,3 +18,4 @@ email-validator==2.3.0  # required by pydantic EmailStr (student email validatio
 httpx==0.28.1
 slowapi==0.1.10
 pytest==9.1.1
+setuptools==84.0.0  # patches PYSEC-2026-3447; GitHub Actions' Python image ships 79.0.1 and nothing else upgrades it, tripping the pip-audit CI gate
