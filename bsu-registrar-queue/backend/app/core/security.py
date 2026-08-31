@@ -5,18 +5,37 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from .audit import log_security_event
 from .config import settings
-from .database import SessionLocal
+from .database import get_db
 from ..db_models import UserDB
-from ..models.user import User, TokenData
+from ..models.user import User, TokenData, UserRole
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# The JWT rides in an httpOnly cookie rather than an Authorization header, so
+# it's never readable by page JavaScript - closes off token theft via XSS,
+# a second, independent layer beyond the CSP that already blocks injected
+# scripts from running in the first place. SameSite=Strict (set where this
+# cookie is issued, in app/api/auth.py) is the CSRF defense for it - this app
+# is same-origin with no legitimate cross-site request pattern, so that alone
+# is a complete mitigation here, not a partial one.
+COOKIE_NAME = "registrar_token"
+
+
+def get_token_from_cookie(request: Request) -> str:
+    """Extract the JWT from the httpOnly session cookie, 401 if absent."""
+    token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+    return token
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -53,24 +72,14 @@ def decode_access_token(token: str) -> Optional[TokenData]:
         return None
 
 
-def get_db():
-    """Dependency to get database session"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_token_from_cookie),
     db: Session = Depends(get_db)
 ) -> User:
     """Get the current authenticated user from JWT token"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
     token_data = decode_access_token(token)
     if token_data is None:
@@ -80,15 +89,7 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
-    return User(
-        id=user.id,
-        username=user.username,
-        full_name=user.full_name,
-        role=user.role,
-        is_active=user.is_active,
-        created_at=user.created_at,
-        updated_at=user.updated_at
-    )
+    return User.model_validate(user)
 
 
 async def get_current_active_user(
@@ -109,10 +110,29 @@ def create_user_token(user: UserDB) -> str:
     )
 
 
-def require_role(*allowed_roles):
-    """Dependency to require specific role(s)"""
-    def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
-        if current_user.role not in allowed_roles:
+# Ascending privilege - CLAUDE.md documents this as "Admin > Registrar > Staff",
+# so require_role() enforces an actual hierarchy rather than a flat allow-list:
+# passing REGISTRAR permits Registrar *and* Admin, matching that documented
+# mental model instead of silently locking Admins out of a Registrar-only
+# route the way a bare `role != required` check would.
+_ROLE_HIERARCHY = [UserRole.STAFF, UserRole.REGISTRAR, UserRole.ADMIN]
+
+
+def require_role(minimum_role: UserRole):
+    """Dependency to require at least `minimum_role`, per the Admin > Registrar >
+    Staff hierarchy - any role at or above it is allowed."""
+    minimum_level = _ROLE_HIERARCHY.index(minimum_role)
+
+    def role_checker(
+        request: Request,
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
+        if _ROLE_HIERARCHY.index(current_user.role) < minimum_level:
+            log_security_event(
+                "authz.denied", outcome="denied", request=request,
+                actor=current_user.username, actor_role=getattr(current_user.role, "value", str(current_user.role)),
+                detail=f"requires at least: {minimum_role.value}",
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions"

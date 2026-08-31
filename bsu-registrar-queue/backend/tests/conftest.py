@@ -39,6 +39,9 @@ def _ensure_test_database_exists():
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (TEST_DB_NAME,))
             if not cur.fetchone():
+                # A database name is a SQL identifier, not a value, so it cannot
+                # be a bind parameter. TEST_DB_NAME is a hardcoded constant in
+                # this file (never user input), so interpolating it is safe.
                 cur.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
     finally:
         conn.close()
@@ -73,6 +76,9 @@ def _apply_migrations():
 
     engine = create_engine(TEST_DATABASE_URL)
     with engine.begin() as connection:
+        # Table names are SQL identifiers (not bindable values) and come from
+        # SQLAlchemy's own schema metadata, not from any request/user input, so
+        # interpolating them into this teardown DDL is safe.
         table_names = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
         if table_names:
             connection.exec_driver_sql(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE")
@@ -168,3 +174,55 @@ def make_student(db_session):
         return service.create_student(StudentCreate(**defaults))
 
     return _make
+
+
+_username_counter = itertools.count(1)
+
+
+@pytest.fixture()
+def make_user(db_session):
+    """Factory for a persisted staff UserDB with a known plaintext password."""
+    from app.db_models import UserDB, UserRole
+    from app.core.security import get_password_hash
+
+    def _make(password="secret-pass-123", role=UserRole.STAFF, **overrides):
+        defaults = dict(
+            username=overrides.pop("username", f"user{next(_username_counter)}"),
+            full_name="Test User",
+            role=role,
+            hashed_password=get_password_hash(password),
+            is_active=True,
+        )
+        defaults.update(overrides)
+        user = UserDB(**defaults)
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+        user._plain_password = password
+        return user
+
+    return _make
+
+
+@pytest.fixture()
+def client(db_session):
+    """FastAPI TestClient wired to the per-test transactional session, with
+    the per-IP rate limiter disabled so tests can exercise the app's own
+    logic (e.g. account lockout) without tripping slowapi first."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.database import get_db
+    from app.core.limiter import limiter
+
+    # app.core.security.get_current_user depends on the same get_db (it
+    # imports it from app.core.database rather than defining its own), so
+    # overriding this one dependency covers every request in a test.
+    app.dependency_overrides[get_db] = lambda: db_session
+    limiter_was_enabled = limiter.enabled
+    limiter.enabled = False
+    try:
+        with TestClient(app) as c:
+            yield c
+    finally:
+        limiter.enabled = limiter_was_enabled
+        app.dependency_overrides.pop(get_db, None)

@@ -3,7 +3,7 @@ Student model for BSU student records
 """
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from enum import Enum
 
 
@@ -17,6 +17,7 @@ class Course(str, Enum):
     BSIT = "Bachelor of Science in Information Technology"
     BSHM = "Bachelor of Science in Hospitality Management"
     BSBA = "Bachelor of Science in Business Administration"
+    BSCPE = "Bachelor of Science in Computer Engineering"
     BIT = "Bachelor of Industrial Technology"
 
 
@@ -35,17 +36,24 @@ class YearLevel(str, Enum):
 
 
 class StudentBase(BaseModel):
+    """Identity/enrollment fields any caller may provide - deliberately excludes
+    is_scholar/is_varsity/is_graduating. Those flags feed straight into
+    TicketService.calculate_priority (is_graduating -> URGENT, the others ->
+    PRIORITY), so they must never be settable by the public, unauthenticated
+    kiosk self-registration endpoint (POST /students uses this model) - a
+    self-declared "Graduating Student" checkbox would let anyone jump every
+    queue. Only StudentCreate (below) - used by the registrar-gated PATCH and
+    the admin-only bulk-import - can set them."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
     student_id: str = Field(..., pattern=r"^\d{10}$", description="10-digit student number, e.g. 2020201163")
-    first_name: str
-    last_name: str
-    email: str
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: str = Field(..., min_length=1, max_length=50)
+    email: EmailStr = Field(..., max_length=100)
     student_type: StudentType
     course: Course
     major: Optional[Major] = None
     year_level: YearLevel
-    is_scholar: bool = False
-    is_varsity: bool = False
-    is_graduating: bool = False
 
     @model_validator(mode="after")
     def validate_major(self) -> "StudentBase":
@@ -57,16 +65,18 @@ class StudentBase(BaseModel):
 
 
 class StudentCreate(StudentBase):
-    pass
+    """For trusted (staff-authenticated) callers only - see StudentBase."""
+    is_scholar: bool = False
+    is_varsity: bool = False
+    is_graduating: bool = False
 
 
-class Student(StudentBase):
+class Student(StudentCreate):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class StudentInDB(Student):
@@ -85,14 +95,13 @@ class StudentPublic(BaseModel):
     prefill the ticket-taking form, and it shouldn't be exposed to an
     anonymous caller who only supplied a guessable 10-digit student number.
     """
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     student_id: str
     first_name: str
     last_name: str
-    email: str
-
-    class Config:
-        from_attributes = True
+    email: EmailStr
 
 
 class StudentListResponse(BaseModel):

@@ -8,16 +8,8 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: '/api',
   timeout: 10000,
-})
-
-const TOKEN_KEY = 'registrar_token'
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
+  // Auth rides in an httpOnly cookie, not a token this JS can read or attach.
+  withCredentials: true,
 })
 
 export const useQueueStore = defineStore('queue', {
@@ -49,7 +41,6 @@ export const useQueueStore = defineStore('queue', {
     checkInResult: null,
 
     // Auth
-    token: localStorage.getItem(TOKEN_KEY) || null,
     currentUser: null,
 
     // Dashboard
@@ -81,7 +72,7 @@ export const useQueueStore = defineStore('queue', {
     estimatedWaitTime: (state) => state.myTicket?.estimated_wait_time_minutes ?? 0,
 
     // Auth getters
-    isAuthenticated: (state) => !!state.token,
+    isAuthenticated: (state) => !!state.currentUser,
 
     // Student getters
     isStudentRegistered: (state) => !!state.currentStudent,
@@ -109,9 +100,7 @@ export const useQueueStore = defineStore('queue', {
         const response = await api.post('/auth/login', form, {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })
-        this.token = response.data.access_token
-        localStorage.setItem(TOKEN_KEY, this.token)
-        await this.fetchCurrentUser()
+        this.currentUser = response.data
         return response.data
       } catch (err) {
         this.error = err.response?.data?.detail || 'Invalid username or password'
@@ -132,10 +121,13 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
-    logout() {
-      this.token = null
+    async logout() {
+      try {
+        await api.post('/auth/logout')
+      } catch (err) {
+        // Cookie may already be expired/cleared - not a reason to block local cleanup.
+      }
       this.currentUser = null
-      localStorage.removeItem(TOKEN_KEY)
       this.stopPolling()
     },
 
@@ -539,11 +531,14 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
-    async fetchMyTicket(studentId, queueId = null) {
+    // studentNumber is the 10-digit student number (not the internal id) -
+    // the public my-ticket / cancel endpoints key on it so a caller can't
+    // read or cancel another student's ticket by guessing internal ids.
+    async fetchMyTicket(studentNumber, queueId = null) {
       this.loading = true
       this.error = null
       try {
-        const params = { student_id: studentId }
+        const params = { student_id: studentNumber }
         if (queueId) params.queue_id = queueId
         const response = await api.get('/tickets/my-ticket', { params })
         this.myTicket = response.data
@@ -559,11 +554,13 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
-    async cancelTicket(ticketId) {
+    async cancelTicket(ticketId, studentNumber) {
       this.loading = true
       this.error = null
       try {
-        const response = await api.post(`/tickets/${ticketId}/cancel`)
+        const response = await api.post(`/tickets/${ticketId}/cancel`, null, {
+          params: { student_id: studentNumber },
+        })
         this.myTicket = null
         return response.data
       } catch (err) {
@@ -831,9 +828,19 @@ export const useQueueStore = defineStore('queue', {
       this.loading = true
       this.error = null
       try {
-        const response = await api.post('/students', studentData)
-        this.students.push(response.data)
-        return response.data
+        // is_scholar/is_varsity/is_graduating drive queue priority, so the
+        // public create endpoint (shared with kiosk self-registration)
+        // never accepts them - create without them, then a follow-up PATCH
+        // (registrar-only) sets them if the admin form requested any.
+        const { is_scholar, is_varsity, is_graduating, ...createPayload } = studentData
+        const response = await api.post('/students', createPayload)
+        let student = response.data
+        if (is_scholar || is_varsity || is_graduating) {
+          const patchResponse = await api.patch(`/students/${student.id}`, studentData)
+          student = patchResponse.data
+        }
+        this.students.push(student)
+        return student
       } catch (err) {
         this.error = err.response?.data?.detail || 'Failed to create student'
         throw err
@@ -922,13 +929,13 @@ export const useQueueStore = defineStore('queue', {
 
     // ============ POLLING ACTIONS ============
 
-    startPollingMyTicket(studentId, queueId = null, interval = 10000) {
+    startPollingMyTicket(studentNumber, queueId = null, interval = 10000) {
       this.stopPolling()
       this.pollingInterval = setInterval(() => {
-        this.fetchMyTicket(studentId, queueId).catch(() => {})
+        this.fetchMyTicket(studentNumber, queueId).catch(() => {})
       }, interval)
       // Initial fetch
-      this.fetchMyTicket(studentId, queueId).catch(() => {})
+      this.fetchMyTicket(studentNumber, queueId).catch(() => {})
     },
 
     startPollingQueueDisplay(queueId, interval = 5000) {

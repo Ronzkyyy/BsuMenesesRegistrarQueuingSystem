@@ -12,6 +12,7 @@ from ..models.appointment import (
     Appointment, AppointmentBooked, AppointmentCreate, AppointmentStatus, SlotAvailability
 )
 from ..models.ticket import Ticket, TicketCreate
+from .search_utils import LIKE_ESCAPE, escape_like
 from .ticket_service import TicketService
 
 
@@ -173,11 +174,12 @@ class AppointmentService:
 
     def search(self, query: str) -> List[Appointment]:
         """Staff manual lookup fallback - matches student ID or reference code, booked appointments only"""
+        pattern = f"%{escape_like(query)}%"
         rows = self.db.query(AppointmentDB).join(StudentDB, AppointmentDB.student_id == StudentDB.id).filter(
             AppointmentDB.status == AppointmentDBStatus.BOOKED,
             or_(
-                StudentDB.student_id.ilike(f"%{query}%"),
-                AppointmentDB.reference_code.ilike(f"%{query}%"),
+                StudentDB.student_id.ilike(pattern, escape=LIKE_ESCAPE),
+                AppointmentDB.reference_code.ilike(pattern, escape=LIKE_ESCAPE),
             )
         ).order_by(AppointmentDB.appointment_date, AppointmentDB.slot_start_time).limit(20).all()
 

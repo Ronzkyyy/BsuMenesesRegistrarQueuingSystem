@@ -1,7 +1,7 @@
 """
 Ticket management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -44,11 +44,16 @@ def create_ticket(
 @limiter.limit("30/minute")
 def get_my_ticket(
     request: Request,
-    student_id: int,
-    queue_id: Optional[int] = None,
+    student_id: str = Query(..., pattern=r"^\d{10}$", description="10-digit student number"),
+    queue_id: Optional[int] = Query(None, gt=0),
     db: Session = Depends(get_db)
 ):
-    """Get student's current ticket, optionally scoped to one queue (public endpoint)"""
+    """Get student's current ticket, optionally scoped to one queue (public endpoint).
+
+    Keyed on the 10-digit student number, not the internal id - this is
+    unauthenticated, so it must not let a caller enumerate other students'
+    tickets (and their free-text purpose) by counting up internal ids.
+    """
     service = TicketService(db)
     ticket = service.get_student_ticket(student_id, queue_id)
     if not ticket:
@@ -60,12 +65,17 @@ def get_my_ticket(
 @limiter.limit("10/minute")
 def cancel_ticket(
     request: Request,
-    ticket_id: int,
+    ticket_id: int = Path(..., gt=0),
+    student_id: str = Query(..., pattern=r"^\d{10}$", description="10-digit student number of the ticket owner"),
     db: Session = Depends(get_db)
 ):
-    """Student cancels their ticket (public endpoint)"""
+    """Student cancels their own ticket (public endpoint).
+
+    Requires the owner's 10-digit student number: this is unauthenticated, so
+    without an ownership check any ticket id could be cancelled by anyone.
+    """
     service = TicketService(db)
-    ticket = service.cancel_ticket(ticket_id)
+    ticket = service.cancel_ticket(ticket_id, student_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found or cannot be cancelled")
     return ticket
@@ -75,7 +85,7 @@ def cancel_ticket(
 def complete_ticket(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Registrar marks ticket as completed"""
     service = TicketService(db)
@@ -89,7 +99,7 @@ def complete_ticket(
 def serve_ticket(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Mark ticket as currently being served"""
     service = TicketService(db)
@@ -103,7 +113,7 @@ def serve_ticket(
 def call_ticket(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Record that staff called this ticket again (does not change status)"""
     service = TicketService(db)
@@ -117,7 +127,7 @@ def call_ticket(
 def mark_no_show(
     ticket_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Mark ticket as no-show"""
     service = TicketService(db)
@@ -169,7 +179,7 @@ def get_now_serving_overview(
 def serve_next_ticket(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Serve the next ticket in queue (considering priority)"""
     service = TicketService(db)

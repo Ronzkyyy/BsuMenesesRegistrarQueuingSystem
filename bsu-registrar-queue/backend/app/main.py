@@ -1,16 +1,52 @@
 """
 BSU Registrar Queue System - Main Application
 """
+import logging
+import sys
 from pathlib import Path
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from .core.audit import configure_security_logging, log_security_event
 from .core.config import settings
 from .core.limiter import limiter
 from .api import router
+
+configure_security_logging()
+
+app_logger = logging.getLogger("bsu.app")
+if not app_logger.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    app_logger.addHandler(_handler)
+    app_logger.setLevel(logging.ERROR)
+    app_logger.propagate = False
+
+
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Anything reaching here is a bug, not an expected/validated failure - log the
+    # real exception (with traceback) server-side for diagnosis, but never let the
+    # client see internals (stack trace, exception type, DB/library error text).
+    app_logger.error(
+        "Unhandled exception on %s %s", request.method, request.url.path, exc_info=exc,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred. Please try again later."},
+    )
+
+
+async def _validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # FastAPI's default handler echoes each field's rejected raw value back as
+    # "input" - fine for a student ID, not fine for a password that failed a
+    # length check (e.g. PasswordChange.new_password, UserCreate.password).
+    # Strip it everywhere rather than allowlisting field names one by one.
+    errors = [{k: v for k, v in error.items() if k != "input"} for error in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors})
 
 
 def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
@@ -19,6 +55,10 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     # the frontend only ever reads err.response.data.detail - matching that
     # shape here is what makes a 429 show a real message instead of the
     # generic "check your credentials" fallback.
+    log_security_event(
+        "security.rate_limited", outcome="blocked", request=request,
+        actor="anonymous", detail=str(exc.limit.limit) if exc.limit else None,
+    )
     return JSONResponse(
         status_code=429,
         content={"detail": "Too many attempts. Please wait a moment and try again."},
@@ -39,21 +79,42 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
+_DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
+
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
-    # Cheap, universally-safe hardening headers - none of these constrain
-    # anything this app actually does (no iframes, no cross-origin embeds),
-    # so there's no compatibility risk. A reverse proxy in front of this in
-    # production may also set these; duplicates are harmless.
+    # Hardening headers for every API/static response. The browser-facing SPA
+    # gets its own (broader) header set from nginx in front of the frontend;
+    # these cover the API surface and anything that reaches the backend directly.
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+    # Don't advertise the server stack.
+    response.headers["Server"] = "api"
+
+    # API responses render no HTML and load no subresources, so lock the CSP
+    # all the way down. Swagger/ReDoc (DEBUG only) pull assets from a CDN, so
+    # they're exempted.
+    if not request.url.path.startswith(_DOCS_PATHS):
+        csp = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        if not settings.DEBUG:
+            csp += "; upgrade-insecure-requests"
+        response.headers["Content-Security-Policy"] = csp
+
+    # HSTS: prod only (DEBUG=False) - local dev runs over plain http://localhost.
+    if not settings.DEBUG:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RequestValidationError, _validation_exception_handler)
+app.add_exception_handler(Exception, _unhandled_exception_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # CORS for frontend

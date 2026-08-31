@@ -60,6 +60,30 @@ def test_non_bit_course_rejects_major(db_session):
         )
 
 
+def test_computer_engineering_course_is_accepted(db_session, make_student):
+    student = make_student(student_id="3010000010", course=Course.BSCPE)
+
+    assert student.course == Course.BSCPE
+
+    service = StudentService(db_session)
+    fetched = service.get_student_by_student_id("3010000010")
+    assert fetched.course == Course.BSCPE
+
+
+def test_computer_engineering_course_rejects_major(db_session):
+    with pytest.raises(ValueError, match="only applicable"):
+        StudentCreate(
+            student_id="3010000011",
+            first_name="Test",
+            last_name="Student",
+            email="cpe@example.com",
+            student_type=StudentType.UNDERGRADUATE,
+            course=Course.BSCPE,
+            major=Major.COMPUTER_TECHNOLOGY,
+            year_level=YearLevel.FIRST,
+        )
+
+
 def test_search_students_by_query(db_session, make_student):
     make_student(first_name="Bea", last_name="Santos")
     make_student(first_name="Carlo", last_name="Cruz")

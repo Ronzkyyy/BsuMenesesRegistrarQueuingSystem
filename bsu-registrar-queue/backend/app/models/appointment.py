@@ -3,7 +3,7 @@ Appointment model for QR-based queue booking
 """
 from datetime import date, datetime, time
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
 
 
@@ -15,11 +15,13 @@ class AppointmentStatus(str, Enum):
 
 
 class AppointmentCreate(BaseModel):
-    student_id: int
-    queue_id: int
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    student_id: int = Field(..., gt=0)
+    queue_id: int = Field(..., gt=0)
     appointment_date: date
     slot_start_time: time
-    purpose: Optional[str] = None
+    purpose: Optional[str] = Field(default=None, max_length=500)
 
 
 class Appointment(BaseModel):
@@ -56,6 +58,8 @@ class SlotAvailability(BaseModel):
 
 
 class AppointmentCheckInRequest(BaseModel):
-    token: Optional[str] = None
-    reference_code: Optional[str] = None
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    token: Optional[str] = Field(default=None, max_length=64)
+    reference_code: Optional[str] = Field(default=None, max_length=20)
     force: bool = False

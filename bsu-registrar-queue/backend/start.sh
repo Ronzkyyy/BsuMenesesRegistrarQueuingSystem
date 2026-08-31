@@ -16,4 +16,12 @@ if [ "$RUN_WORKER_INLINE" = "true" ]; then
     celery -A app.worker worker --beat --loglevel=info -Q celery,notifications &
 fi
 
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+# --proxy-headers + --forwarded-allow-ips="*": trust X-Forwarded-Proto/For
+# from the TLS-terminating proxy in front of this container (the platform
+# load balancer / nginx) so request.url.scheme is "https" in production and
+# the HTTPS-only response headers actually fire. Safe because this container
+# is never published directly - it's only reachable through that proxy.
+# --no-server-header: don't emit "Server: uvicorn"; the security-headers
+# middleware sets a generic "Server: api" instead.
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" \
+    --proxy-headers --forwarded-allow-ips="*" --no-server-header

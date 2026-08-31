@@ -590,20 +590,18 @@ const updateQueueDisplay = async () => {
 
 // Booking settings is a one-off admin action with no other frontend
 // consumer, so it calls the API directly rather than adding a rarely-used
-// store action - reuses the store's auth token the same way the store's own
-// axios instance does.
+// store action - the session cookie rides along automatically via
+// withCredentials, same as every other request.
 const api_patchBookingSettings = (queueId, payload) => {
-  const token = localStorage.getItem('registrar_token')
   return axios.patch(`/api/queues/${queueId}/booking-settings`, payload, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    withCredentials: true,
   })
 }
 
 // Same one-off-admin-action reasoning as api_patchBookingSettings above.
 const api_patchQueueSettings = (queueId, payload) => {
-  const token = localStorage.getItem('registrar_token')
   return axios.patch(`/api/queues/${queueId}/settings`, payload, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    withCredentials: true,
   })
 }
 

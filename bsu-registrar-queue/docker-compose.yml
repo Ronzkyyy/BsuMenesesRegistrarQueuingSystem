@@ -27,13 +27,13 @@ services:
       POSTGRES_DB: bsu_queue
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Not published to the host - only `backend` and `worker` need it, and they
+    # reach it over the internal compose network as `db:5432`. Add a `ports`
+    # mapping back temporarily if you need to inspect it with a local client.
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # Internal-only, same reasoning as `db` above (reachable as `redis:6379`).
 
   worker:
     build: ./backend

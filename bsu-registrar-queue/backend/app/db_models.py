@@ -60,6 +60,7 @@ class Course(str, enum.Enum):
     BSIT = "Bachelor of Science in Information Technology"
     BSHM = "Bachelor of Science in Hospitality Management"
     BSBA = "Bachelor of Science in Business Administration"
+    BSCPE = "Bachelor of Science in Computer Engineering"
     BIT = "Bachelor of Industrial Technology"
 
 
@@ -149,6 +150,11 @@ class UserDB(Base):
     role = Column(Enum(UserRole), nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    # Brute-force protection: consecutive failed logins, reset to 0 on any
+    # success; locked_until is set once the count hits the threshold and blocks
+    # all logins (even correct ones) until it passes.
+    failed_login_attempts = Column(Integer, nullable=False, server_default="0")
+    locked_until = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

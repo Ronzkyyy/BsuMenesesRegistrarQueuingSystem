@@ -1,10 +1,11 @@
 """
 Queue management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List
 
+from ..core.audit import log_security_event
 from ..core.database import get_db
 from ..core.security import get_current_active_user, require_role
 from ..db_models import UserRole
@@ -32,8 +33,8 @@ def create_queue(
 
 @router.get("", response_model=List[Queue])
 def list_queues(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -54,7 +55,7 @@ def list_active_queues(
 @router.get("/dashboard-summary")
 def get_dashboard_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Get aggregate stats for the admin dashboard overview"""
     service = QueueService(db)
@@ -79,7 +80,7 @@ def update_queue_status(
     queue_id: int,
     status: QueueStatus,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Update queue status (admin/registrar only)"""
     service = QueueService(db)
@@ -94,7 +95,7 @@ def update_booking_settings(
     queue_id: int,
     settings: QueueBookingSettings,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Enable/configure appointment booking for a queue (admin/registrar only)"""
     service = QueueService(db)
@@ -126,7 +127,7 @@ def update_queue_settings(
 def pause_queue(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Pause a queue - no new tickets allowed"""
     service = QueueService(db)
@@ -140,7 +141,7 @@ def pause_queue(
 def resume_queue(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Resume a paused queue"""
     service = QueueService(db)
@@ -154,7 +155,7 @@ def resume_queue(
 def close_queue(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Close queue for the day"""
     service = QueueService(db)
@@ -168,7 +169,7 @@ def close_queue(
 def get_queue_stats(
     queue_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR, UserRole.STAFF))
+    current_user: User = Depends(require_role(UserRole.STAFF))
 ):
     """Get queue statistics"""
     service = QueueService(db)
@@ -180,6 +181,7 @@ def get_queue_stats(
 
 @router.delete("/{queue_id}")
 def delete_queue(
+    request: Request,
     queue_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
@@ -193,4 +195,8 @@ def delete_queue(
     if not deleted:
         raise HTTPException(status_code=404, detail="Queue not found")
 
+    log_security_event(
+        "queue.deleted", outcome="success", request=request,
+        actor=current_user.username, target=f"queue#{queue_id}",
+    )
     return {"message": "Queue deleted successfully"}

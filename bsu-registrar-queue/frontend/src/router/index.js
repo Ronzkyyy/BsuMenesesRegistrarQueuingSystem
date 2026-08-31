@@ -90,7 +90,11 @@ router.beforeEach(async (to) => {
   const queueStore = useQueueStore()
 
   if (to.meta.requiresAuth && !queueStore.isAuthenticated) {
-    return { name: 'login' }
+    try {
+      await queueStore.fetchCurrentUser()
+    } catch (err) {
+      return { name: 'login' }
+    }
   }
 
   if (to.meta.requiresAdmin) {

@@ -12,7 +12,6 @@ const { mockApi } = vi.hoisted(() => ({
     post: vi.fn(),
     patch: vi.fn(),
     delete: vi.fn(),
-    interceptors: { request: { use: vi.fn() } },
   },
 }))
 
@@ -35,7 +34,6 @@ function fail(detail) {
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
-  localStorage.clear()
 })
 
 describe('getters', () => {
@@ -46,10 +44,10 @@ describe('getters', () => {
     expect(store.hasActiveTicket).toBe(true)
   })
 
-  it('isAuthenticated reflects whether a token is present', () => {
+  it('isAuthenticated reflects whether currentUser is loaded', () => {
     const store = useQueueStore()
     expect(store.isAuthenticated).toBe(false)
-    store.token = 'abc123'
+    store.currentUser = { id: 1, username: 'admin' }
     expect(store.isAuthenticated).toBe(true)
   })
 
@@ -69,9 +67,8 @@ describe('getters', () => {
 })
 
 describe('auth actions', () => {
-  it('login stores the token and fetches the current user', async () => {
-    mockApi.post.mockReturnValueOnce(ok({ access_token: 'tok-1' }))
-    mockApi.get.mockReturnValueOnce(ok({ id: 1, username: 'admin' }))
+  it('login sets currentUser from the response body (no token in it)', async () => {
+    mockApi.post.mockReturnValueOnce(ok({ id: 1, username: 'admin' }))
     const store = useQueueStore()
 
     const result = await store.login('admin', 'admin123', 'admin')
@@ -81,10 +78,8 @@ describe('auth actions', () => {
       expect.any(URLSearchParams),
       expect.objectContaining({ headers: expect.any(Object) })
     )
-    expect(store.token).toBe('tok-1')
-    expect(localStorage.getItem('registrar_token')).toBe('tok-1')
     expect(store.currentUser).toEqual({ id: 1, username: 'admin' })
-    expect(result.access_token).toBe('tok-1')
+    expect(result).toEqual({ id: 1, username: 'admin' })
     expect(store.loading).toBe(false)
   })
 
@@ -95,21 +90,19 @@ describe('auth actions', () => {
     await expect(store.login('admin', 'wrong')).rejects.toThrow()
 
     expect(store.error).toBe('Invalid credentials')
-    expect(store.token).toBeNull()
+    expect(store.currentUser).toBeNull()
     expect(store.loading).toBe(false)
   })
 
-  it('logout clears token, user, and persisted storage', () => {
+  it('logout calls the backend and clears currentUser', async () => {
+    mockApi.post.mockReturnValueOnce(ok({ message: 'Successfully logged out' }))
     const store = useQueueStore()
-    store.token = 'tok-1'
     store.currentUser = { id: 1 }
-    localStorage.setItem('registrar_token', 'tok-1')
 
-    store.logout()
+    await store.logout()
 
-    expect(store.token).toBeNull()
+    expect(mockApi.post).toHaveBeenCalledWith('/auth/logout')
     expect(store.currentUser).toBeNull()
-    expect(localStorage.getItem('registrar_token')).toBeNull()
   })
 })
 

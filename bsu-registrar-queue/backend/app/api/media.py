@@ -36,7 +36,7 @@ def list_active_media(
 @router.post("/upload", response_model=MediaUploadResponse)
 async def upload_media_file(
     file: UploadFile = File(...),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Upload an image or video file for use as a media item (admin/registrar only)"""
     extension = Path(file.filename or "").suffix.lower()
@@ -76,7 +76,7 @@ async def upload_media_file(
 @router.get("", response_model=List[MediaItem])
 def list_media(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """List all media items, including inactive (admin/registrar only)"""
     service = MediaService(db)
@@ -87,7 +87,7 @@ def list_media(
 def create_media(
     data: MediaItemCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Create a new media item (admin/registrar only)"""
     service = MediaService(db)
@@ -99,7 +99,7 @@ def update_media(
     item_id: int,
     data: MediaItemUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Update a media item (admin/registrar only)"""
     service = MediaService(db)
@@ -113,7 +113,7 @@ def update_media(
 def delete_media(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.REGISTRAR))
+    current_user: User = Depends(require_role(UserRole.REGISTRAR))
 ):
     """Delete a media item (admin/registrar only)"""
     service = MediaService(db)

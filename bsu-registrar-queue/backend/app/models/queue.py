@@ -4,7 +4,7 @@ Queue model for registrar services
 import string
 from datetime import datetime, time
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from enum import Enum
 
 
@@ -26,10 +26,12 @@ class QueueType(str, Enum):
 
 
 class QueueBase(BaseModel):
-    name: str
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    name: str = Field(..., min_length=1, max_length=100)
     queue_type: QueueType
     ticket_letter: str = Field(min_length=1, max_length=1)
-    description: Optional[str] = None
+    description: Optional[str] = Field(default=None, max_length=1000)
     allow_priority: bool = True
     max_capacity: int = Field(default=50, ge=1, le=200)
     slot_duration_minutes: int = Field(default=30, ge=5, le=120)
@@ -68,6 +70,8 @@ class QueueInDB(Queue):
 
 
 class QueueBookingSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     booking_enabled: bool
     operating_start_time: time
     operating_end_time: time
@@ -76,5 +80,7 @@ class QueueBookingSettings(BaseModel):
 
 
 class QueueSettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     max_capacity: int = Field(ge=1, le=200)
     slot_duration_minutes: int = Field(ge=5, le=120)

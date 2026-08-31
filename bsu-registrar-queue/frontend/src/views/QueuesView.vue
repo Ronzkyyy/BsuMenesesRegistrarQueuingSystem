@@ -267,20 +267,6 @@
                   <option :value="major.value" v-for="major in majorOptions" :key="major.value">{{ major.label }}</option>
                 </select>
               </div>
-              <div class="flex flex-wrap gap-x-6 gap-y-2">
-                <div class="flex items-center">
-                  <input id="is_scholar" type="checkbox" v-model="registrationForm.is_scholar" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
-                  <label for="is_scholar" class="ml-2 text-sm text-gray-700">Scholar</label>
-                </div>
-                <div class="flex items-center">
-                  <input id="is_varsity" type="checkbox" v-model="registrationForm.is_varsity" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
-                  <label for="is_varsity" class="ml-2 text-sm text-gray-700">Varsity Athlete</label>
-                </div>
-                <div class="flex items-center">
-                  <input id="is_graduating" type="checkbox" v-model="registrationForm.is_graduating" class="h-4 w-4 text-bsu-primary border-gray-300 rounded focus:ring-bsu-primary" />
-                  <label for="is_graduating" class="ml-2 text-sm text-gray-700">Graduating Student</label>
-                </div>
-              </div>
             </template>
 
             <div v-if="studentLookedUp">
@@ -444,9 +430,9 @@ const emptyRegistrationForm = () => ({
   course: 'Bachelor of Science in Information Technology',
   major: null,
   year_level: '1st_year',
-  is_scholar: false,
-  is_varsity: false,
-  is_graduating: false,
+  // No is_scholar/is_varsity/is_graduating here - those drive queue priority
+  // and can only be set by staff (Student Management), never self-declared
+  // at the public kiosk. The backend rejects them on this endpoint too.
 })
 const registrationForm = ref(emptyRegistrationForm())
 
@@ -454,6 +440,7 @@ const courseOptions = [
   { value: 'Bachelor of Science in Information Technology', label: 'BS Information Technology' },
   { value: 'Bachelor of Science in Hospitality Management', label: 'BS Hospitality Management' },
   { value: 'Bachelor of Science in Business Administration', label: 'BS Business Administration' },
+  { value: 'Bachelor of Science in Computer Engineering', label: 'BS Computer Engineering' },
   { value: BIT_COURSE_VALUE, label: 'Bachelor of Industrial Technology (BIT)' },
 ]
 const majorOptions = [
@@ -522,9 +509,9 @@ const checkExistingTicketForSelectedService = async () => {
   try {
     // Unscoped from any single queue - a student can only ever hold one
     // active ticket at a time, in any queue, so check across all of them.
-    await queueStore.fetchMyTicket(queueStore.currentStudent.id)
+    await queueStore.fetchMyTicket(queueStore.currentStudent.student_id)
     if (queueStore.myTicket && !['completed', 'cancelled', 'no_show'].includes(queueStore.myTicket.status)) {
-      queueStore.startPollingMyTicket(queueStore.currentStudent.id)
+      queueStore.startPollingMyTicket(queueStore.currentStudent.student_id)
       showMyQueueStatus.value = true
     }
   } catch (err) {
@@ -607,7 +594,7 @@ const confirmRegistration = async () => {
     }
     const ticket = await queueStore.takeTicket(selectedQueueId.value, queueStore.currentStudent.id, purpose.value)
     ticketResult.value = ticket
-    queueStore.startPollingMyTicket(queueStore.currentStudent.id, selectedQueueId.value)
+    queueStore.startPollingMyTicket(queueStore.currentStudent.student_id, selectedQueueId.value)
     showConfirmModal.value = false
     currentStep.value = 4
   } catch (err) {
@@ -633,11 +620,11 @@ const takeAnotherTicket = () => {
 }
 
 const cancelTicket = async () => {
-  if (!myTicket.value) return
+  if (!myTicket.value || !queueStore.currentStudent) return
   loading.value = true
   error.value = ''
   try {
-    await queueStore.cancelTicket(myTicket.value.id)
+    await queueStore.cancelTicket(myTicket.value.id, queueStore.currentStudent.student_id)
     queueStore.stopPolling()
     takeAnotherTicket()
   } catch (err) {
@@ -652,7 +639,7 @@ const refreshTicket = async () => {
   loading.value = true
   error.value = ''
   try {
-    await queueStore.fetchMyTicket(queueStore.currentStudent.id)
+    await queueStore.fetchMyTicket(queueStore.currentStudent.student_id)
   } catch (err) {
     if (err.response?.status !== 404) {
       error.value = err.response?.data?.detail || 'Failed to refresh ticket status.'
