@@ -440,6 +440,7 @@ const courseOptions = [
   { value: 'Bachelor of Science in Information Technology', label: 'BS Information Technology' },
   { value: 'Bachelor of Science in Hospitality Management', label: 'BS Hospitality Management' },
   { value: 'Bachelor of Science in Business Administration', label: 'BS Business Administration' },
+  { value: 'Bachelor of Science in Computer Engineering', label: 'BS Computer Engineering' },
   { value: BIT_COURSE_VALUE, label: 'Bachelor of Industrial Technology (BIT)' },
 ]
 const majorOptions = [

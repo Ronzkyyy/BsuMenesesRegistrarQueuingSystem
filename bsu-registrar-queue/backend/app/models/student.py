@@ -17,6 +17,7 @@ class Course(str, Enum):
     BSIT = "Bachelor of Science in Information Technology"
     BSHM = "Bachelor of Science in Hospitality Management"
     BSBA = "Bachelor of Science in Business Administration"
+    BSCPE = "Bachelor of Science in Computer Engineering"
     BIT = "Bachelor of Industrial Technology"
 
 
