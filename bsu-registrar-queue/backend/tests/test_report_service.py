@@ -143,6 +143,37 @@ def test_pagination_splits_without_overlap(db_session, make_queue, make_student)
     assert {r.id for r in p1.items}.isdisjoint({r.id for r in p2.items})
 
 
+def test_pagination_merges_two_sources_contiguously(db_session, make_queue, make_student):
+    queue = make_queue()
+    # 5 tickets + 5 appointments, created_at strictly interleaved by minute
+    for i in range(10):
+        when = datetime(2026, 6, 10, 8, i, tzinfo=UTC)
+        if i % 2 == 0:
+            _ticket(db_session, make_student(), queue,
+                    status=TicketDBStatus.COMPLETED, created_at=when,
+                    ticket_number=i + 1)
+        else:
+            _appointment(db_session, make_student(), queue,
+                         status=AppointmentDBStatus.CHECKED_IN, created_at=when,
+                         ref=f"APT-{i:06d}")
+
+    svc = ReportService(db_session)
+    common = dict(date_from=date(2026, 6, 1), date_to=date(2026, 6, 30),
+                  kinds=["ticket", "appointment"], statuses=None, queue_id=None,
+                  student_number=None, priority=None, limit=3)
+
+    pages = [svc.get_transactions(skip=s, **common) for s in (0, 3, 6, 9)]
+    assert all(p.total == 10 for p in pages)
+    seen = [(r.kind, r.id) for p in pages for r in p.items]
+    # no gaps, no duplicates, exactly the full set
+    assert len(seen) == 10
+    assert len(set(seen)) == 10
+    # and strictly newest-first across the page boundaries
+    flat = [r for p in pages for r in p.items]
+    assert [r.created_at for r in flat] == sorted(
+        (r.created_at for r in flat), reverse=True)
+
+
 def test_date_from_after_date_to_raises(db_session):
     svc = ReportService(db_session)
     with pytest.raises(ValueError, match="date_from"):

@@ -43,7 +43,7 @@ def list_transactions(
     queue_id: Optional[int] = Query(None, gt=0),
     student_number: Optional[str] = Query(None, pattern=r"^\d{10}$"),
     priority: Optional[ReportPriority] = Query(None),
-    skip: int = Query(0, ge=0),
+    skip: int = Query(0, ge=0, le=100000),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
@@ -86,6 +86,16 @@ _CSV_COLUMNS = [
 ]
 
 
+def _csv_safe(value: str) -> str:
+    """Neutralize spreadsheet formula injection. student_name / service come
+    from public unauthenticated kiosk endpoints, so a cell beginning =/+/-/@
+    (or a control char Excel strips to reach one) must not be run as a formula
+    when an admin opens the export."""
+    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
 @router.get("/transactions.csv")
 def export_transactions_csv(
     request: Request,
@@ -118,8 +128,10 @@ def export_transactions_csv(
     writer.writerow(_CSV_COLUMNS)
     for r in rows:
         writer.writerow([
-            r.kind, r.reference, r.student_number, r.student_name, r.service,
-            r.queue_name, r.status, r.priority or "",
+            _csv_safe(r.kind), _csv_safe(r.reference),
+            _csv_safe(r.student_number), _csv_safe(r.student_name),
+            _csv_safe(r.service), _csv_safe(r.queue_name),
+            _csv_safe(r.status), _csv_safe(r.priority or ""),
             r.created_at.isoformat(),
             r.occurred_at.isoformat() if r.occurred_at else "",
             r.appointment_date.isoformat() if r.appointment_date else "",

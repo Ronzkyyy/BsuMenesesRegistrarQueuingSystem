@@ -44,7 +44,7 @@ class ReportService:
     # ---- per-source queries --------------------------------------------
 
     def _query_tickets(self, start_utc, end_utc, statuses, queue_id,
-                       student_number, priority, cap):
+                       student_number, priority, cap, count_only=False):
         q = (
             self.db.query(TicketDB, StudentDB, QueueDB)
             .join(StudentDB, TicketDB.student_id == StudentDB.id)
@@ -65,6 +65,8 @@ class ReportService:
         if priority is not None:
             q = q.filter(TicketDB.priority == PriorityLevel(priority))
         total = q.count()
+        if count_only:
+            return [], total
         q = q.order_by(TicketDB.created_at.desc(), TicketDB.id.desc()).limit(cap)
         rows = [
             TransactionRow(
@@ -86,7 +88,7 @@ class ReportService:
         return rows, total
 
     def _query_appointments(self, start_utc, end_utc, statuses, queue_id,
-                            student_number, cap):
+                            student_number, cap, count_only=False):
         q = (
             self.db.query(AppointmentDB, StudentDB, QueueDB)
             .join(StudentDB, AppointmentDB.student_id == StudentDB.id)
@@ -107,6 +109,8 @@ class ReportService:
         if student_number is not None:
             q = q.filter(StudentDB.student_id == student_number)
         total = q.count()
+        if count_only:
+            return [], total
         q = q.order_by(AppointmentDB.created_at.desc(),
                        AppointmentDB.id.desc()).limit(cap)
         rows = [
@@ -129,22 +133,24 @@ class ReportService:
         return rows, total
 
     def _collect_rows(self, start_utc, end_utc, kinds, statuses, queue_id,
-                      student_number, priority, cap):
+                      student_number, priority, cap, count_only=False):
         """Fetch up to `cap` newest rows from each requested source and their
         true totals. Merging the top-`cap` of each source is enough to slice
-        any page whose (skip + limit) <= cap."""
+        any page whose (skip + limit) <= cap. With `count_only`, skip building
+        the row objects and return just the summed total (rows empty)."""
         rows: list[TransactionRow] = []
         total = 0
         if "ticket" in kinds:
             t_rows, t_total = self._query_tickets(
                 start_utc, end_utc, statuses, queue_id, student_number,
-                priority, cap)
+                priority, cap, count_only=count_only)
             rows += t_rows
             total += t_total
         # Appointments have no priority - a priority filter excludes them.
         if "appointment" in kinds and priority is None:
             a_rows, a_total = self._query_appointments(
-                start_utc, end_utc, statuses, queue_id, student_number, cap)
+                start_utc, end_utc, statuses, queue_id, student_number, cap,
+                count_only=count_only)
             rows += a_rows
             total += a_total
         rows.sort(key=lambda r: (r.created_at, r.id), reverse=True)
@@ -174,13 +180,18 @@ class ReportService:
         if date_from > date_to:
             raise ValueError("date_from must not be after date_to")
         start_utc, end_utc = self._utc_window(date_from, date_to)
-        rows, total = self._collect_rows(
+        # Cap check runs on a count-only pass first, so an oversized export is
+        # rejected before any TransactionRow objects are built.
+        _, total = self._collect_rows(
             start_utc, end_utc, kinds, statuses, queue_id, student_number,
-            priority, cap=MAX_EXPORT_ROWS + 1)
+            priority, cap=MAX_EXPORT_ROWS + 1, count_only=True)
         if total > MAX_EXPORT_ROWS:
             raise ValueError(
                 f"Too many rows to export ({total}). "
                 f"Narrow the date range or filters.")
+        rows, _ = self._collect_rows(
+            start_utc, end_utc, kinds, statuses, queue_id, student_number,
+            priority, cap=MAX_EXPORT_ROWS + 1)
         return rows
 
     def get_calendar(self, *, year: int, month: int) -> CalendarSummary:

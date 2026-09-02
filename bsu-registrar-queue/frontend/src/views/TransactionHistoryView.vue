@@ -122,6 +122,9 @@
     </div>
 
     <!-- Table -->
+    <p v-if="dayHint" class="text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-2 text-sm mb-2">
+      {{ dayHint }}
+    </p>
     <div class="panel overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full text-sm">
@@ -214,6 +217,7 @@ const filters = reactive({
 
 const calendarMonth = ref(startOfMonth(today))
 const selectedDay = ref(null)
+const dayHint = ref('')
 
 const history = computed(() => queueStore.transactionHistory)
 const calendar = computed(() => queueStore.transactionCalendar)
@@ -315,15 +319,21 @@ function shiftMonth(delta) {
   loadCalendar()
 }
 
-function selectDay(iso) {
+async function selectDay(iso) {
   selectedDay.value = iso
   filters.date_from = iso
   filters.date_to = iso
-  loadHistory(0)
+  await loadHistory(0)
+  const cell = dayCells.value.find((c) => c.iso === iso)
+  const cellCount = cell ? cell.count : 0
+  dayHint.value = (cellCount > history.value.total)
+    ? `${cellCount - history.value.total} of ${cellCount} transaction(s) on this day are hidden by the current Status filter (cancelled / no-show / expired). Adjust "Status" to see them.`
+    : ''
 }
 
 function applyFilters() {
   selectedDay.value = null
+  dayHint.value = ''
   loadHistory(0)
 }
 
@@ -335,6 +345,7 @@ function resetFilters() {
   filters.queue_id = null
   filters.student_number = ''
   selectedDay.value = null
+  dayHint.value = ''
   loadHistory(0)
 }
 

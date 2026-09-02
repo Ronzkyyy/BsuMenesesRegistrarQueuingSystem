@@ -134,6 +134,24 @@ def test_csv_export_returns_csv_and_logs_audit_event(client, db_session, make_us
     assert exported[0]["outcome"] == "success"
 
 
+def test_csv_export_neutralizes_formula_injection(client, db_session, make_user, make_queue, make_student):
+    admin = make_user(role=UserRole.ADMIN)
+    queue = make_queue()
+    # first_name is attacker-controlled free text via the public kiosk; a cell
+    # rendered as "=HYPERLINK(0) Student" starts with "=" -> formula on open.
+    student = make_student(first_name="=HYPERLINK(0)")
+    _seed_completed_ticket(db_session, student, queue,
+                           datetime(2026, 6, 10, 3, 0, tzinfo=UTC))
+    _login(client, admin)
+
+    r = client.get("/api/reports/transactions.csv",
+                   params={"date_from": "2026-06-01", "date_to": "2026-06-30"})
+    assert r.status_code == 200
+    # the dangerous cell is prefixed with a single quote, not left executable
+    assert "'=HYPERLINK(0)" in r.text
+    assert ",=HYPERLINK(0)" not in r.text
+
+
 def test_csv_export_is_admin_only(client, make_user):
     _login(client, make_user(role=UserRole.REGISTRAR))
     assert client.get("/api/reports/transactions.csv").status_code == 403
