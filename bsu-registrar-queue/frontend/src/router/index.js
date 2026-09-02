@@ -55,6 +55,12 @@ const router = createRouter({
           component: () => import('../views/StudentManagementView.vue')
         },
         {
+          path: 'reports',
+          name: 'admin-reports',
+          component: () => import('../views/TransactionHistoryView.vue'),
+          meta: { requiresAdmin: true }
+        },
+        {
           path: 'media',
           name: 'admin-media',
           component: () => import('../views/MediaAnnouncementsView.vue'),
