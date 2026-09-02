@@ -43,6 +43,10 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </router-link>
+
+            <div class="mt-4 text-sm">
+              <router-link to="/display" class="text-bsu-primary hover:underline">View Display Board</router-link>
+            </div>
           </div>
         </div>
       </section>
