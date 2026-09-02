@@ -165,3 +165,82 @@ class ReportService:
             priority, cap=skip + limit)
         return TransactionHistoryPage(
             items=rows[skip:skip + limit], total=total, skip=skip, limit=limit)
+
+    def get_all_transactions(self, *, date_from: date, date_to: date,
+                             kinds: list[str], statuses: Optional[list[str]],
+                             queue_id: Optional[int],
+                             student_number: Optional[str],
+                             priority: Optional[str]) -> list[TransactionRow]:
+        if date_from > date_to:
+            raise ValueError("date_from must not be after date_to")
+        start_utc, end_utc = self._utc_window(date_from, date_to)
+        rows, total = self._collect_rows(
+            start_utc, end_utc, kinds, statuses, queue_id, student_number,
+            priority, cap=MAX_EXPORT_ROWS + 1)
+        if total > MAX_EXPORT_ROWS:
+            raise ValueError(
+                f"Too many rows to export ({total}). "
+                f"Narrow the date range or filters.")
+        return rows
+
+    def get_calendar(self, *, year: int, month: int) -> CalendarSummary:
+        try:
+            first = date(year, month, 1)
+        except ValueError as e:
+            raise ValueError("Invalid year/month") from e
+        if month == 12:
+            next_first = date(year + 1, 1, 1)
+        else:
+            next_first = date(year, month + 1, 1)
+
+        start_utc = datetime.combine(
+            first, time.min, tzinfo=self.tz).astimezone(timezone.utc)
+        end_utc = datetime.combine(
+            next_first, time.min, tzinfo=self.tz).astimezone(timezone.utc)
+
+        stats: dict[date, dict] = {}
+        d = first
+        while d < next_first:
+            stats[d] = {"tickets": 0, "appointments": 0,
+                        "by_status": defaultdict(int)}
+            d += timedelta(days=1)
+        hours = [0] * 24
+
+        for created_at, status in self.db.query(
+                TicketDB.created_at, TicketDB.status).filter(
+                TicketDB.created_at >= start_utc,
+                TicketDB.created_at < end_utc):
+            local = created_at.astimezone(self.tz)
+            bucket = stats[local.date()]
+            bucket["tickets"] += 1
+            bucket["by_status"][status.value] += 1
+            hours[local.hour] += 1
+
+        for created_at, status in self.db.query(
+                AppointmentDB.created_at, AppointmentDB.status).filter(
+                AppointmentDB.created_at >= start_utc,
+                AppointmentDB.created_at < end_utc):
+            local = created_at.astimezone(self.tz)
+            bucket = stats[local.date()]
+            bucket["appointments"] += 1
+            bucket["by_status"][status.value] += 1
+            hours[local.hour] += 1
+
+        days: list[CalendarDay] = []
+        peak_day: Optional[date] = None
+        peak_count = 0
+        month_total = 0
+        for day in sorted(stats):
+            b = stats[day]
+            total = b["tickets"] + b["appointments"]
+            month_total += total
+            if total > peak_count:
+                peak_day, peak_count = day, total
+            days.append(CalendarDay(
+                date=day, total=total, tickets=b["tickets"],
+                appointments=b["appointments"], by_status=dict(b["by_status"])))
+
+        return CalendarSummary(
+            year=year, month=month, month_total=month_total,
+            peak_day=peak_day, peak_count=peak_count,
+            busiest_hours=hours, days=days)

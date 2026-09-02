@@ -151,3 +151,61 @@ def test_date_from_after_date_to_raises(db_session):
             kinds=["ticket"], statuses=None, queue_id=None,
             student_number=None, priority=None, skip=0, limit=50,
         )
+
+
+def test_calendar_buckets_by_day_and_finds_peak(db_session, make_queue, make_student):
+    queue = make_queue()
+    # 1 transaction on Jun 5, 3 on Jun 6 (all well inside Manila's day).
+    _ticket(db_session, make_student(), queue,
+            created_at=datetime(2026, 6, 5, 6, 0, tzinfo=UTC), ticket_number=1)
+    for i in range(3):
+        _ticket(db_session, make_student(), queue,
+                created_at=datetime(2026, 6, 6, 6 + i, 0, tzinfo=UTC),
+                ticket_number=10 + i)
+
+    svc = ReportService(db_session)
+    cal = svc.get_calendar(year=2026, month=6)
+
+    assert cal.month_total == 4
+    assert cal.peak_day == date(2026, 6, 6)
+    assert cal.peak_count == 3
+    assert len(cal.days) == 30
+    jun6 = next(d for d in cal.days if d.date == date(2026, 6, 6))
+    assert jun6.total == 3 and jun6.tickets == 3 and jun6.appointments == 0
+    assert sum(cal.busiest_hours) == 4
+    assert len(cal.busiest_hours) == 24
+
+
+def test_calendar_bucketing_uses_campus_timezone_not_utc(db_session, make_queue, make_student):
+    queue = make_queue()
+    # 2026-06-01 16:30 UTC == 2026-06-02 00:30 Asia/Manila (UTC+8).
+    _ticket(db_session, make_student(), queue,
+            created_at=datetime(2026, 6, 1, 16, 30, tzinfo=UTC), ticket_number=1)
+
+    svc = ReportService(db_session)
+    cal = svc.get_calendar(year=2026, month=6)
+
+    jun1 = next(d for d in cal.days if d.date == date(2026, 6, 1))
+    jun2 = next(d for d in cal.days if d.date == date(2026, 6, 2))
+    assert jun1.total == 0
+    assert jun2.total == 1
+    assert cal.busiest_hours[0] == 1
+    assert cal.busiest_hours[16] == 0
+
+
+def test_get_all_transactions_rejects_oversized_export(db_session, make_queue, make_student, monkeypatch):
+    from app.services import report_service as rs
+    monkeypatch.setattr(rs, "MAX_EXPORT_ROWS", 1)
+    queue = make_queue()
+    for i in range(2):
+        _ticket(db_session, make_student(), queue,
+                created_at=datetime(2026, 6, 10, 1 + i, 0, tzinfo=UTC),
+                ticket_number=i + 1)
+
+    svc = ReportService(db_session)
+    with pytest.raises(ValueError, match="Too many rows"):
+        svc.get_all_transactions(
+            date_from=date(2026, 6, 1), date_to=date(2026, 6, 30),
+            kinds=["ticket"], statuses=["completed"], queue_id=None,
+            student_number=None, priority=None,
+        )
