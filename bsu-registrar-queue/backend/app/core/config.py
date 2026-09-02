@@ -44,6 +44,11 @@ class Settings(BaseSettings):
 
     # Campus-specific
     CAMPUS_NAME: str = "Bulacan State University - Meneses Campus"
+    # IANA timezone used for day/hour bucketing in the admin reports module
+    # (transaction history calendar). The campus is UTC+8; a report that
+    # bucketed by naive UTC would misattribute early-morning/late-evening
+    # activity to the wrong day.
+    CAMPUS_TIMEZONE: str = "Asia/Manila"
 
     class Config:
         env_file = ".env"
