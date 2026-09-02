@@ -1,4 +1,6 @@
 """Admin-only reports API: history + calendar endpoints."""
+import json
+import logging
 from datetime import datetime, timezone
 
 from app.db_models import TicketDB, TicketDBStatus, UserRole
@@ -90,3 +92,48 @@ def test_date_from_after_date_to_is_400(client, make_user):
     r = client.get("/api/reports/transactions",
                    params={"date_from": "2026-06-30", "date_to": "2026-06-01"})
     assert r.status_code == 400
+
+
+def _audit_capture():
+    logger = logging.getLogger("bsu.security")
+    messages: list[str] = []
+
+    class _Cap(logging.Handler):
+        def emit(self, record):
+            messages.append(record.getMessage())
+
+    handler = _Cap()
+    handler.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    return handler, lambda: [json.loads(m) for m in messages]
+
+
+def test_csv_export_returns_csv_and_logs_audit_event(client, db_session, make_user, make_queue, make_student):
+    admin = make_user(role=UserRole.ADMIN)
+    _seed_completed_ticket(db_session, make_student(), make_queue(),
+                           datetime(2026, 6, 10, 3, 0, tzinfo=UTC))
+    _login(client, admin)
+
+    handler, events = _audit_capture()
+    try:
+        r = client.get("/api/reports/transactions.csv",
+                       params={"date_from": "2026-06-01", "date_to": "2026-06-30"})
+    finally:
+        logging.getLogger("bsu.security").removeHandler(handler)
+
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment; filename=" in r.headers["content-disposition"]
+    lines = [ln for ln in r.text.splitlines() if ln.strip()]
+    assert lines[0].startswith("kind,reference,student_number")
+    assert len(lines) == 2  # header + 1 data row
+
+    exported = [e for e in events() if e["event"] == "report.exported"]
+    assert len(exported) == 1
+    assert exported[0]["actor"] == admin.username
+    assert exported[0]["outcome"] == "success"
+
+
+def test_csv_export_is_admin_only(client, make_user):
+    _login(client, make_user(role=UserRole.REGISTRAR))
+    assert client.get("/api/reports/transactions.csv").status_code == 403

@@ -1,11 +1,15 @@
 """Admin-only reporting endpoints: transaction history + peak-volume calendar."""
+import csv
+import io
 from datetime import date, datetime, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from ..core.audit import log_security_event
 from ..core.config import settings
 from ..core.database import get_db
 from ..core.security import require_role
@@ -73,3 +77,63 @@ def get_calendar(
         return service.get_calendar(year=year, month=month)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+_CSV_COLUMNS = [
+    "kind", "reference", "student_number", "student_name", "service",
+    "queue_name", "status", "priority", "created_at", "occurred_at",
+    "appointment_date",
+]
+
+
+@router.get("/transactions.csv")
+def export_transactions_csv(
+    request: Request,
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    kind: list[ReportKind] = Query(default_factory=lambda: list(ReportKind)),
+    status: Optional[list[ReportStatus]] = Query(None),
+    queue_id: Optional[int] = Query(None, gt=0),
+    student_number: Optional[str] = Query(None, pattern=r"^\d{10}$"),
+    priority: Optional[ReportPriority] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Download every row matching the filters as CSV (audit export)."""
+    resolved_from, resolved_to = _resolve_window(date_from, date_to)
+    service = ReportService(db)
+    try:
+        rows = service.get_all_transactions(
+            date_from=resolved_from, date_to=resolved_to,
+            kinds=[k.value for k in kind],
+            statuses=[s.value for s in status] if status else None,
+            queue_id=queue_id, student_number=student_number,
+            priority=priority.value if priority else None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(_CSV_COLUMNS)
+    for r in rows:
+        writer.writerow([
+            r.kind, r.reference, r.student_number, r.student_name, r.service,
+            r.queue_name, r.status, r.priority or "",
+            r.created_at.isoformat(),
+            r.occurred_at.isoformat() if r.occurred_at else "",
+            r.appointment_date.isoformat() if r.appointment_date else "",
+        ])
+
+    log_security_event(
+        "report.exported", outcome="success", request=request,
+        actor=current_user.username,
+        detail=f"{len(rows)} rows, {resolved_from}..{resolved_to}",
+    )
+
+    filename = f"transactions_{resolved_from}_{resolved_to}.csv"
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
