@@ -231,3 +231,44 @@ describe('student actions', () => {
     })
   })
 })
+
+describe('reports actions', () => {
+  it('fetchTransactionHistory passes filters through and serializes arrays without brackets', async () => {
+    const pageData = { items: [{ id: 1, kind: 'ticket' }], total: 1, skip: 0, limit: 50 }
+    mockApi.get.mockReturnValueOnce(ok(pageData))
+    const store = useQueueStore()
+
+    const params = { date_from: '2026-06-01', date_to: '2026-06-30', kind: ['ticket', 'appointment'] }
+    const result = await store.fetchTransactionHistory(params)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/reports/transactions', {
+      params,
+      paramsSerializer: { indexes: null },
+    })
+    expect(store.transactionHistory).toEqual(pageData)
+    expect(result).toEqual(pageData)
+  })
+
+  it('fetchTransactionHistory surfaces the server error and rethrows', async () => {
+    mockApi.get.mockReturnValueOnce(fail('Too many rows to export'))
+    const store = useQueueStore()
+
+    await expect(store.fetchTransactionHistory({})).rejects.toThrow()
+
+    expect(store.error).toBe('Too many rows to export')
+    expect(store.loading).toBe(false)
+  })
+
+  it('fetchTransactionCalendar sends year/month as query params', async () => {
+    const cal = { year: 2026, month: 6, month_total: 3, days: [], busiest_hours: [] }
+    mockApi.get.mockReturnValueOnce(ok(cal))
+    const store = useQueueStore()
+
+    await store.fetchTransactionCalendar(2026, 6)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/reports/calendar', {
+      params: { year: 2026, month: 6 },
+    })
+    expect(store.transactionCalendar).toEqual(cal)
+  })
+})
