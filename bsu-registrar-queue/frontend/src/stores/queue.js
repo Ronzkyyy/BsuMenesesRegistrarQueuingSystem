@@ -46,6 +46,10 @@ export const useQueueStore = defineStore('queue', {
     // Dashboard
     dashboardSummary: null,
 
+    // Reports (admin transaction history + peak-volume calendar)
+    transactionHistory: { items: [], total: 0, skip: 0, limit: 50 },
+    transactionCalendar: null,
+
     // Users
     users: [],
 
@@ -142,6 +146,44 @@ export const useQueueStore = defineStore('queue', {
         return response.data
       } catch (err) {
         this.error = err.response?.data?.detail || 'Failed to fetch dashboard summary'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // ============ REPORTS ACTIONS ============
+
+    async fetchTransactionHistory(params = {}) {
+      this.loading = true
+      this.error = null
+      try {
+        // FastAPI reads repeated query params (`kind=ticket&kind=appointment`);
+        // axios' default array serialization uses `kind[]=` which FastAPI
+        // ignores. `indexes: null` repeats the bare key.
+        const response = await api.get('/reports/transactions', {
+          params,
+          paramsSerializer: { indexes: null },
+        })
+        this.transactionHistory = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch transaction history'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchTransactionCalendar(year, month) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/reports/calendar', { params: { year, month } })
+        this.transactionCalendar = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch transaction calendar'
         throw err
       } finally {
         this.loading = false
