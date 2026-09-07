@@ -44,8 +44,16 @@
               </svg>
             </router-link>
 
-            <div class="mt-4 text-sm">
-              <router-link to="/display" class="text-bsu-primary hover:underline">View Display Board</router-link>
+            <div class="mt-4">
+              <router-link
+                to="/display"
+                class="btn gap-2 text-base px-8 py-3.5 rounded-2xl bg-gradient-to-r from-bsu-primary to-bsu-peach text-white shadow-sm hover:shadow focus:ring-bsu-primary"
+              >
+                View Display Board
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </router-link>
             </div>
           </div>
         </div>
