@@ -43,7 +43,7 @@ def seed_initial_data(db: Session) -> None:
             name="Document Request",
             queue_type=QueueDBType.DOCUMENT_REQUEST,
             ticket_letter="D",
-            description="Transcript, diploma, and certificate requests",
+            description="Certified true copy of all official documents",
             allow_priority=True,
             max_capacity=50,
             slot_duration_minutes=20,

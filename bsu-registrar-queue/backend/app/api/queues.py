@@ -115,7 +115,7 @@ def update_queue_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
-    """Update a queue's capacity and per-slot wait time (admin only)"""
+    """Update a queue's capacity, per-slot wait time and description (admin only)"""
     service = QueueService(db)
     queue = service.update_queue_settings(queue_id, settings)
     if not queue:

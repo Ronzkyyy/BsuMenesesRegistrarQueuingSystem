@@ -73,6 +73,8 @@ class QueueService:
 
         queue.max_capacity = settings.max_capacity
         queue.slot_duration_minutes = settings.slot_duration_minutes
+        if settings.description is not None:
+            queue.description = settings.description
         queue.updated_at = datetime.now()
         self.db.commit()
         self.db.refresh(queue)
