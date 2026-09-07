@@ -55,6 +55,9 @@
               <div v-if="selectedQueueId">
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Date</label>
                 <input v-model="selectedDate" @change="loadAvailability" type="date" :min="minDate" :max="maxDate" class="field" />
+                <p class="text-xs text-gray-500 mt-1.5">
+                  Same-day booking is not available - the earliest date you can choose is tomorrow.
+                </p>
               </div>
 
               <div v-if="hourlySlots.length > 0">
@@ -203,8 +206,20 @@ const selectedDocumentType = ref('')
 const bookedAppointment = ref(null)
 const qrDataUrl = ref('')
 
+// Local calendar date, not toISOString() - the campus is UTC+8, so a UTC
+// date string names the previous day for the whole first 8 hours of business.
+const toLocalISODate = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+const addDays = (d, n) => {
+  const out = new Date(d)
+  out.setDate(out.getDate() + n)
+  return out
+}
+
 const today = new Date()
-const minDate = today.toISOString().slice(0, 10)
+// Same-day booking is not offered, so the picker opens at tomorrow.
+const minDate = toLocalISODate(addDays(today, 1))
 
 const selectedQueue = computed(() => bookableQueues.value.find((q) => q.id === selectedQueueId.value))
 const isDocumentRequest = computed(() => selectedQueue.value?.queue_type === 'document_request')
@@ -212,9 +227,7 @@ const hourlySlots = computed(() => slots.value.filter((slot) => slot.slot_start_
 
 const maxDate = computed(() => {
   const windowDays = selectedQueue.value?.booking_window_days ?? 14
-  const max = new Date(today)
-  max.setDate(max.getDate() + windowDays)
-  return max.toISOString().slice(0, 10)
+  return toLocalISODate(addDays(today, windowDays))
 })
 
 const formatTime = (t) => {
