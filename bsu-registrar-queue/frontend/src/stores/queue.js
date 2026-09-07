@@ -12,6 +12,66 @@ const api = axios.create({
   withCredentials: true,
 })
 
+// Friendly labels for fields that show up in FastAPI 422 validation errors.
+const VALIDATION_FIELD_LABELS = {
+  student_id: 'student number',
+  email: 'email address',
+  first_name: 'first name',
+  last_name: 'last name',
+  full_name: 'full name',
+  username: 'username',
+  password: 'password',
+  new_password: 'new password',
+  current_password: 'current password',
+  purpose: 'purpose',
+  query: 'search term',
+  name: 'name',
+  text: 'text',
+  url: 'link',
+}
+
+/**
+ * Turn FastAPI's raw 422 `detail` array (a list of
+ * `{type, loc, msg, ctx}` objects) into a single human-readable sentence so
+ * views can render `err.response.data.detail` as-is without leaking Pydantic
+ * internals like "String should match pattern '^\d{10}$'".
+ */
+function humanizeValidationErrors(detail) {
+  const messages = detail.map((entry) => {
+    const loc = Array.isArray(entry.loc) ? entry.loc : []
+    const field = loc.length ? loc[loc.length - 1] : null
+    const label =
+      VALIDATION_FIELD_LABELS[field] ||
+      (field && field !== 'body' && field !== 'query' && field !== 'path'
+        ? String(field).replace(/_/g, ' ')
+        : 'input')
+
+    if (field === 'student_id') return 'Please enter a valid 10-digit student number.'
+
+    const type = typeof entry.type === 'string' ? entry.type : ''
+    if (type === 'missing') return `Please provide the ${label}.`
+    if (type.startsWith('string_pattern')) return `Please enter a valid ${label}.`
+    if (type.includes('too_short')) return `The ${label} is too short.`
+    if (type.includes('too_long')) return `The ${label} is too long.`
+    if (type.includes('int_') || type.includes('float_') || type === 'greater_than')
+      return `Please enter a valid ${label}.`
+    return `Please check the ${label} and try again.`
+  })
+  return [...new Set(messages)].join(' ') || 'Please check your input and try again.'
+}
+
+// Normalize validation-error responses before any caller reads `.detail`.
+api.interceptors.response.use(
+  (response) => response,
+  (err) => {
+    const detail = err.response?.data?.detail
+    if (Array.isArray(detail)) {
+      err.response.data.detail = humanizeValidationErrors(detail)
+    }
+    return Promise.reject(err)
+  },
+)
+
 export const useQueueStore = defineStore('queue', {
   state: () => ({
     // Queues
