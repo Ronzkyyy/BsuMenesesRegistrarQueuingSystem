@@ -3,7 +3,12 @@ name: run-bsu-registrar-queue
 description: Build, run, and drive the BSU Registrar Queue System (FastAPI backend + Vue/Vite frontend). Use when asked to start the app, log in, take a screenshot of a page (Home, Login, admin Dashboard, Queue Management, public Queues ticket flow, Display Board), or verify a UI/API change end-to-end.
 ---
 
-Full-stack app: FastAPI backend (SQLite locally) on :8000 + Vue 3/Vite frontend on :5173.
+Full-stack app: FastAPI backend on :8000 + Vue 3/Vite frontend on :5173.
+**`backend/.env`'s `DATABASE_URL` points at a remote Supabase Postgres that also backs
+Render production** — a stale `backend/bsu_queue.db` file is still on disk but is not
+what the app reads. Treat anything you write through the running app as production data;
+to work against throwaway data, point the backend at the disposable `bsu_queue_test`
+database instead (see "Isolated database" below).
 Drive it with the Playwright REPL at `.claude/skills/run-bsu-registrar-queue/driver.mjs` —
 same command style as `chromium-cli` (`nav`, `click`, `fill`, `screenshot`, …), piped in
 via a heredoc. All paths below are relative to `bsu-registrar-queue/` (this skill's parent
@@ -15,7 +20,7 @@ below use Git Bash syntax and Windows venv paths (`.venv/Scripts/python.exe`).
 ## Prerequisites
 
 Already satisfied in this checkout — `backend/.venv` and `frontend/node_modules` exist,
-`backend/.env` and `backend/bsu_queue.db` (SQLite) are present and seeded. On a fresh
+`backend/.env` is present and its database is seeded. On a fresh
 checkout, `./dev.ps1` from the repo root creates all of this (venv, `.env`, seeded DB,
 `npm install`) idempotently — see that script if bootstrapping from scratch.
 
@@ -94,6 +99,26 @@ no auth), `/admin` (dashboard, requires auth → redirects to `/login`),
 `/admin/queues`, `/admin/counter`, `/admin/students`, `/admin/media`, `/admin/users`
 (admin-only), `/display`, `/display/:id`.
 
+### Isolated database (when you need to write test data)
+
+`bsu_queue_test` on the same Postgres server is disposable (pytest provisions and
+migrates it). Point the backend at it by setting `DATABASE_URL` **in the process
+environment** — `app/core/database.py` builds its engine from `settings` at import
+time, so mutating `os.environ` inside a script that already imported the app is too
+late and silently writes to production instead:
+
+```bash
+cd backend
+DB=$(PYTHONPATH="$PWD" ./.venv/Scripts/python.exe -c "
+from urllib.parse import urlparse, urlunparse
+from app.core.config import settings
+p=urlparse(settings.DATABASE_URL); print(urlunparse(p._replace(path='/bsu_queue_test')))")
+DATABASE_URL="$DB" ./.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000 &
+```
+
+Any seeding script should assert its target before writing:
+`assert "bsu_queue_test" in settings.DATABASE_URL`.
+
 ### Direct backend check (no browser)
 
 For backend-only changes, hitting the API directly is faster than driving the UI:
@@ -126,7 +151,7 @@ files outside `node_modules`/`.venv`). Verification is driving the running app.
   terminal window is more reliable than trying to kill it from Bash).
 - **`backend/.env` is permission-denied to the `Read` tool** in this harness (secrets
   guard) — that's expected, not a missing-file bug. Uvicorn still reads it fine.
-- Login POSTs to the real local SQLite DB — the dashboard's counters (Users, Queues,
+- Login POSTs to the real remote DB — the dashboard's counters (Users, Queues,
   Waiting, etc.) reflect actual current state, not fixture zeros-by-default; don't be
   surprised if the numbers differ from a screenshot taken at another time.
 

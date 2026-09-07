@@ -140,18 +140,34 @@
           <div v-else class="text-center">
             <h3 class="text-lg font-bold text-bsu-ink mb-1">{{ myAppointment.queue_name }}</h3>
             <p class="text-sm text-gray-500 mb-3">{{ myAppointment.appointment_date }} at {{ formatTime(myAppointment.slot_start_time) }}</p>
-            <p class="text-sm mb-4">
+
+            <!-- Expired: an outcome to explain, not an error to report -->
+            <div v-if="isExpired" class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-left">
+              <p class="text-sm font-semibold text-amber-900">This appointment has expired</p>
+              <p class="text-sm text-amber-800 mt-1">
+                The {{ formatTime(myAppointment.slot_start_time) }} slot on {{ myAppointment.appointment_date }}
+                has already passed and the appointment was not checked in.
+              </p>
+              <p class="text-sm text-amber-800 mt-2">
+                Book a new appointment below, or take a walk-in ticket at the registrar.
+              </p>
+            </div>
+
+            <p v-else class="text-sm mb-4">
               Status:
-              <span class="font-semibold capitalize">{{ myAppointment.status.replace('_', ' ') }}</span>
+              <span class="font-semibold capitalize">{{ statusLabel }}</span>
             </p>
 
             <button
-              v-if="myAppointment.status === 'booked'"
+              v-if="myAppointment.status === 'booked' && !isExpired"
               @click="doCancel"
               :disabled="loading"
               class="btn-danger-solid btn-md w-full py-2.5"
             >
               Cancel Appointment
+            </button>
+            <button v-if="isExpired" @click="startNewBooking" class="btn-primary btn-md w-full py-2.5">
+              Book a New Appointment
             </button>
             <button @click="myAppointment = null" class="btn-secondary btn-md w-full py-2.5 mt-3">Back</button>
           </div>
@@ -266,6 +282,25 @@ const lookupStudentId = ref('')
 const lookupReferenceCode = ref('')
 const myAppointment = ref(null)
 
+// An appointment is expired once the backend has flipped it to EXPIRED, or -
+// before the periodic expiry task has run - once its slot end has passed while
+// still BOOKED. Either way it is a state to explain, not a failure to report.
+const isExpired = computed(() => {
+  const appt = myAppointment.value
+  if (!appt) return false
+  if (appt.status === 'expired') return true
+  if (appt.status !== 'booked') return false
+  return new Date(`${appt.appointment_date}T${appt.slot_end_time}`) < new Date()
+})
+
+const statusLabel = computed(() => myAppointment.value?.status.replace('_', ' ') ?? '')
+
+const startNewBooking = () => {
+  myAppointment.value = null
+  error.value = ''
+  mode.value = 'book'
+}
+
 const doLookup = async () => {
   error.value = ''
   try {
@@ -283,7 +318,14 @@ const doCancel = async () => {
   try {
     myAppointment.value = await queueStore.cancelAppointment(myAppointment.value.id, lookupStudentId.value.trim())
   } catch (err) {
-    error.value = err.response?.data?.detail || 'Failed to cancel appointment'
+    // The slot can lapse between the lookup and the click - the backend refuses
+    // to cancel an EXPIRED booking. Show the expired state rather than the 400.
+    const detail = err.response?.data?.detail
+    if (typeof detail === 'string' && detail.includes('expired')) {
+      myAppointment.value = { ...myAppointment.value, status: 'expired' }
+      return
+    }
+    error.value = detail || 'Failed to cancel appointment'
   }
 }
 </script>

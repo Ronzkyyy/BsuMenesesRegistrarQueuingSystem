@@ -6,14 +6,28 @@ import { createPinia, setActivePinia } from 'pinia'
 // the `axios` module itself. vi.mock is hoisted above imports, so the mock
 // instance has to be built with vi.hoisted() to be visible inside the
 // hoisted factory.
-const { mockApi } = vi.hoisted(() => ({
-  mockApi: {
-    get: vi.fn(),
-    post: vi.fn(),
-    patch: vi.fn(),
-    delete: vi.fn(),
-  },
-}))
+// `interceptors.response.use` must exist on the mock: queue.js registers a
+// response interceptor at module scope, and the registered rejection handler
+// is captured here so its normalization can be tested directly.
+const { mockApi, interceptor } = vi.hoisted(() => {
+  const interceptor = { onRejected: null }
+  return {
+    interceptor,
+    mockApi: {
+      get: vi.fn(),
+      post: vi.fn(),
+      patch: vi.fn(),
+      delete: vi.fn(),
+      interceptors: {
+        response: {
+          use: vi.fn((_onFulfilled, onRejected) => {
+            interceptor.onRejected = onRejected
+          }),
+        },
+      },
+    },
+  }
+})
 
 vi.mock('axios', () => ({
   default: { create: vi.fn(() => mockApi) },
@@ -188,6 +202,26 @@ describe('appointment actions', () => {
     expect(store.appointmentAvailability).toEqual(slots)
   })
 
+  it('checkInAppointment keeps error a string when a 410 returns a detail object', async () => {
+    const err = new Error('gone')
+    err.response = {
+      status: 410,
+      data: {
+        detail: {
+          message: 'This appointment has expired.',
+          code: 'appointment_expired',
+          reference_code: 'APT-000482',
+        },
+      },
+    }
+    mockApi.post.mockReturnValueOnce(Promise.reject(err))
+    const store = useQueueStore()
+
+    await expect(store.checkInAppointment({ referenceCode: 'APT-000482' })).rejects.toThrow()
+
+    expect(store.error).toBe('This appointment has expired.')
+  })
+
   it('lookupAppointment clears myAppointment on failure, unlike the usual pattern', async () => {
     const store = useQueueStore()
     store.myAppointment = { id: 1, reference_code: 'APT-000001' }
@@ -270,5 +304,41 @@ describe('reports actions', () => {
       params: { year: 2026, month: 6 },
     })
     expect(store.transactionCalendar).toEqual(cal)
+  })
+})
+
+describe('response interceptor', () => {
+  it('is registered on the axios instance', () => {
+    // Registration happens once at module import, so assert on the captured
+    // handler rather than the mock's call record (beforeEach clears that).
+    expect(typeof interceptor.onRejected).toBe('function')
+  })
+
+  it('humanizes a Pydantic validation-error array into one readable string', async () => {
+    const err = new Error('unprocessable')
+    err.response = {
+      status: 422,
+      data: {
+        detail: [
+          { loc: ['body', 'student_id'], type: 'string_pattern_mismatch' },
+          { loc: ['body', 'first_name'], type: 'missing' },
+        ],
+      },
+    }
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(err.response.data.detail).toBe(
+      'Please enter a valid 10-digit student number. Please provide the first name.'
+    )
+  })
+
+  it('leaves a plain string detail untouched', async () => {
+    const err = new Error('bad request')
+    err.response = { status: 400, data: { detail: 'Queue not found' } }
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(err.response.data.detail).toBe('Queue not found')
   })
 })

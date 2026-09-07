@@ -886,7 +886,10 @@ export const useQueueStore = defineStore('queue', {
         this.checkInResult = response.data
         return response.data
       } catch (err) {
-        this.error = err.response?.data?.detail || 'Check-in failed'
+        // An expired appointment answers 410 with a structured detail object -
+        // keep this.error a plain string for any component that renders it.
+        const detail = err.response?.data?.detail
+        this.error = (typeof detail === 'string' ? detail : detail?.message) || 'Check-in failed'
         throw err
       } finally {
         this.loading = false
