@@ -26,3 +26,6 @@ Thumbs.db
 
 # Claude superpowers scratch
 .superpowers/
+
+# Verification screenshots from the run-bsu-registrar-queue skill
+bsu-registrar-queue/.claude/skills/run-bsu-registrar-queue/screenshots/

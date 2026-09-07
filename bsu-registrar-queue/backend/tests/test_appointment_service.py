@@ -2,9 +2,11 @@ from datetime import date, datetime, time, timedelta
 
 import pytest
 
-from app.services.appointment_service import AppointmentService, AppointmentWindowError
+from app.services.appointment_service import (
+    AppointmentExpiredError, AppointmentService, AppointmentWindowError
+)
 from app.models.appointment import AppointmentCreate
-from app.db_models import AppointmentDB, AppointmentDBStatus
+from app.db_models import AppointmentDB, AppointmentDBStatus, UserRole
 
 
 def _bookable_queue(make_queue, **overrides):
@@ -241,3 +243,53 @@ def test_expire_stale_appointments(db_session, make_queue, make_student):
 
     with pytest.raises(ValueError, match="expired"):
         service.check_in(reference_code=stale.reference_code)
+
+
+def _expired_appointment(db_session, queue, student, reference_code="APT-EXPIR1"):
+    appt = AppointmentDB(
+        reference_code=reference_code,
+        student_id=student.id,
+        queue_id=queue.id,
+        appointment_date=date.today() - timedelta(days=2),
+        slot_start_time=time(9, 0),
+        slot_end_time=time(9, 30),
+        qr_token=f"token-{reference_code}",
+        status=AppointmentDBStatus.EXPIRED,
+    )
+    db_session.add(appt)
+    db_session.commit()
+    db_session.refresh(appt)
+    return appt
+
+
+def test_check_in_expired_raises_expired_error_with_appointment(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    appt = _expired_appointment(db_session, queue, make_student())
+    service = AppointmentService(db_session)
+
+    with pytest.raises(AppointmentExpiredError) as exc:
+        service.check_in(reference_code=appt.reference_code)
+
+    assert exc.value.appointment.id == appt.id
+    # still a ValueError, so existing generic handlers keep working
+    assert isinstance(exc.value, ValueError)
+
+
+def test_checkin_api_answers_410_with_expiry_details(
+    client, db_session, make_queue, make_student, make_user
+):
+    staff = make_user(role=UserRole.STAFF)
+    queue = _bookable_queue(make_queue)
+    appt = _expired_appointment(db_session, queue, make_student(), reference_code="APT-EXPIR2")
+    client.post("/api/auth/login",
+                data={"username": staff.username, "password": staff._plain_password})
+
+    r = client.post("/api/appointments/checkin", json={"reference_code": appt.reference_code})
+
+    assert r.status_code == 410
+    detail = r.json()["detail"]
+    assert detail["code"] == "appointment_expired"
+    assert detail["reference_code"] == appt.reference_code
+    assert detail["appointment_date"] == appt.appointment_date.isoformat()
+    assert detail["slot_start_time"] == "09:00:00"
+    assert "expired" in detail["message"]

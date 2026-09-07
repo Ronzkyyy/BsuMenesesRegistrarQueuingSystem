@@ -288,6 +288,16 @@
             <input v-model.number="editQueueSettingsForm.slot_duration_minutes" type="number" min="5" max="120" class="field" />
             <p class="text-xs text-gray-500 mt-1">Used to estimate each student's wait time based on their position.</p>
           </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Details</label>
+            <textarea
+              v-model="editQueueSettingsForm.description"
+              rows="2"
+              maxlength="1000"
+              class="field"
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-1">Shown under the service name on the student kiosk.</p>
+          </div>
 
           <div v-if="editQueueSettingsError" class="p-3 bg-red-50 border border-red-100 rounded-xl">
             <p class="text-sm text-red-700">{{ editQueueSettingsError }}</p>
@@ -380,6 +390,7 @@ const editQueueSettingsError = ref('')
 const editQueueSettingsForm = ref({
   max_capacity: 50,
   slot_duration_minutes: 30,
+  description: '',
 })
 
 const openEditQueueSettings = (queue) => {
@@ -388,6 +399,7 @@ const openEditQueueSettings = (queue) => {
   editQueueSettingsForm.value = {
     max_capacity: queue.max_capacity,
     slot_duration_minutes: queue.slot_duration_minutes,
+    description: queue.description ?? '',
   }
   showEditQueueSettingsModal.value = true
 }

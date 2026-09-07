@@ -84,3 +84,6 @@ class QueueSettingsUpdate(BaseModel):
 
     max_capacity: int = Field(ge=1, le=200)
     slot_duration_minutes: int = Field(ge=5, le=120)
+    # Omitted entirely -> the queue keeps its current description, so a caller
+    # that only wants to change capacity can't blank it by accident.
+    description: Optional[str] = Field(default=None, max_length=1000)

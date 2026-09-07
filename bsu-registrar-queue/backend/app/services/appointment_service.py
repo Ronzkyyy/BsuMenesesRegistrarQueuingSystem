@@ -21,6 +21,21 @@ class AppointmentWindowError(Exception):
     pass
 
 
+class AppointmentExpiredError(ValueError):
+    """Raised when checking in an appointment that has already been marked EXPIRED.
+
+    Subclasses ValueError so existing `except ValueError` handlers still treat it
+    as a client error; the API catches it first to answer 410 with the booking's
+    own details, so the UI can render an "expired" state instead of a raw error.
+    """
+
+    def __init__(self, appointment: "AppointmentDB"):
+        self.appointment = appointment
+        super().__init__(
+            "This appointment has expired. Use manual lookup or take a walk-in ticket."
+        )
+
+
 # How far before/after a slot's start/end time a check-in is accepted without
 # staff explicitly overriding via force=True.
 GRACE_MINUTES_BEFORE = 30
@@ -214,7 +229,7 @@ class AppointmentService:
         if appointment.status == AppointmentDBStatus.CANCELLED:
             raise ValueError("This appointment was cancelled.")
         if appointment.status == AppointmentDBStatus.EXPIRED:
-            raise ValueError("This appointment has expired. Use manual lookup or take a walk-in ticket.")
+            raise AppointmentExpiredError(appointment)
 
         now = datetime.now()
         slot_start = datetime.combine(appointment.appointment_date, appointment.slot_start_time)

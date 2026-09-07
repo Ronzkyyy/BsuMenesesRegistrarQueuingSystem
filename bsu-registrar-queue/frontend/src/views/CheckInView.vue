@@ -9,6 +9,17 @@
       <p class="text-sm text-red-700">{{ error }}</p>
     </div>
 
+    <div v-if="expiredAppointment" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6">
+      <p class="text-sm font-semibold text-amber-900">Appointment expired</p>
+      <p class="text-sm text-amber-800 mt-1">
+        {{ expiredAppointment.reference_code }} - the
+        {{ formatTime(expiredAppointment.slot_start_time) }} slot on
+        {{ expiredAppointment.appointment_date }} has already passed.
+      </p>
+      <p class="text-sm text-amber-800 mt-1">Issue a walk-in ticket for this student instead.</p>
+      <button @click="expiredAppointment = null" class="btn-secondary btn-sm mt-3">Dismiss</button>
+    </div>
+
     <div v-if="pendingWindowConfirm" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6">
       <p class="text-sm text-amber-800 mb-3">{{ pendingWindowConfirm.message }}</p>
       <div class="flex gap-3">
@@ -84,6 +95,7 @@ const error = ref('')
 
 const lastTicket = ref(null)
 const pendingWindowConfirm = ref(null)
+const expiredAppointment = ref(null)
 
 const formatTime = (t) => {
   const [h, m] = t.split(':').map(Number)
@@ -148,19 +160,29 @@ const doManualSearch = async () => {
 const checkIn = async ({ token = null, referenceCode = null, force = false }) => {
   error.value = ''
   pendingWindowConfirm.value = null
+  expiredAppointment.value = null
   try {
     const ticket = await queueStore.checkInAppointment({ token, referenceCode, force })
     lastTicket.value = ticket
     searchResults.value = searchResults.value.filter((a) => a.reference_code !== referenceCode)
     manualQuery.value = ''
   } catch (err) {
+    const detail = err.response?.data?.detail
     if (err.response?.status === 409) {
       pendingWindowConfirm.value = {
-        message: err.response.data.detail,
+        message: detail,
         retry: { token, referenceCode },
       }
+    } else if (err.response?.status === 410) {
+      // 410 carries the expired booking's own details - show it as a state,
+      // not as a check-in failure, and drop the now-dead row so staff can't
+      // retry it.
+      expiredAppointment.value = detail
+      searchResults.value = searchResults.value.filter(
+        (a) => a.reference_code !== detail.reference_code
+      )
     } else {
-      error.value = err.response?.data?.detail || 'Check-in failed'
+      error.value = (typeof detail === 'string' ? detail : detail?.message) || 'Check-in failed'
     }
   }
 }

@@ -2,7 +2,9 @@ import pytest
 from datetime import time
 
 from app.services.queue_service import QueueService
-from app.models.queue import QueueCreate, QueueType, QueueStatus, QueueBookingSettings
+from app.models.queue import (
+    QueueBookingSettings, QueueCreate, QueueSettingsUpdate, QueueStatus, QueueType
+)
 
 
 def test_create_queue_defaults(db_session, make_queue):
@@ -81,3 +83,34 @@ def test_increment_ticket_number(db_session, make_queue):
 
     assert first == 1
     assert second == 2
+
+
+def test_update_queue_settings_sets_description(db_session, make_queue):
+    queue = make_queue(description="Transcript, diploma, and certificate requests")
+    service = QueueService(db_session)
+
+    updated = service.update_queue_settings(
+        queue.id,
+        QueueSettingsUpdate(
+            max_capacity=50,
+            slot_duration_minutes=20,
+            description="Certified true copy of all official documents",
+        ),
+    )
+
+    assert updated.description == "Certified true copy of all official documents"
+    assert updated.max_capacity == 50
+
+
+def test_update_queue_settings_keeps_description_when_omitted(db_session, make_queue):
+    queue = make_queue(description="Original details")
+    service = QueueService(db_session)
+
+    updated = service.update_queue_settings(
+        queue.id,
+        QueueSettingsUpdate(max_capacity=75, slot_duration_minutes=45),
+    )
+
+    assert updated.description == "Original details"
+    assert updated.max_capacity == 75
+    assert updated.slot_duration_minutes == 45

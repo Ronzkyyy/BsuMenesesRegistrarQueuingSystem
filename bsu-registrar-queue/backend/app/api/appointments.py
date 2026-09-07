@@ -15,7 +15,9 @@ from ..models.appointment import (
 )
 from ..models.ticket import Ticket
 from ..models.user import User
-from ..services.appointment_service import AppointmentService, AppointmentWindowError
+from ..services.appointment_service import (
+    AppointmentExpiredError, AppointmentService, AppointmentWindowError
+)
 
 
 router = APIRouter()
@@ -106,6 +108,17 @@ def check_in(
             staff_user_id=current_user.id,
             force=payload.force,
         )
+    except AppointmentExpiredError as e:
+        # 410 Gone, with the booking's own details so the check-in screen can
+        # render an "expired appointment" panel rather than a bare error string.
+        appt = e.appointment
+        raise HTTPException(status_code=410, detail={
+            "message": str(e),
+            "code": "appointment_expired",
+            "reference_code": appt.reference_code,
+            "appointment_date": appt.appointment_date.isoformat(),
+            "slot_start_time": appt.slot_start_time.isoformat(),
+        })
     except AppointmentWindowError as e:
         raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
