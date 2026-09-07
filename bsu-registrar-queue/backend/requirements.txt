@@ -1,19 +1,19 @@
-fastapi==0.139.0
-uvicorn[standard]==0.50.2
-sqlalchemy==2.0.51
-alembic==1.18.5
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+sqlalchemy==2.0.52
+alembic==1.19.1
 psycopg2-binary==2.9.12
-redis==8.0.1
+redis==8.1.0
 celery==5.6.3
 python-multipart==0.0.32
 python-jose[cryptography]==3.5.0
-cryptography==50.0.0  # patches PYSEC-2026-3552 (python-jose's transitive floor resolves too low otherwise)
+cryptography==50.0.1  # patches PYSEC-2026-3552 (python-jose's transitive floor resolves too low otherwise)
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1  # passlib 1.7.4 breaks on bcrypt>=4.1 (removed bcrypt.__about__)
-python-dotenv==1.2.2
-pytz==2026.2
-pydantic[email]==2.13.4
-pydantic-settings==2.14.2
+python-dotenv==1.2.3
+pytz==2026.3.post1
+pydantic[email]==2.13.5
+pydantic-settings==2.15.0
 email-validator==2.3.0  # required by pydantic EmailStr (student email validation)
 httpx==0.28.1
 slowapi==0.1.10
