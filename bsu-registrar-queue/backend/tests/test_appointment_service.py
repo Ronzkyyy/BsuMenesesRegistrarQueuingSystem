@@ -3,7 +3,8 @@ from datetime import date, datetime, time, timedelta
 import pytest
 
 from app.services.appointment_service import (
-    AppointmentExpiredError, AppointmentService, AppointmentWindowError
+    AppointmentExpiredError, AppointmentService, AppointmentWindowError,
+    earliest_bookable_date,
 )
 from app.models.appointment import AppointmentCreate
 from app.db_models import AppointmentDB, AppointmentDBStatus, UserRole
@@ -293,3 +294,50 @@ def test_checkin_api_answers_410_with_expiry_details(
     assert detail["appointment_date"] == appt.appointment_date.isoformat()
     assert detail["slot_start_time"] == "09:00:00"
     assert "expired" in detail["message"]
+
+
+def test_availability_is_empty_for_today(db_session, make_queue):
+    queue = _bookable_queue(make_queue, operating_start_time=time(0, 0), operating_end_time=time(23, 30))
+    service = AppointmentService(db_session)
+
+    # Deliberately a full-day queue: were same-day booking still allowed, some
+    # slot would always remain open no matter what time this test runs.
+    assert service.get_availability(queue.id, date.today()) == []
+    assert service.get_availability(queue.id, date.today() - timedelta(days=1)) == []
+
+
+def test_availability_starts_from_tomorrow(db_session, make_queue):
+    queue = _bookable_queue(make_queue)
+    service = AppointmentService(db_session)
+
+    slots = service.get_availability(queue.id, date.today() + timedelta(days=1))
+
+    assert len(slots) > 0
+
+
+def test_book_appointment_rejects_today(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    student = make_student()
+    service = AppointmentService(db_session)
+
+    with pytest.raises(ValueError, match="at least one day ahead"):
+        service.create_appointment(AppointmentCreate(
+            student_id=student.id, queue_id=queue.id,
+            appointment_date=date.today(), slot_start_time=time(9, 0),
+        ))
+
+
+def test_book_appointment_rejects_past_date(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    student = make_student()
+    service = AppointmentService(db_session)
+
+    with pytest.raises(ValueError, match="at least one day ahead"):
+        service.create_appointment(AppointmentCreate(
+            student_id=student.id, queue_id=queue.id,
+            appointment_date=date.today() - timedelta(days=1), slot_start_time=time(9, 0),
+        ))
+
+
+def test_earliest_bookable_date_is_tomorrow():
+    assert earliest_bookable_date() == date.today() + timedelta(days=1)

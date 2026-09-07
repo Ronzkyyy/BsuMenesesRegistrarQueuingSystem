@@ -36,6 +36,16 @@ class AppointmentExpiredError(ValueError):
         )
 
 
+def earliest_bookable_date() -> date:
+    """The first date a student may book: tomorrow.
+
+    Same-day appointments are not offered, so the registrar has the day's
+    bookings settled before it opens. Availability and creation both read the
+    rule from here rather than each re-deriving it from date.today().
+    """
+    return date.today() + timedelta(days=1)
+
+
 # How far before/after a slot's start/end time a check-in is accepted without
 # staff explicitly overriding via force=True.
 GRACE_MINUTES_BEFORE = 30
@@ -57,16 +67,17 @@ class AppointmentService:
         if not queue or not queue.booking_enabled:
             return []
 
+        # Same-day booking is not offered - the earliest bookable date is
+        # tomorrow, so today and anything before it has no slots at all.
+        if target_date < earliest_bookable_date():
+            return []
+
         slots: List[SlotAvailability] = []
         delta = timedelta(minutes=queue.slot_duration_minutes)
         current = datetime.combine(target_date, queue.operating_start_time)
         day_end = datetime.combine(target_date, queue.operating_end_time)
-        now = datetime.now()
 
         while current + delta <= day_end:
-            if target_date == date.today() and current < now:
-                current += delta
-                continue
             slot_start = current.time()
             slot_end = (current + delta).time()
             booked = self.db.query(func.count(AppointmentDB.id)).filter(
@@ -97,8 +108,12 @@ class AppointmentService:
             raise ValueError("This service is not open for appointment booking")
 
         today = date.today()
-        if data.appointment_date < today:
-            raise ValueError("Cannot book an appointment in the past")
+        earliest = earliest_bookable_date()
+        if data.appointment_date < earliest:
+            raise ValueError(
+                "Appointments must be booked at least one day ahead - the earliest "
+                f"available date is {earliest.isoformat()}."
+            )
         if data.appointment_date > today + timedelta(days=queue.booking_window_days):
             raise ValueError(f"Appointments can only be booked up to {queue.booking_window_days} days in advance")
 
@@ -124,8 +139,6 @@ class AppointmentService:
         )
         if not is_valid_slot:
             raise ValueError("That time is not a valid slot for this service")
-        if data.appointment_date == today and slot_start_dt < datetime.now():
-            raise ValueError("That time slot has already passed today")
 
         booked_count = self.db.query(func.count(AppointmentDB.id)).filter(
             AppointmentDB.queue_id == data.queue_id,
