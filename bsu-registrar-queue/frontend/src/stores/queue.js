@@ -59,17 +59,56 @@ function humanizeValidationErrors(detail) {
   return [...new Set(messages)].join(' ') || 'Please check your input and try again.'
 }
 
-// Normalize validation-error responses before any caller reads `.detail`.
-api.interceptors.response.use(
-  (response) => response,
-  (err) => {
-    const detail = err.response?.data?.detail
-    if (Array.isArray(detail)) {
-      err.response.data.detail = humanizeValidationErrors(detail)
+// Endpoints where a 401/403 means exactly what it says (bad credentials, wrong
+// portal) rather than a stale session - resyncing currentUser or rewriting
+// the message here would just be confusing on a login screen.
+const SESSION_CHECK_EXEMPT_PATHS = ['/auth/login', '/auth/me']
+
+/**
+ * This app uses one shared login cookie for the whole site, not one per
+ * portal - logging into a different portal in another tab silently swaps
+ * who every open tab is actually authenticated as. When that happens, the
+ * open tab's `currentUser` state goes stale (still shows the old identity)
+ * and a 401/403 on it reads as a confusing "Insufficient permissions" next
+ * to a header that claims otherwise. Re-sync currentUser with reality and
+ * rewrite the message to reflect it.
+ */
+async function resyncStaleSession(err) {
+  const status = err.response?.status
+  if (status !== 401 && status !== 403) return
+  if (SESSION_CHECK_EXEMPT_PATHS.includes(err.config?.url)) return
+
+  const store = useQueueStore()
+  try {
+    const { data: user } = await api.get('/auth/me')
+    store.currentUser = user
+    if (status === 403) {
+      err.response.data.detail =
+        `You're now signed in as ${user.username} (${user.role}) - this doesn't have ` +
+        'permission for that. Log in again if you meant to continue as a different account.'
     }
-    return Promise.reject(err)
-  },
-)
+  } catch {
+    store.currentUser = null
+    err.response.data.detail = 'Your session has expired. Please log in again.'
+  }
+}
+
+// Normalize validation-error responses before any caller reads `.detail`,
+// and resync currentUser when a request reveals the session has changed.
+async function handleResponseError(err) {
+  const detail = err.response?.data?.detail
+  if (Array.isArray(detail)) {
+    err.response.data.detail = humanizeValidationErrors(detail)
+  }
+  await resyncStaleSession(err)
+  return Promise.reject(err)
+}
+
+api.interceptors.response.use((response) => response, handleResponseError)
+// QueueManagementView's booking/queue-settings calls go through the bare
+// axios default instance, not `api` - registering here too so they get the
+// same resync instead of a raw "Insufficient permissions".
+axios.interceptors.response.use((response) => response, handleResponseError)
 
 export const useQueueStore = defineStore('queue', {
   state: () => ({
