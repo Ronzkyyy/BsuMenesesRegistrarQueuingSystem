@@ -52,7 +52,7 @@ def get_my_ticket(
 
     Keyed on the 10-digit student number, not the internal id - this is
     unauthenticated, so it must not let a caller enumerate other students'
-    tickets (and their free-text purpose) by counting up internal ids.
+    tickets by counting up internal ids.
     """
     service = TicketService(db)
     ticket = service.get_student_ticket(student_id, queue_id)

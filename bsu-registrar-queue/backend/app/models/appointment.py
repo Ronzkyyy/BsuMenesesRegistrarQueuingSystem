@@ -21,7 +21,6 @@ class AppointmentCreate(BaseModel):
     queue_id: int = Field(..., gt=0)
     appointment_date: date
     slot_start_time: time
-    purpose: Optional[str] = Field(default=None, max_length=500)
 
 
 class Appointment(BaseModel):
@@ -32,7 +31,6 @@ class Appointment(BaseModel):
     appointment_date: date
     slot_start_time: time
     slot_end_time: time
-    purpose: Optional[str] = None
     status: AppointmentStatus
     checked_in_at: Optional[datetime] = None
     ticket_id: Optional[int] = None

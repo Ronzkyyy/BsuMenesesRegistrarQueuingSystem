@@ -13,10 +13,10 @@ UTC = timezone.utc
 
 def _ticket(db, student, queue, *, status=TicketDBStatus.COMPLETED,
             created_at, completed_at=None, served_at=None,
-            priority=PriorityLevel.NORMAL, purpose="Clearance", ticket_number=1):
+            priority=PriorityLevel.NORMAL, ticket_number=1):
     row = TicketDB(
         ticket_number=ticket_number, student_id=student.id, queue_id=queue.id,
-        priority=priority, purpose=purpose, status=status, position=0,
+        priority=priority, status=status, position=0,
         created_at=created_at, served_at=served_at, completed_at=completed_at,
     )
     db.add(row)
@@ -32,7 +32,7 @@ def _appointment(db, student, queue, *, status=AppointmentDBStatus.CHECKED_IN,
         appointment_date=created_at.date(),
         slot_start_time=datetime(2000, 1, 1, 9, 0).time(),
         slot_end_time=datetime(2000, 1, 1, 9, 30).time(),
-        purpose="Enrollment", qr_token=f"tok-{ref}", status=status,
+        qr_token=f"tok-{ref}", status=status,
         created_at=created_at, checked_in_at=checked_in_at,
     )
     db.add(row)

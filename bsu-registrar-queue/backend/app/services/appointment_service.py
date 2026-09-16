@@ -156,7 +156,6 @@ class AppointmentService:
             appointment_date=data.appointment_date,
             slot_start_time=data.slot_start_time,
             slot_end_time=(slot_start_dt + slot_delta).time(),
-            purpose=data.purpose,
             qr_token=secrets.token_urlsafe(32),
             status=AppointmentDBStatus.BOOKED,
         )
@@ -274,7 +273,6 @@ class AppointmentService:
         ticket_data = TicketCreate(
             student_id=appointment.student_id,
             queue_id=appointment.queue_id,
-            purpose=appointment.purpose,
         )
         try:
             ticket = ticket_service.create_ticket(ticket_data, minimum_priority=PriorityLevel.PRIORITY)
@@ -335,7 +333,6 @@ class AppointmentService:
             appointment_date=db_appt.appointment_date,
             slot_start_time=db_appt.slot_start_time,
             slot_end_time=db_appt.slot_end_time,
-            purpose=db_appt.purpose,
             status=AppointmentStatus(db_appt.status.value),
             checked_in_at=db_appt.checked_in_at,
             ticket_id=db_appt.ticket_id,

@@ -163,7 +163,6 @@ class TicketService:
             student_id=ticket_data.student_id,
             queue_id=ticket_data.queue_id,
             priority=priority,
-            purpose=ticket_data.purpose,
             status=TicketDBStatus.WAITING,
             position=position,
             estimated_wait_time_minutes=estimated_wait,
@@ -413,10 +412,9 @@ class TicketService:
 
         Takes the student number (not the internal id) because this endpoint is
         public: keying on a small sequential internal id would let anyone read
-        any student's ticket - including its free-text `purpose` - by counting
-        up. A student can hold at most one active ticket at a time across all
-        queues (enforced in create_ticket), so an unscoped call is
-        deterministic.
+        any student's ticket by counting up. A student can hold at most one
+        active ticket at a time across all queues (enforced in create_ticket),
+        so an unscoped call is deterministic.
         """
         student = self.db.query(StudentDB).filter(
             StudentDB.student_id == student_number
@@ -511,7 +509,6 @@ class TicketService:
             student_id=db_ticket.student_id,
             queue_id=db_ticket.queue_id,
             priority=PydanticPriorityLevel(db_ticket.priority.value),
-            purpose=db_ticket.purpose,
             status=TicketStatus(db_ticket.status.value),
             position=db_ticket.position,
             estimated_wait_time_minutes=db_ticket.estimated_wait_time_minutes,

@@ -23,7 +23,6 @@ const VALIDATION_FIELD_LABELS = {
   password: 'password',
   new_password: 'new password',
   current_password: 'current password',
-  purpose: 'purpose',
   query: 'search term',
   name: 'name',
   text: 'text',
@@ -614,14 +613,13 @@ export const useQueueStore = defineStore('queue', {
 
     // ============ TICKET ACTIONS ============
 
-    async takeTicket(queueId, studentId, purpose = '') {
+    async takeTicket(queueId, studentId) {
       this.loading = true
       this.error = null
       try {
         const response = await api.post('/tickets', {
           queue_id: queueId,
           student_id: studentId,
-          purpose,
         })
         this.myTicket = response.data
         return response.data

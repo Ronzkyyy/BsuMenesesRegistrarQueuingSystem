@@ -27,7 +27,6 @@ class TicketBase(BaseModel):
     student_id: int = Field(..., gt=0)
     queue_id: int = Field(..., gt=0)
     priority: PriorityLevel = PriorityLevel.NORMAL
-    purpose: Optional[str] = Field(default=None, max_length=500)
 
 
 class TicketCreate(TicketBase):
