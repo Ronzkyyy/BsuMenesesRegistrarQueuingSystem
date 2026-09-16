@@ -894,6 +894,20 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    async staffCancelAppointment(appointmentId) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.patch(`/appointments/${appointmentId}/staff-cancel`)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to remove appointment'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     // ============ STUDENT ACTIONS ============
 
     async searchStudent(studentId) {

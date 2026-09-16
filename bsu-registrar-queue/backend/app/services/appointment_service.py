@@ -200,10 +200,15 @@ class AppointmentService:
         return self._to_appointment(appointment, queue)
 
     def search(self, query: str) -> List[Appointment]:
-        """Staff manual lookup fallback - matches student ID or reference code, booked appointments only"""
+        """Staff manual lookup fallback - matches student ID or reference code.
+
+        Includes EXPIRED alongside BOOKED (not CANCELLED/CHECKED_IN, which are
+        already resolved) so a stale appointment stays findable - and
+        removable via staff_cancel_expired - after expire_stale_appointments
+        flips it, instead of silently vanishing from search."""
         pattern = f"%{escape_like(query)}%"
         rows = self.db.query(AppointmentDB).join(StudentDB, AppointmentDB.student_id == StudentDB.id).filter(
-            AppointmentDB.status == AppointmentDBStatus.BOOKED,
+            AppointmentDB.status.in_([AppointmentDBStatus.BOOKED, AppointmentDBStatus.EXPIRED]),
             or_(
                 StudentDB.student_id.ilike(pattern, escape=LIKE_ESCAPE),
                 AppointmentDB.reference_code.ilike(pattern, escape=LIKE_ESCAPE),
@@ -314,6 +319,42 @@ class AppointmentService:
         if count:
             self.db.commit()
         return count
+
+    @staticmethod
+    def _is_overdue(appt: AppointmentDB) -> bool:
+        """True once an appointment is past saving - either already flipped to
+        EXPIRED by expire_stale_appointments, or still BOOKED but past that
+        same buffer_minutes cutoff (the periodic task runs every 5 minutes, so
+        a BOOKED row can lag the cutoff briefly before it's caught)."""
+        if appt.status == AppointmentDBStatus.EXPIRED:
+            return True
+        if appt.status != AppointmentDBStatus.BOOKED:
+            return False
+        slot_end = datetime.combine(appt.appointment_date, appt.slot_end_time)
+        return slot_end < datetime.now() - timedelta(minutes=EXPIRE_BUFFER_MINUTES)
+
+    def staff_cancel_expired(self, appointment_id: int) -> Optional[Appointment]:
+        """Staff removes a specific overdue appointment from the check-in flow.
+
+        A soft cancel (status -> CANCELLED), not a hard delete, so it still
+        shows up in Transaction History for audit purposes. Restricted to
+        appointments that are actually overdue - per **Authorize every
+        sensitive action on the server** (CLAUDE.md), the UI only offers this
+        button for expired rows, but the server re-checks _is_overdue itself
+        rather than trusting the client not to call it on a valid upcoming
+        booking."""
+        appointment = self.db.query(AppointmentDB).filter(AppointmentDB.id == appointment_id).first()
+        if not appointment:
+            return None
+        if not self._is_overdue(appointment):
+            raise ValueError("Only expired or overdue appointments can be removed this way.")
+
+        appointment.status = AppointmentDBStatus.CANCELLED
+        appointment.updated_at = datetime.now()
+        self.db.commit()
+        self.db.refresh(appointment)
+        queue = self.db.query(QueueDB).filter(QueueDB.id == appointment.queue_id).first()
+        return self._to_appointment(appointment, queue)
 
     def _generate_reference_code(self) -> str:
         for _ in range(10):

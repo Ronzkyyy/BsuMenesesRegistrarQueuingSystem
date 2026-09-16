@@ -17,7 +17,10 @@
         {{ expiredAppointment.appointment_date }} has already passed.
       </p>
       <p class="text-sm text-amber-800 mt-1">Issue a walk-in ticket for this student instead.</p>
-      <button @click="expiredAppointment = null" class="btn-secondary btn-sm mt-3">Dismiss</button>
+      <div class="flex gap-3 mt-3">
+        <button @click="expiredAppointment = null" class="btn-secondary btn-sm">Dismiss</button>
+        <button @click="removeExpiredAppointment(expiredAppointment)" class="btn-danger-solid btn-sm">Delete</button>
+      </div>
     </div>
 
     <div v-if="pendingWindowConfirm" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6">
@@ -70,10 +73,20 @@
             class="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200"
           >
             <div>
-              <p class="font-medium text-bsu-ink">{{ appt.reference_code }} - {{ appt.queue_name }}</p>
+              <p class="font-medium text-bsu-ink">
+                {{ appt.reference_code }} - {{ appt.queue_name }}
+                <span v-if="isOverdue(appt)" class="ml-2 text-xs px-2 py-0.5 rounded-xl bg-amber-100 text-amber-800">Expired</span>
+              </p>
               <p class="text-sm text-gray-500">{{ appt.appointment_date }} at {{ formatTime(appt.slot_start_time) }}</p>
             </div>
-            <button @click="checkIn({ referenceCode: appt.reference_code })" :disabled="loading" class="btn-success-solid btn-sm">
+            <button
+              v-if="isOverdue(appt)"
+              @click="removeExpiredAppointment(appt)"
+              class="btn-danger-solid btn-sm"
+            >
+              Delete
+            </button>
+            <button v-else @click="checkIn({ referenceCode: appt.reference_code })" :disabled="loading" class="btn-success-solid btn-sm">
               Check In
             </button>
           </div>
@@ -81,6 +94,16 @@
         <p v-else-if="searchedOnce" class="text-sm text-gray-500">No matching booked appointments found.</p>
       </div>
     </div>
+
+    <ConfirmDialog
+      v-model="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      confirm-label="Yes, Delete"
+      variant="danger"
+      :loading="confirmLoading"
+      @confirm="handleConfirmDelete"
+    />
   </div>
 </template>
 
@@ -88,6 +111,7 @@
 import { ref, onUnmounted, computed } from 'vue'
 import QrScanner from 'qr-scanner'
 import { useQueueStore } from '@/stores/queue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const queueStore = useQueueStore()
 const loading = computed(() => queueStore.loading)
@@ -102,6 +126,50 @@ const formatTime = (t) => {
   const period = h >= 12 ? 'PM' : 'AM'
   const hour12 = h % 12 === 0 ? 12 : h % 12
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`
+}
+
+// An appointment counts as overdue once it's already flipped to EXPIRED, or -
+// before the periodic expiry task has caught up - once its slot end has
+// passed the same buffer_minutes cutoff appointment_service.py uses to flip
+// it. Matches AppointmentService._is_overdue on the backend.
+const EXPIRE_BUFFER_MINUTES = 60
+const isOverdue = (appt) => {
+  if (appt.status === 'expired') return true
+  if (appt.status !== 'booked') return false
+  const slotEnd = new Date(`${appt.appointment_date}T${appt.slot_end_time}`)
+  return slotEnd.getTime() < Date.now() - EXPIRE_BUFFER_MINUTES * 60000
+}
+
+// --- delete (soft-cancel) an overdue appointment ---
+const confirmDialog = ref({ open: false, title: '', message: '' })
+const confirmLoading = ref(false)
+let appointmentToDelete = null
+
+const removeExpiredAppointment = (appt) => {
+  appointmentToDelete = appt
+  confirmDialog.value = {
+    open: true,
+    title: 'Delete this expired appointment?',
+    message: `${appt.reference_code} on ${appt.appointment_date} has already expired. This cannot be undone.`,
+  }
+}
+
+const handleConfirmDelete = async () => {
+  if (!appointmentToDelete) return
+  confirmLoading.value = true
+  try {
+    await queueStore.staffCancelAppointment(appointmentToDelete.id)
+    searchResults.value = searchResults.value.filter((a) => a.id !== appointmentToDelete.id)
+    if (expiredAppointment.value?.id === appointmentToDelete.id) {
+      expiredAppointment.value = null
+    }
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Failed to delete appointment'
+  } finally {
+    confirmLoading.value = false
+    confirmDialog.value.open = false
+    appointmentToDelete = null
+  }
 }
 
 // --- camera scanning ---
