@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.orm import Session
 from typing import List
 
+from ..core.audit import log_security_event
 from ..core.database import get_db
 from ..core.limiter import limiter
 from ..core.security import require_role
@@ -115,6 +116,7 @@ def check_in(
         raise HTTPException(status_code=410, detail={
             "message": str(e),
             "code": "appointment_expired",
+            "id": appt.id,
             "reference_code": appt.reference_code,
             "appointment_date": appt.appointment_date.isoformat(),
             "slot_start_time": appt.slot_start_time.isoformat(),
@@ -123,3 +125,29 @@ def check_in(
         raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/{appointment_id}/staff-cancel", response_model=Appointment)
+def staff_cancel_expired_appointment(
+    request: Request,
+    appointment_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STAFF))
+):
+    """Staff removes one overdue appointment from the check-in flow (staff only).
+
+    A soft cancel, not a hard delete - see AppointmentService.staff_cancel_expired.
+    """
+    service = AppointmentService(db)
+    try:
+        appointment = service.staff_cancel_expired(appointment_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    log_security_event(
+        "appointment.staff_cancelled", outcome="success", request=request,
+        actor=current_user.username, target=f"appointment#{appointment_id}",
+    )
+    return appointment

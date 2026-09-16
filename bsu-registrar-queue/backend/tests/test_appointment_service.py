@@ -296,6 +296,83 @@ def test_checkin_api_answers_410_with_expiry_details(
     assert "expired" in detail["message"]
 
 
+def test_search_includes_expired_appointments(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    appt = _expired_appointment(db_session, queue, make_student(), reference_code="APT-EXPIR3")
+    service = AppointmentService(db_session)
+
+    found = service.search(appt.reference_code)
+
+    assert any(r.id == appt.id for r in found)
+
+
+def test_staff_cancel_expired_cancels_an_expired_appointment(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    appt = _expired_appointment(db_session, queue, make_student(), reference_code="APT-EXPIR4")
+    service = AppointmentService(db_session)
+
+    cancelled = service.staff_cancel_expired(appt.id)
+
+    assert cancelled.status == "cancelled"
+    db_session.refresh(appt)
+    assert appt.status == AppointmentDBStatus.CANCELLED
+
+
+def test_staff_cancel_expired_cancels_a_stale_booked_appointment(db_session, make_queue, make_student):
+    # Still BOOKED (the periodic task hasn't caught it yet), but well past the
+    # buffer - staff_cancel_expired should treat this the same as EXPIRED.
+    queue = _bookable_queue(make_queue)
+    student = make_student()
+    stale = AppointmentDB(
+        reference_code="APT-STALE2", student_id=student.id, queue_id=queue.id,
+        appointment_date=date.today() - timedelta(days=1),
+        slot_start_time=time(8, 0), slot_end_time=time(8, 30),
+        qr_token="stale-token-for-cancel-test", status=AppointmentDBStatus.BOOKED,
+    )
+    db_session.add(stale)
+    db_session.commit()
+    db_session.refresh(stale)
+    service = AppointmentService(db_session)
+
+    cancelled = service.staff_cancel_expired(stale.id)
+
+    assert cancelled.status == "cancelled"
+
+
+def test_staff_cancel_expired_rejects_a_still_valid_booking(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    student = make_student()
+    target_date = date.today() + timedelta(days=1)
+    service = AppointmentService(db_session)
+    slot = service.get_availability(queue.id, target_date)[0]
+    booked = service.create_appointment(AppointmentCreate(
+        student_id=student.id, queue_id=queue.id,
+        appointment_date=target_date, slot_start_time=slot.slot_start_time,
+    ))
+
+    with pytest.raises(ValueError, match="overdue"):
+        service.staff_cancel_expired(booked.id)
+
+
+def test_staff_cancel_expired_returns_none_for_missing_appointment(db_session):
+    service = AppointmentService(db_session)
+
+    assert service.staff_cancel_expired(999999) is None
+
+
+def test_staff_cancel_api_removes_expired_appointment(client, db_session, make_queue, make_student, make_user):
+    staff = make_user(role=UserRole.STAFF)
+    queue = _bookable_queue(make_queue)
+    appt = _expired_appointment(db_session, queue, make_student(), reference_code="APT-EXPIR5")
+    client.post("/api/auth/login",
+                data={"username": staff.username, "password": staff._plain_password})
+
+    r = client.patch(f"/api/appointments/{appt.id}/staff-cancel")
+
+    assert r.status_code == 200
+    assert r.json()["status"] == "cancelled"
+
+
 def test_availability_is_empty_for_today(db_session, make_queue):
     queue = _bookable_queue(make_queue, operating_start_time=time(0, 0), operating_end_time=time(23, 30))
     service = AppointmentService(db_session)
