@@ -41,6 +41,54 @@
                 <p v-if="student" class="text-sm text-green-700 mt-1.5">{{ student.first_name }} {{ student.last_name }} found</p>
               </div>
 
+              <div v-if="studentNotFound" class="space-y-4">
+                <p class="text-sm text-bsu-gold-dark bg-bsu-gold/15 border border-bsu-gold/30 rounded-xl p-3">
+                  Student not found. Please fill in the details below to register.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
+                    <input v-model="registrationForm.first_name" type="text" class="field" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
+                    <input v-model="registrationForm.last_name" type="text" class="field" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                  <input v-model="registrationForm.email" type="email" class="field" />
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Course</label>
+                    <select v-model="registrationForm.course" @change="onCourseChange" class="field">
+                      <option :value="course.value" v-for="course in courseOptions" :key="course.value">{{ course.label }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Year Level</label>
+                    <select v-model="registrationForm.year_level" class="field">
+                      <option :value="year.value" v-for="year in yearLevelOptions" :key="year.value">{{ year.label }}</option>
+                    </select>
+                  </div>
+                </div>
+                <div v-if="isBitCourse">
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Major</label>
+                  <select v-model="registrationForm.major" class="field">
+                    <option :value="null" disabled>Select a major</option>
+                    <option :value="major.value" v-for="major in majorOptions" :key="major.value">{{ major.label }}</option>
+                  </select>
+                </div>
+                <button
+                  @click="registerAndContinue"
+                  :disabled="loading || !canRegister"
+                  class="btn-primary btn-md w-full py-2.5"
+                >
+                  Register
+                </button>
+              </div>
+
               <div v-if="student">
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Service</label>
                 <select v-model="selectedQueueId" @change="onQueueChange" class="field">
@@ -172,6 +220,7 @@
 import { ref, computed } from 'vue'
 import QRCode from 'qrcode'
 import { useQueueStore } from '@/stores/queue'
+import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
 const queueStore = useQueueStore()
 const loading = computed(() => queueStore.loading)
@@ -182,6 +231,18 @@ const mode = ref('book')
 // --- booking flow state ---
 const studentIdInput = ref('')
 const student = ref(null)
+const studentNotFound = ref(false)
+const registrationForm = ref(emptyRegistrationForm())
+const isBitCourse = computed(() => registrationForm.value.course === BIT_COURSE_VALUE)
+const onCourseChange = () => {
+  if (!isBitCourse.value) registrationForm.value.major = null
+}
+const canRegister = computed(() => {
+  const f = registrationForm.value
+  if (!f.first_name.trim() || !f.last_name.trim() || !f.email.trim()) return false
+  if (isBitCourse.value && !f.major) return false
+  return true
+})
 const bookableQueues = ref([])
 const selectedQueueId = ref(null)
 const selectedDate = ref('')
@@ -221,15 +282,36 @@ const formatTime = (t) => {
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`
 }
 
+const loadBookableQueues = async () => {
+  const active = await queueStore.fetchActiveQueues()
+  bookableQueues.value = active.filter((q) => q.booking_enabled)
+}
+
 const findStudent = async () => {
   error.value = ''
+  studentNotFound.value = false
   try {
     student.value = await queueStore.searchStudent(studentIdInput.value.trim())
-    const active = await queueStore.fetchActiveQueues()
-    bookableQueues.value = active.filter((q) => q.booking_enabled)
+    await loadBookableQueues()
   } catch (err) {
-    error.value = err.response?.data?.detail || 'Student not found'
     student.value = null
+    if (err.response?.status === 404) {
+      studentNotFound.value = true
+      registrationForm.value = { ...emptyRegistrationForm(), student_id: studentIdInput.value.trim() }
+    } else {
+      error.value = err.response?.data?.detail || 'Failed to look up student. Please try again.'
+    }
+  }
+}
+
+const registerAndContinue = async () => {
+  error.value = ''
+  try {
+    student.value = await queueStore.registerStudent(registrationForm.value)
+    studentNotFound.value = false
+    await loadBookableQueues()
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Failed to register student'
   }
 }
 
