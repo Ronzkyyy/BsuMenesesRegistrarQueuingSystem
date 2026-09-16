@@ -4,8 +4,8 @@
       <div class="p-8">
         <div class="flex flex-col items-center text-center mb-6">
           <div class="flex items-center space-x-2 mb-4">
-            <img :src="BSUlogo" alt="BSU Logo" class="w-12 h-12 object-contain" />
-            <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-12 h-12 object-contain" />
+            <img :src="BSUlogo" alt="BSU Logo" class="h-12 w-auto object-contain" />
+            <img :src="MENESESlogo" alt="Meneses Campus Logo" class="h-12 w-auto object-contain" />
           </div>
           <h1 class="text-2xl font-bold text-bsu-ink">Staff Login</h1>
           <p class="mt-1 text-sm text-gray-500">Enter your credentials to continue</p>
@@ -82,10 +82,8 @@
           <p class="text-sm text-red-700">{{ loginError }}</p>
         </div>
 
-        <div class="mt-6 flex items-center justify-center space-x-4 text-sm">
+        <div class="mt-6 flex items-center justify-center text-sm">
           <router-link to="/" class="text-gray-500 hover:text-bsu-primary hover:underline">Back to Home</router-link>
-          <span class="text-gray-300">|</span>
-          <router-link to="/display" class="text-bsu-primary hover:underline">View Display Board</router-link>
         </div>
       </div>
     </div>
