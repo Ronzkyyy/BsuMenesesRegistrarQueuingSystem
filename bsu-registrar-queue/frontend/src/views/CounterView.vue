@@ -33,7 +33,6 @@
               <span class="inline-block px-8 py-4 bg-gradient-to-br from-bsu-primary to-bsu-peach text-white text-5xl font-extrabold rounded-2xl mb-3 shadow-soft">
                 {{ servingTicket.ticket_code }}
               </span>
-              <p v-if="servingTicket.purpose" class="text-sm text-gray-600 mb-2">{{ servingTicket.purpose }}</p>
               <div class="mb-6">
                 <span
                   v-if="servingTicket.priority && servingTicket.priority !== 'normal'"
@@ -98,7 +97,6 @@
               >
                 <div class="flex items-center space-x-3">
                   <span class="font-medium text-bsu-ink">{{ ticket.ticket_code }}</span>
-                  <span v-if="ticket.purpose" class="text-sm text-gray-500">{{ ticket.purpose }}</span>
                   <span
                     v-if="ticket.priority !== 'normal'"
                     class="text-xs px-2 py-0.5 rounded-xl"
