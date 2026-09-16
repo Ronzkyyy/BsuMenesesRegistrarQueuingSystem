@@ -366,6 +366,7 @@ import BSUlogo from '@/assets/BSUlogo.png'
 import MENESESlogo from '@/assets/MENESESlogo.png'
 import archBackground from '@/assets/archBackground.png'
 import { SERVICES } from '@/services/studentServices'
+import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
 const router = useRouter()
 const queueStore = useQueueStore()
@@ -387,41 +388,8 @@ const showConfirmModal = ref(false)
 const showMyQueueStatus = ref(false)
 const ticketResult = ref(null)
 
-const BIT_COURSE_VALUE = 'Bachelor of Industrial Technology'
-const emptyRegistrationForm = () => ({
-  student_id: '',
-  first_name: '',
-  last_name: '',
-  email: '',
-  student_type: 'undergraduate',
-  course: 'Bachelor of Science in Information Technology',
-  major: null,
-  year_level: '1st_year',
-  // No is_scholar/is_varsity/is_graduating here - those drive queue priority
-  // and can only be set by staff (Student Management), never self-declared
-  // at the public kiosk. The backend rejects them on this endpoint too.
-})
 const registrationForm = ref(emptyRegistrationForm())
 
-const courseOptions = [
-  { value: 'Bachelor of Science in Information Technology', label: 'BS Information Technology' },
-  { value: 'Bachelor of Science in Hospitality Management', label: 'BS Hospitality Management' },
-  { value: 'Bachelor of Science in Business Administration', label: 'BS Business Administration' },
-  { value: 'Bachelor of Science in Computer Engineering', label: 'BS Computer Engineering' },
-  { value: BIT_COURSE_VALUE, label: 'Bachelor of Industrial Technology (BIT)' },
-]
-const majorOptions = [
-  { value: 'BIT Computer Technology', label: 'BIT Computer Technology' },
-  { value: 'Food Processing Technology', label: 'Food Processing Technology' },
-]
-const yearLevelOptions = [
-  { value: '1st_year', label: '1st Year' },
-  { value: '2nd_year', label: '2nd Year' },
-  { value: '3rd_year', label: '3rd Year' },
-  { value: '4th_year', label: '4th Year' },
-  { value: '5th_year', label: '5th Year' },
-  { value: 'graduate', label: 'Graduate' },
-]
 const isBitCourse = computed(() => registrationForm.value.course === BIT_COURSE_VALUE)
 const onCourseChange = () => {
   if (!isBitCourse.value) registrationForm.value.major = null
