@@ -2,6 +2,7 @@
   <div class="min-h-screen bg-bsu-surface flex flex-col">
     <AppHeader subtitle="Registrar Staff Dashboard">
       <template #actions>
+        <WaitingNotificationBell />
         <span class="hidden md:block text-sm text-gray-500">
           Logged in as: <span class="font-medium text-bsu-ink">{{ queueStore.currentUser?.full_name || queueStore.currentUser?.username || 'Staff' }}</span>
         </span>
@@ -199,12 +200,13 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQueueStore } from '@/stores/queue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import WaitingNotificationBell from '@/components/WaitingNotificationBell.vue'
 
 const queueStore = useQueueStore()
 const router = useRouter()
@@ -303,12 +305,33 @@ const submitChangePassword = async () => {
   }
 }
 
+let waitingPollTimer = null
+
 onMounted(async () => {
   try {
     await queueStore.fetchCurrentUser()
   } catch (err) {
     await queueStore.logout()
     router.push('/login')
+    return
   }
+
+  // Poll runs on every staff/admin page (not just Counter) so the waiting
+  // count is visible everywhere. Failures are silently ignored - the badge
+  // just keeps its last-known value and retries on the next tick, same
+  // resilience CounterView's own poll already has.
+  // This intentionally uses its own local setInterval instead of
+  // queueStore.startPollingNowServingOverview(): the store keeps only one
+  // shared `pollingInterval` slot, and every startPolling* action (plus
+  // stopPolling()/logout()) clobbers/clears it - reusing it here would let
+  // any other view's poll, or a logout, silently freeze this layout-wide
+  // badge with no error.
+  const pollWaiting = () => queueStore.fetchNowServingOverview().catch(() => {})
+  pollWaiting()
+  waitingPollTimer = setInterval(pollWaiting, 10000)
+})
+
+onUnmounted(() => {
+  if (waitingPollTimer) clearInterval(waitingPollTimer)
 })
 </script>
