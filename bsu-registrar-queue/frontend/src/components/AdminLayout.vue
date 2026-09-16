@@ -320,6 +320,12 @@ onMounted(async () => {
   // count is visible everywhere. Failures are silently ignored - the badge
   // just keeps its last-known value and retries on the next tick, same
   // resilience CounterView's own poll already has.
+  // This intentionally uses its own local setInterval instead of
+  // queueStore.startPollingNowServingOverview(): the store keeps only one
+  // shared `pollingInterval` slot, and every startPolling* action (plus
+  // stopPolling()/logout()) clobbers/clears it - reusing it here would let
+  // any other view's poll, or a logout, silently freeze this layout-wide
+  // badge with no error.
   const pollWaiting = () => queueStore.fetchNowServingOverview().catch(() => {})
   pollWaiting()
   waitingPollTimer = setInterval(pollWaiting, 10000)
