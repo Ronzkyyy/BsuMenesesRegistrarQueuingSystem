@@ -5,10 +5,10 @@ from app.models.ticket import TicketCreate
 from app.models.ticket import PriorityLevel
 
 
-def _ticket_for(db_session, student, queue, purpose="Test purpose"):
+def _ticket_for(db_session, student, queue):
     service = TicketService(db_session)
     return service.create_ticket(TicketCreate(
-        student_id=student.id, queue_id=queue.id, purpose=purpose,
+        student_id=student.id, queue_id=queue.id,
     ))
 
 

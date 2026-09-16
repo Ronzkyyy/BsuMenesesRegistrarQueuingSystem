@@ -17,7 +17,7 @@ def _login(client, user):
 def _seed_completed_ticket(db_session, student, queue, when):
     row = TicketDB(
         ticket_number=1, student_id=student.id, queue_id=queue.id,
-        purpose="Clearance", status=TicketDBStatus.COMPLETED, position=0,
+        status=TicketDBStatus.COMPLETED, position=0,
         created_at=when, completed_at=when,
     )
     db_session.add(row)

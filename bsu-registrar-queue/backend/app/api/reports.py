@@ -80,15 +80,15 @@ def get_calendar(
 
 
 _CSV_COLUMNS = [
-    "kind", "reference", "student_number", "student_name", "service",
+    "kind", "reference", "student_number", "student_name",
     "queue_name", "status", "priority", "created_at", "occurred_at",
     "appointment_date",
 ]
 
 
 def _csv_safe(value: str) -> str:
-    """Neutralize spreadsheet formula injection. student_name / service come
-    from public unauthenticated kiosk endpoints, so a cell beginning =/+/-/@
+    """Neutralize spreadsheet formula injection. student_name comes from a
+    public unauthenticated kiosk endpoint, so a cell beginning =/+/-/@
     (or a control char Excel strips to reach one) must not be run as a formula
     when an admin opens the export."""
     if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
@@ -130,7 +130,7 @@ def export_transactions_csv(
         writer.writerow([
             _csv_safe(r.kind), _csv_safe(r.reference),
             _csv_safe(r.student_number), _csv_safe(r.student_name),
-            _csv_safe(r.service), _csv_safe(r.queue_name),
+            _csv_safe(r.queue_name),
             _csv_safe(r.status), _csv_safe(r.priority or ""),
             r.created_at.isoformat(),
             r.occurred_at.isoformat() if r.occurred_at else "",

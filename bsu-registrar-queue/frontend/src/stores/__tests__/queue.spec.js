@@ -177,12 +177,11 @@ describe('ticket actions', () => {
     mockApi.post.mockReturnValueOnce(ok(ticket))
     const store = useQueueStore()
 
-    await store.takeTicket(3, 7, 'Clearance')
+    await store.takeTicket(3, 7)
 
     expect(mockApi.post).toHaveBeenCalledWith('/tickets', {
       queue_id: 3,
       student_id: 7,
-      purpose: 'Clearance',
     })
     expect(store.myTicket).toEqual(ticket)
   })

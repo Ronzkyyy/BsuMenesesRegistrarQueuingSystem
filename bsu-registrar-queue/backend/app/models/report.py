@@ -34,7 +34,6 @@ class TransactionRow(BaseModel):
     reference: str
     student_number: str
     student_name: str
-    service: str
     queue_name: str
     status: str
     priority: Optional[str] = None
