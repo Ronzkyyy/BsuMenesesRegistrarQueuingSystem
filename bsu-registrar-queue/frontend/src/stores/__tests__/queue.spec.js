@@ -6,13 +6,17 @@ import { createPinia, setActivePinia } from 'pinia'
 // the `axios` module itself. vi.mock is hoisted above imports, so the mock
 // instance has to be built with vi.hoisted() to be visible inside the
 // hoisted factory.
-// `interceptors.response.use` must exist on the mock: queue.js registers a
-// response interceptor at module scope, and the registered rejection handler
-// is captured here so its normalization can be tested directly.
-const { mockApi, interceptor } = vi.hoisted(() => {
+// `interceptors.response.use` must exist on both the `api` mock and the bare
+// default axios mock: queue.js registers the same response interceptor on
+// both (QueueManagementView's direct-axios calls need it too), and the
+// registered rejection handlers are captured here so their behavior can be
+// tested directly.
+const { mockApi, interceptor, axiosInterceptor } = vi.hoisted(() => {
   const interceptor = { onRejected: null }
+  const axiosInterceptor = { onRejected: null }
   return {
     interceptor,
+    axiosInterceptor,
     mockApi: {
       get: vi.fn(),
       post: vi.fn(),
@@ -30,7 +34,16 @@ const { mockApi, interceptor } = vi.hoisted(() => {
 })
 
 vi.mock('axios', () => ({
-  default: { create: vi.fn(() => mockApi) },
+  default: {
+    create: vi.fn(() => mockApi),
+    interceptors: {
+      response: {
+        use: vi.fn((_onFulfilled, onRejected) => {
+          axiosInterceptor.onRejected = onRejected
+        }),
+      },
+    },
+  },
 }))
 
 const { useQueueStore } = await import('../queue.js')
@@ -339,5 +352,52 @@ describe('response interceptor', () => {
     await expect(interceptor.onRejected(err)).rejects.toBe(err)
 
     expect(err.response.data.detail).toBe('Queue not found')
+  })
+
+  it('is also registered on the bare axios instance (for QueueManagementView\'s direct calls)', () => {
+    expect(typeof axiosInterceptor.onRejected).toBe('function')
+  })
+
+  it('resyncs currentUser and rewrites the message on a stale-session 403', async () => {
+    const store = useQueueStore()
+    store.currentUser = { id: 1, username: 'admin', role: 'admin' }
+    mockApi.get.mockReturnValueOnce(ok({ id: 2, username: 'staff1', role: 'staff' }))
+    const err = new Error('forbidden')
+    err.config = { url: '/queues/1/booking-settings' }
+    err.response = { status: 403, data: { detail: 'Insufficient permissions' } }
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(mockApi.get).toHaveBeenCalledWith('/auth/me')
+    expect(store.currentUser).toEqual({ id: 2, username: 'staff1', role: 'staff' })
+    expect(err.response.data.detail).toBe(
+      "You're now signed in as staff1 (staff) - this doesn't have permission for that. " +
+      'Log in again if you meant to continue as a different account.'
+    )
+  })
+
+  it('clears currentUser and shows a session-expired message on 401 when resync also fails', async () => {
+    const store = useQueueStore()
+    store.currentUser = { id: 1, username: 'admin', role: 'admin' }
+    mockApi.get.mockReturnValueOnce(fail('Not authenticated'))
+    const err = new Error('unauthorized')
+    err.config = { url: '/queues' }
+    err.response = { status: 401, data: { detail: 'Not authenticated' } }
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(store.currentUser).toBeNull()
+    expect(err.response.data.detail).toBe('Your session has expired. Please log in again.')
+  })
+
+  it('leaves a failed login 401 untouched (not a stale session)', async () => {
+    const err = new Error('bad creds')
+    err.config = { url: '/auth/login' }
+    err.response = { status: 401, data: { detail: 'Incorrect username or password' } }
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(mockApi.get).not.toHaveBeenCalledWith('/auth/me')
+    expect(err.response.data.detail).toBe('Incorrect username or password')
   })
 })
