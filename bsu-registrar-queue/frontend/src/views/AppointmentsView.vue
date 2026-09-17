@@ -28,6 +28,10 @@
           <p class="text-sm text-red-700">{{ error }}</p>
         </div>
 
+        <div v-if="successMessage" class="mb-4 p-3 bg-green-50 border border-green-100 rounded-xl">
+          <p class="text-sm text-green-700">{{ successMessage }}</p>
+        </div>
+
         <!-- ===================== BOOKING FLOW ===================== -->
         <template v-if="mode === 'book'">
           <div v-if="!bookedAppointment">
@@ -234,6 +238,7 @@ import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyR
 const queueStore = useQueueStore()
 const loading = computed(() => queueStore.loading)
 const error = ref('')
+const successMessage = ref('')
 
 const mode = ref('book')
 
@@ -387,11 +392,13 @@ const statusLabel = computed(() => myAppointment.value?.status.replace('_', ' ')
 const startNewBooking = () => {
   myAppointment.value = null
   error.value = ''
+  successMessage.value = ''
   mode.value = 'book'
 }
 
 const doLookup = async () => {
   error.value = ''
+  successMessage.value = ''
   try {
     myAppointment.value = await queueStore.lookupAppointment(
       lookupStudentId.value.trim(),
@@ -405,7 +412,9 @@ const doLookup = async () => {
 const doCancel = async () => {
   error.value = ''
   try {
-    myAppointment.value = await queueStore.cancelAppointment(myAppointment.value.id, lookupStudentId.value.trim())
+    await queueStore.cancelAppointment(myAppointment.value.id, lookupStudentId.value.trim())
+    myAppointment.value = null
+    successMessage.value = 'Appointment cancelled.'
   } catch (err) {
     // The slot can lapse between the lookup and the click - the backend refuses
     // to cancel an EXPIRED booking. Show the expired state rather than the 400.
