@@ -134,6 +134,7 @@
               <th class="px-4 py-3 text-left">Type</th>
               <th class="px-4 py-3 text-left">Student</th>
               <th class="px-4 py-3 text-left">Queue</th>
+              <th class="px-4 py-3 text-left">Document Type</th>
               <th class="px-4 py-3 text-left">Status</th>
               <th class="px-4 py-3 text-left">Priority</th>
               <th class="px-4 py-3 text-left">Created</th>
@@ -149,13 +150,14 @@
                 <div class="text-xs text-gray-400">{{ row.student_number }}</div>
               </td>
               <td class="px-4 py-3">{{ row.queue_name }}</td>
+              <td class="px-4 py-3">{{ row.document_type || '—' }}</td>
               <td class="px-4 py-3"><StatusBadge :status="row.status" /></td>
               <td class="px-4 py-3 capitalize">{{ row.priority || '—' }}</td>
               <td class="px-4 py-3 text-gray-500">{{ formatDateTime(row.created_at) }}</td>
               <td class="px-4 py-3 text-gray-500">{{ row.occurred_at ? formatDateTime(row.occurred_at) : '—' }}</td>
             </tr>
             <tr v-if="!history.items.length">
-              <td colspan="8" class="px-4 py-10 text-center text-gray-500">No transactions match these filters.</td>
+              <td colspan="9" class="px-4 py-10 text-center text-gray-500">No transactions match these filters.</td>
             </tr>
           </tbody>
         </table>

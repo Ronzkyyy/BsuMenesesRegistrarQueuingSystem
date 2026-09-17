@@ -35,6 +35,7 @@ class TransactionRow(BaseModel):
     student_number: str
     student_name: str
     queue_name: str
+    document_type: Optional[str] = None
     status: str
     priority: Optional[str] = None
     created_at: datetime

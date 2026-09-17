@@ -130,10 +130,18 @@
               </div>
               <div v-else-if="selectedDate && !checkingAvailability" class="text-sm text-gray-500">No bookable slots for this date.</div>
 
+              <div v-if="selectedSlot && isDocumentRequest">
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Document Type</label>
+                <select v-model="selectedDocumentType" class="field">
+                  <option value="" disabled>Select a document type</option>
+                  <option v-for="dt in DOCUMENT_TYPES" :key="dt.value" :value="dt.value">{{ dt.label }}</option>
+                </select>
+              </div>
+
               <button
                 v-if="selectedSlot"
                 @click="submitBooking"
-                :disabled="loading"
+                :disabled="loading || (isDocumentRequest && !selectedDocumentType)"
                 class="btn-primary btn-md w-full py-2.5"
               >
                 Confirm Booking
@@ -220,6 +228,7 @@
 import { ref, computed } from 'vue'
 import QRCode from 'qrcode'
 import { useQueueStore } from '@/stores/queue'
+import { DOCUMENT_TYPES } from '@/services/documentTypes'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
 const queueStore = useQueueStore()
@@ -249,6 +258,7 @@ const selectedDate = ref('')
 const slots = ref([])
 const selectedSlot = ref(null)
 const checkingAvailability = ref(false)
+const selectedDocumentType = ref('')
 const bookedAppointment = ref(null)
 const qrDataUrl = ref('')
 
@@ -268,6 +278,7 @@ const today = new Date()
 const minDate = toLocalISODate(addDays(today, 1))
 
 const selectedQueue = computed(() => bookableQueues.value.find((q) => q.id === selectedQueueId.value))
+const isDocumentRequest = computed(() => selectedQueue.value?.queue_type === 'document_request')
 const hourlySlots = computed(() => slots.value.filter((slot) => slot.slot_start_time.endsWith(':00:00')))
 
 const maxDate = computed(() => {
@@ -319,6 +330,7 @@ const onQueueChange = () => {
   selectedDate.value = ''
   slots.value = []
   selectedSlot.value = null
+  selectedDocumentType.value = ''
 }
 
 const loadAvailability = async () => {
@@ -345,6 +357,7 @@ const submitBooking = async () => {
       queue_id: selectedQueueId.value,
       appointment_date: selectedDate.value,
       slot_start_time: selectedSlot.value.slot_start_time,
+      document_type: isDocumentRequest.value ? selectedDocumentType.value : null,
     })
     bookedAppointment.value = result
     qrDataUrl.value = await QRCode.toDataURL(result.qr_token, { width: 240, margin: 2 })

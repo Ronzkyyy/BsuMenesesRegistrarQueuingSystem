@@ -652,13 +652,14 @@ export const useQueueStore = defineStore('queue', {
 
     // ============ TICKET ACTIONS ============
 
-    async takeTicket(queueId, studentId) {
+    async takeTicket(queueId, studentId, documentType = null) {
       this.loading = true
       this.error = null
       try {
         const response = await api.post('/tickets', {
           queue_id: queueId,
           student_id: studentId,
+          document_type: documentType,
         })
         this.myTicket = response.data
         return response.data

@@ -195,8 +195,23 @@ describe('ticket actions', () => {
     expect(mockApi.post).toHaveBeenCalledWith('/tickets', {
       queue_id: 3,
       student_id: 7,
+      document_type: null,
     })
     expect(store.myTicket).toEqual(ticket)
+  })
+
+  it('takeTicket includes the document_type when given', async () => {
+    const ticket = { id: 11, ticket_code: 'D-001' }
+    mockApi.post.mockReturnValueOnce(ok(ticket))
+    const store = useQueueStore()
+
+    await store.takeTicket(3, 7, 'TOR')
+
+    expect(mockApi.post).toHaveBeenCalledWith('/tickets', {
+      queue_id: 3,
+      student_id: 7,
+      document_type: 'TOR',
+    })
   })
 })
 

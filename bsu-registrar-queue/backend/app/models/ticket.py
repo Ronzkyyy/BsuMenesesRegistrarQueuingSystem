@@ -21,12 +21,28 @@ class PriorityLevel(str, Enum):
     URGENT = "urgent"
 
 
+class DocumentType(str, Enum):
+    """Documents offered under the Request Documents service. Values are
+    stored verbatim on the ticket/appointment, so they must stay stable -
+    only the enum member name (and any future label lookup) may change
+    wording; changing a value would orphan every historical record already
+    filed under the old one."""
+    TOR = "TOR"
+    COR = "COR"
+    COG = "COG"
+    DIPLOMA = "Diploma"
+    GOOD_MORAL = "Good Moral"
+    GRADUATION_FORM = "Graduation Form"
+    FORM_137 = "Form 137"
+
+
 class TicketBase(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     student_id: int = Field(..., gt=0)
     queue_id: int = Field(..., gt=0)
     priority: PriorityLevel = PriorityLevel.NORMAL
+    document_type: Optional[DocumentType] = None
 
 
 class TicketCreate(TicketBase):

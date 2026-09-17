@@ -8,11 +8,11 @@ from sqlalchemy import func, and_, case
 
 from ..db_models import (
     TicketDB, TicketDBStatus, PriorityLevel,
-    StudentDB, QueueDB, QueueDBStatus
+    StudentDB, QueueDB, QueueDBStatus, QueueDBType
 )
 from ..models.ticket import (
     Ticket, TicketCreate, TicketStatus, PriorityLevel as PydanticPriorityLevel,
-    TicketPublic
+    TicketPublic, DocumentType
 )
 from ..models.student import Student
 from ..models.queue import Queue
@@ -20,6 +20,18 @@ from ..models.queue import Queue
 
 def _format_ticket_code(letter: str, ticket_number: int) -> str:
     return f"{letter}-{ticket_number:03d}"
+
+
+def validate_document_type(queue: QueueDB, document_type: Optional[DocumentType]) -> None:
+    """A document_type only makes sense for the Request Documents queue type -
+    required there, and rejected everywhere else so it can't be smuggled onto
+    an unrelated ticket or appointment. Shared by TicketService and
+    AppointmentService so the rule can't drift between the two callers."""
+    if queue.queue_type == QueueDBType.DOCUMENT_REQUEST:
+        if document_type is None:
+            raise ValueError("Select which document you are requesting.")
+    elif document_type is not None:
+        raise ValueError("document_type is only accepted for the Request Documents service.")
 
 
 class TicketService:
@@ -106,6 +118,8 @@ class TicketService:
         if not queue:
             return None
 
+        validate_document_type(queue, ticket_data.document_type)
+
         # Check if student already has an active ticket in ANY queue - only
         # one transaction in flight per student is allowed, across all queues.
         existing = self.db.query(TicketDB).filter(
@@ -163,6 +177,7 @@ class TicketService:
             student_id=ticket_data.student_id,
             queue_id=ticket_data.queue_id,
             priority=priority,
+            document_type=ticket_data.document_type.value if ticket_data.document_type else None,
             status=TicketDBStatus.WAITING,
             position=position,
             estimated_wait_time_minutes=estimated_wait,
@@ -509,6 +524,7 @@ class TicketService:
             student_id=db_ticket.student_id,
             queue_id=db_ticket.queue_id,
             priority=PydanticPriorityLevel(db_ticket.priority.value),
+            document_type=DocumentType(db_ticket.document_type) if db_ticket.document_type else None,
             status=TicketStatus(db_ticket.status.value),
             position=db_ticket.position,
             estimated_wait_time_minutes=db_ticket.estimated_wait_time_minutes,

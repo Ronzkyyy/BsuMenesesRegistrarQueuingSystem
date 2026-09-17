@@ -81,7 +81,7 @@ def get_calendar(
 
 _CSV_COLUMNS = [
     "kind", "reference", "student_number", "student_name",
-    "queue_name", "status", "priority", "created_at", "occurred_at",
+    "queue_name", "document_type", "status", "priority", "created_at", "occurred_at",
     "appointment_date",
 ]
 
@@ -130,7 +130,7 @@ def export_transactions_csv(
         writer.writerow([
             _csv_safe(r.kind), _csv_safe(r.reference),
             _csv_safe(r.student_number), _csv_safe(r.student_name),
-            _csv_safe(r.queue_name),
+            _csv_safe(r.queue_name), _csv_safe(r.document_type or ""),
             _csv_safe(r.status), _csv_safe(r.priority or ""),
             r.created_at.isoformat(),
             r.occurred_at.isoformat() if r.occurred_at else "",

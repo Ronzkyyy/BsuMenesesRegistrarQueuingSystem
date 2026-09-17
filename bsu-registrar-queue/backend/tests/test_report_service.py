@@ -13,10 +13,10 @@ UTC = timezone.utc
 
 def _ticket(db, student, queue, *, status=TicketDBStatus.COMPLETED,
             created_at, completed_at=None, served_at=None,
-            priority=PriorityLevel.NORMAL, ticket_number=1):
+            priority=PriorityLevel.NORMAL, ticket_number=1, document_type=None):
     row = TicketDB(
         ticket_number=ticket_number, student_id=student.id, queue_id=queue.id,
-        priority=priority, status=status, position=0,
+        priority=priority, document_type=document_type, status=status, position=0,
         created_at=created_at, served_at=served_at, completed_at=completed_at,
     )
     db.add(row)
@@ -26,12 +26,13 @@ def _ticket(db, student, queue, *, status=TicketDBStatus.COMPLETED,
 
 
 def _appointment(db, student, queue, *, status=AppointmentDBStatus.CHECKED_IN,
-                 created_at, checked_in_at=None, ref="APT-000001"):
+                 created_at, checked_in_at=None, ref="APT-000001", document_type=None):
     row = AppointmentDB(
         reference_code=ref, student_id=student.id, queue_id=queue.id,
         appointment_date=created_at.date(),
         slot_start_time=datetime(2000, 1, 1, 9, 0).time(),
         slot_end_time=datetime(2000, 1, 1, 9, 30).time(),
+        document_type=document_type,
         qr_token=f"tok-{ref}", status=status,
         created_at=created_at, checked_in_at=checked_in_at,
     )
@@ -240,3 +241,21 @@ def test_get_all_transactions_rejects_oversized_export(db_session, make_queue, m
             kinds=["ticket"], statuses=["completed"], queue_id=None,
             student_number=None, priority=None,
         )
+
+
+def test_document_type_flows_into_transaction_rows(db_session, make_queue, make_student):
+    queue = make_queue()
+    _ticket(db_session, make_student(), queue, ticket_number=1,
+            created_at=datetime(2026, 6, 10, 3, 0, tzinfo=UTC), document_type="TOR")
+    _appointment(db_session, make_student(), queue,
+                 created_at=datetime(2026, 6, 10, 4, 0, tzinfo=UTC), document_type="COR")
+
+    svc = ReportService(db_session)
+    page = svc.get_transactions(
+        date_from=date(2026, 6, 1), date_to=date(2026, 6, 30),
+        kinds=["ticket", "appointment"], statuses=None, queue_id=None,
+        student_number=None, priority=None, skip=0, limit=50,
+    )
+
+    by_kind = {r.kind: r.document_type for r in page.items}
+    assert by_kind == {"ticket": "TOR", "appointment": "COR"}

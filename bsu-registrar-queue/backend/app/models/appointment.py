@@ -6,6 +6,8 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
 
+from .ticket import DocumentType
+
 
 class AppointmentStatus(str, Enum):
     BOOKED = "booked"
@@ -21,6 +23,7 @@ class AppointmentCreate(BaseModel):
     queue_id: int = Field(..., gt=0)
     appointment_date: date
     slot_start_time: time
+    document_type: Optional[DocumentType] = None
 
 
 class Appointment(BaseModel):
@@ -31,6 +34,7 @@ class Appointment(BaseModel):
     appointment_date: date
     slot_start_time: time
     slot_end_time: time
+    document_type: Optional[DocumentType] = None
     status: AppointmentStatus
     checked_in_at: Optional[datetime] = None
     ticket_id: Optional[int] = None

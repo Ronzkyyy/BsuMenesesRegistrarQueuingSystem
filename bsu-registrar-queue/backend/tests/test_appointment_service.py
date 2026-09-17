@@ -7,6 +7,8 @@ from app.services.appointment_service import (
     earliest_bookable_date,
 )
 from app.models.appointment import AppointmentCreate
+from app.models.ticket import DocumentType
+from app.models.queue import QueueType
 from app.db_models import AppointmentDB, AppointmentDBStatus, UserRole
 
 
@@ -119,6 +121,54 @@ def test_book_appointment_rejects_beyond_booking_window(db_session, make_queue, 
             student_id=student.id, queue_id=queue.id,
             appointment_date=date.today() + timedelta(days=5), slot_start_time=time(9, 0),
         ))
+
+
+def test_book_appointment_for_document_request_requires_document_type(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue, queue_type=QueueType.DOCUMENT_REQUEST)
+    student = make_student()
+    target_date = date.today() + timedelta(days=1)
+    service = AppointmentService(db_session)
+    slot = service.get_availability(queue.id, target_date)[0]
+
+    with pytest.raises(ValueError, match="Select which document"):
+        service.create_appointment(AppointmentCreate(
+            student_id=student.id, queue_id=queue.id,
+            appointment_date=target_date, slot_start_time=slot.slot_start_time,
+        ))
+
+
+def test_book_appointment_rejects_document_type_outside_document_request(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)  # not Document Request
+    student = make_student()
+    target_date = date.today() + timedelta(days=1)
+    service = AppointmentService(db_session)
+    slot = service.get_availability(queue.id, target_date)[0]
+
+    with pytest.raises(ValueError, match="only accepted for the Request Documents service"):
+        service.create_appointment(AppointmentCreate(
+            student_id=student.id, queue_id=queue.id,
+            appointment_date=target_date, slot_start_time=slot.slot_start_time,
+            document_type=DocumentType.TOR,
+        ))
+
+
+def test_check_in_carries_document_type_onto_the_created_ticket(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue, queue_type=QueueType.DOCUMENT_REQUEST)
+    student = make_student()
+    target_date = date.today() + timedelta(days=1)
+    service = AppointmentService(db_session)
+    slot = service.get_availability(queue.id, target_date)[0]
+    booked = service.create_appointment(AppointmentCreate(
+        student_id=student.id, queue_id=queue.id,
+        appointment_date=target_date, slot_start_time=slot.slot_start_time,
+        document_type=DocumentType.COR,
+    ))
+
+    assert booked.document_type == DocumentType.COR
+
+    ticket = service.check_in(token=booked.qr_token, force=True)
+
+    assert ticket.document_type == DocumentType.COR
 
 
 def test_lookup_and_cancel(db_session, make_queue, make_student):

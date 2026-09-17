@@ -1,7 +1,7 @@
 import pytest
 
 from app.services.ticket_service import TicketService
-from app.models.ticket import TicketCreate
+from app.models.ticket import DocumentType, TicketCreate
 from app.models.ticket import PriorityLevel
 
 
@@ -158,3 +158,39 @@ def test_mark_no_show(db_session, make_queue, make_student):
     no_show = service.mark_no_show(ticket.id)
 
     assert no_show.status == "no_show"
+
+
+def test_document_request_ticket_requires_document_type(db_session, make_queue, make_student):
+    from app.models.queue import QueueType
+
+    queue = make_queue(queue_type=QueueType.DOCUMENT_REQUEST)
+    student = make_student()
+
+    service = TicketService(db_session)
+    with pytest.raises(ValueError, match="Select which document"):
+        service.create_ticket(TicketCreate(student_id=student.id, queue_id=queue.id))
+
+
+def test_document_request_ticket_stores_document_type(db_session, make_queue, make_student):
+    from app.models.queue import QueueType
+
+    queue = make_queue(queue_type=QueueType.DOCUMENT_REQUEST)
+    student = make_student()
+
+    service = TicketService(db_session)
+    ticket = service.create_ticket(TicketCreate(
+        student_id=student.id, queue_id=queue.id, document_type=DocumentType.TOR,
+    ))
+
+    assert ticket.document_type == DocumentType.TOR
+
+
+def test_document_type_rejected_outside_document_request_queue(db_session, make_queue, make_student):
+    queue = make_queue()  # defaults to a non-document-request queue type
+    student = make_student()
+
+    service = TicketService(db_session)
+    with pytest.raises(ValueError, match="only accepted for the Request Documents service"):
+        service.create_ticket(TicketCreate(
+            student_id=student.id, queue_id=queue.id, document_type=DocumentType.TOR,
+        ))
