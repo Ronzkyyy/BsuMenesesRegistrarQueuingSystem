@@ -14,7 +14,7 @@
 export const DOCUMENT_TYPES = [
   { value: 'TOR', label: 'Certified True Copy - Transcript of Records (TOR)' },
   { value: 'COR', label: 'Certified True Copy - Certificate of Registration (COR)' },
-  { value: 'COG', label: 'Certificate of Grades (COG)' },
+  { value: 'COG', label: 'Certified True Copy - Certificate of Grades (COG)' },
   { value: 'Diploma', label: 'Certified True Copy - Diploma' },
   { value: 'Good Moral', label: 'Certified True Copy - Good Moral Certificate' },
   { value: 'Graduation Form', label: 'Certified True Copy - Graduation Form' },
