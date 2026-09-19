@@ -278,6 +278,7 @@ const courses = [
   'Bachelor of Science in Hospitality Management',
   'Bachelor of Science in Business Administration',
   'Bachelor of Science in Computer Engineering',
+  'Bachelor of Science in Education',
   BIT_COURSE,
 ]
 

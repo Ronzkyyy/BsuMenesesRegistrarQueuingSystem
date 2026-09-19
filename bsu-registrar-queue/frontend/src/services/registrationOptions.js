@@ -9,6 +9,7 @@ export const courseOptions = [
   { value: 'Bachelor of Science in Hospitality Management', label: 'BS Hospitality Management' },
   { value: 'Bachelor of Science in Business Administration', label: 'BS Business Administration' },
   { value: 'Bachelor of Science in Computer Engineering', label: 'BS Computer Engineering' },
+  { value: 'Bachelor of Science in Education', label: 'BS Education' },
   { value: BIT_COURSE_VALUE, label: 'Bachelor of Industrial Technology (BIT)' },
 ]
 

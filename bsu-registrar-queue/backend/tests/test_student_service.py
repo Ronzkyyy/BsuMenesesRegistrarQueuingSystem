@@ -74,6 +74,30 @@ def test_computer_engineering_course_is_accepted(db_session, make_student):
     assert fetched.course == Course.BSCPE
 
 
+def test_education_course_is_accepted(db_session, make_student):
+    student = make_student(student_id="3010000012", course=Course.BSED)
+
+    assert student.course == Course.BSED
+
+    service = StudentService(db_session)
+    fetched = service.get_student_by_student_id("3010000012")
+    assert fetched.course == Course.BSED
+
+
+def test_education_course_rejects_major(db_session):
+    with pytest.raises(ValueError, match="only applicable"):
+        StudentCreate(
+            student_id="3010000013",
+            first_name="Test",
+            last_name="Student",
+            email="bsed@gmail.com",
+            student_type=StudentType.UNDERGRADUATE,
+            course=Course.BSED,
+            major=Major.COMPUTER_TECHNOLOGY,
+            year_level=YearLevel.FIRST,
+        )
+
+
 def test_computer_engineering_course_rejects_major(db_session):
     with pytest.raises(ValueError, match="only applicable"):
         StudentCreate(
