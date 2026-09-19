@@ -258,7 +258,9 @@
       :confirm-label="confirmDialog.confirmLabel"
       :variant="confirmDialog.variant"
       :loading="confirmLoading"
+      :error="confirmError"
       @confirm="handleConfirm"
+      @cancel="confirmError = ''"
     />
   </div>
 </template>
@@ -310,24 +312,31 @@ const editingStudent = ref(null)
 
 const confirmDialog = ref({ open: false, title: '', message: '', confirmLabel: 'Confirm', variant: 'primary' })
 const confirmLoading = ref(false)
+const confirmError = ref('')
 let confirmAction = null
 
 const openConfirm = ({ title, message, confirmLabel = 'Confirm', variant = 'primary', action }) => {
   confirmAction = action
+  confirmError.value = ''
   confirmDialog.value = { open: true, title, message, confirmLabel, variant }
 }
 
 const handleConfirm = async () => {
   if (!confirmAction) return
   confirmLoading.value = true
+  confirmError.value = ''
   try {
     await confirmAction()
-  } catch (err) {
-    // the action itself already recorded a user-facing error message
-  } finally {
-    confirmLoading.value = false
     confirmDialog.value.open = false
     confirmAction = null
+  } catch (err) {
+    // Keep the dialog open and show the reason right here, next to the
+    // action that failed - instead of closing and relying on the admin to
+    // notice a separate banner elsewhere on the page.
+    const detail = err.response?.data?.detail
+    confirmError.value = Array.isArray(detail) ? detail.map((d) => d.msg).join('; ') : detail || 'Something went wrong. Please try again.'
+  } finally {
+    confirmLoading.value = false
   }
 }
 
@@ -486,16 +495,14 @@ const removeStudent = (student) => {
     confirmLabel: 'Yes, Delete',
     variant: 'danger',
     action: async () => {
-      listError.value = ''
-      try {
-        await queueStore.deleteStudent(student.id)
+      // Left to propagate - handleConfirm shows it inline in the dialog and
+      // keeps the dialog open, so a block (e.g. existing ticket/appointment
+      // history) is obvious right next to the action that triggered it.
+      await queueStore.deleteStudent(student.id)
+      await loadStudents()
+      if (queueStore.students.length === 0 && page.value > 1) {
+        page.value -= 1
         await loadStudents()
-        if (queueStore.students.length === 0 && page.value > 1) {
-          page.value -= 1
-          await loadStudents()
-        }
-      } catch (err) {
-        listError.value = err.response?.data?.detail || 'Failed to delete student'
       }
     },
   })

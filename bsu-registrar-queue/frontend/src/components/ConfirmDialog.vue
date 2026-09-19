@@ -50,6 +50,10 @@
             <h3 class="text-lg font-bold text-bsu-ink mb-1">{{ title }}</h3>
             <p class="text-sm text-gray-500 whitespace-pre-line">{{ message }}</p>
 
+            <div v-if="error" class="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl text-left">
+              <p class="text-sm text-red-700 whitespace-pre-line">{{ error }}</p>
+            </div>
+
             <div class="flex gap-3 mt-6">
               <button
                 type="button"
@@ -88,6 +92,7 @@ const props = defineProps({
   cancelLabel: { type: String, default: 'Go Back' },
   variant: { type: String, default: 'primary' }, // 'primary' | 'danger'
   loading: { type: Boolean, default: false },
+  error: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
