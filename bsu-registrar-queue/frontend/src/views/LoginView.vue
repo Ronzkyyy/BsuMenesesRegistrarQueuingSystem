@@ -82,8 +82,16 @@
           <p class="text-sm text-red-700">{{ loginError }}</p>
         </div>
 
-        <div class="mt-6 flex items-center justify-center text-sm">
-          <router-link to="/" class="text-gray-500 hover:text-bsu-primary hover:underline">Back to Home</router-link>
+        <div class="mt-6 flex justify-center">
+          <router-link
+            to="/"
+            class="btn gap-2 text-sm px-5 py-2 rounded-xl bg-gradient-to-r from-bsu-primary to-bsu-peach text-white shadow-sm hover:shadow focus:ring-bsu-primary"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Home
+          </router-link>
         </div>
       </div>
     </div>

@@ -323,8 +323,16 @@
           </div>
         </div>
 
-        <div v-if="!loadingQueues && !showMyQueueStatus" class="mt-8 text-center">
-          <router-link to="/" class="text-sm text-gray-500 hover:text-bsu-primary hover:underline">← Back to Home</router-link>
+        <div v-if="!loadingQueues && !showMyQueueStatus" class="mt-8 flex justify-center">
+          <router-link
+            to="/"
+            class="btn gap-2 text-sm px-5 py-2 rounded-xl bg-gradient-to-r from-bsu-primary to-bsu-peach text-white shadow-sm hover:shadow focus:ring-bsu-primary"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Home
+          </router-link>
         </div>
       </div>
     </div>
