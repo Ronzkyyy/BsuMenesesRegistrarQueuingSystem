@@ -187,7 +187,8 @@
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Student Number</label>
               <div class="relative">
                 <input
-                  v-model="studentNumberInput"
+                  :value="studentNumberInput"
+                  @input="studentNumberInput = digitsOnly($event.target.value)"
                   type="text"
                   inputmode="numeric"
                   maxlength="10"
@@ -384,6 +385,7 @@ import MENESESlogo from '@/assets/MENESESlogo.png'
 import archBackground from '@/assets/archBackground.png'
 import { SERVICES } from '@/services/studentServices'
 import { DOCUMENT_TYPES } from '@/services/documentTypes'
+import { digitsOnly } from '@/services/inputFilters'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
 const router = useRouter()

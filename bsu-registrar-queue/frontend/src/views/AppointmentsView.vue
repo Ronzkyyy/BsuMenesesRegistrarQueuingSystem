@@ -39,7 +39,15 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Student ID</label>
                 <div class="flex gap-2">
-                  <input v-model="studentIdInput" type="text" class="field" placeholder="e.g. 2021000001" />
+                  <input
+                    :value="studentIdInput"
+                    @input="studentIdInput = digitsOnly($event.target.value)"
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="10"
+                    class="field"
+                    placeholder="e.g. 2021000001"
+                  />
                   <button @click="findStudent" :disabled="loading" class="btn-primary btn-md whitespace-nowrap">Find</button>
                 </div>
                 <p v-if="student" class="text-sm text-green-700 mt-1.5">{{ student.first_name }} {{ student.last_name }} found</p>
@@ -179,7 +187,15 @@
           <div v-if="!myAppointment" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Student ID</label>
-              <input v-model="lookupStudentId" type="text" class="field" placeholder="e.g. 2021000001" />
+              <input
+                :value="lookupStudentId"
+                @input="lookupStudentId = digitsOnly($event.target.value)"
+                type="text"
+                inputmode="numeric"
+                maxlength="10"
+                class="field"
+                placeholder="e.g. 2021000001"
+              />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Reference Code</label>
@@ -233,6 +249,7 @@ import { ref, computed } from 'vue'
 import QRCode from 'qrcode'
 import { useQueueStore } from '@/stores/queue'
 import { DOCUMENT_TYPES } from '@/services/documentTypes'
+import { digitsOnly } from '@/services/inputFilters'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
 const queueStore = useQueueStore()

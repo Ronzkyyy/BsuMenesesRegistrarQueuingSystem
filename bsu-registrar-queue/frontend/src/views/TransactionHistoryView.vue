@@ -92,7 +92,14 @@
         </label>
         <label class="text-sm">
           <span class="block text-gray-600 mb-1">Student number</span>
-          <input v-model="filters.student_number" maxlength="10" inputmode="numeric" placeholder="10 digits" class="field" />
+          <input
+            :value="filters.student_number"
+            @input="filters.student_number = digitsOnly($event.target.value)"
+            maxlength="10"
+            inputmode="numeric"
+            placeholder="10 digits"
+            class="field"
+          />
         </label>
       </div>
 
@@ -189,6 +196,7 @@ import {
   Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from 'chart.js'
 import { useQueueStore } from '@/stores/queue'
+import { digitsOnly } from '@/services/inputFilters'
 import StatusBadge from '@/components/StatusBadge.vue'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)

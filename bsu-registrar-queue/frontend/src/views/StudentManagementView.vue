@@ -154,8 +154,10 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Student ID</label>
             <input
-              v-model="form.student_id"
+              :value="form.student_id"
+              @input="form.student_id = digitsOnly($event.target.value)"
               type="text"
+              inputmode="numeric"
               :disabled="!!editingStudent"
               maxlength="10"
               class="field disabled:bg-gray-100"
@@ -264,6 +266,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
+import { digitsOnly } from '@/services/inputFilters'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const BIT_COURSE = 'Bachelor of Industrial Technology'
