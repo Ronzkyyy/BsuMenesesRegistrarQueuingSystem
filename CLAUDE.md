@@ -137,7 +137,8 @@ Defined in `app/worker.py` with Redis broker:
   `auth.portal_denied`, `auth.user_created`, `auth.password_changed`,
   `auth.user_deactivated` / `auth.user_activated`, `authz.denied` (role check
   failed, from `require_role`), `student.deleted`, `student.bulk_imported`,
-  `queue.deleted`, `report.exported`, `security.rate_limited`. Add a `log_security_event` call
+  `queue.deleted`, `report.exported`, `security.rate_limited`,
+  `appointment.staff_cancelled`. Add a `log_security_event` call
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.
