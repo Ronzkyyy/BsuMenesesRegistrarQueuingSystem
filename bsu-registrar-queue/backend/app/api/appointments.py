@@ -51,7 +51,9 @@ def create_appointment(
 
 
 @router.get("/lookup", response_model=Appointment)
+@limiter.limit("10/minute")
 def lookup_appointment(
+    request: Request,
     student_id: str = Query(..., pattern=r"^\d{10}$", description="10-digit student number"),
     reference_code: str = Query(..., min_length=1, max_length=20),
     db: Session = Depends(get_db)
