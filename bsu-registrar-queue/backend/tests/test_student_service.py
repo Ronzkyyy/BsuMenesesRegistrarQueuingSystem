@@ -136,3 +136,65 @@ def test_delete_student_with_appointment_only_is_blocked(db_session, make_studen
     service = StudentService(db_session)
     with pytest.raises(ValueError, match="Cannot delete student"):
         service.delete_student(student.id)
+
+
+def test_create_student_rejects_email_with_nonexistent_domain(db_session):
+    """EmailStr only checks format, so a syntactically-valid but made-up
+    domain (what a tester typing "asdf@asdf.com" produces) would otherwise
+    be accepted silently. This is a real DNS lookup against a domain name
+    that will not resolve, same as every other test here hits a real
+    Postgres rather than a mock."""
+    service = StudentService(db_session)
+    with pytest.raises(ValueError, match="looks fake or unreachable"):
+        service.create_student(StudentCreate(
+            student_id="3010000099",
+            first_name="Test",
+            last_name="Student",
+            email="someone@this-domain-does-not-exist-4f8e2b1c.com",
+            student_type=StudentType.UNDERGRADUATE,
+            course=Course.BSIT,
+            year_level=YearLevel.FIRST,
+        ))
+
+
+def test_update_student_rejects_email_with_nonexistent_domain(db_session, make_student):
+    student = make_student()
+
+    service = StudentService(db_session)
+    with pytest.raises(ValueError, match="looks fake or unreachable"):
+        service.update_student(student.id, StudentCreate(
+            student_id=student.student_id,
+            first_name=student.first_name,
+            last_name=student.last_name,
+            email="someone@this-domain-does-not-exist-4f8e2b1c.com",
+            student_type=StudentType.UNDERGRADUATE,
+            course=Course.BSIT,
+            year_level=YearLevel.FIRST,
+        ))
+
+
+def test_update_student_skips_email_check_when_unchanged(db_session, make_student, monkeypatch):
+    """Re-validating an email that's already on the record wastes a DNS
+    lookup on every unrelated edit (e.g. toggling is_scholar) - confirm
+    update_student only checks deliverability when the email actually
+    changes, by making a real check blow up if it's ever called."""
+    from app.services import student_service as student_service_module
+
+    student = make_student()
+
+    def _fail(*args, **kwargs):
+        raise AssertionError("deliverability should not be re-checked for an unchanged email")
+
+    monkeypatch.setattr(student_service_module, "validate_email_deliverable", _fail)
+
+    service = StudentService(db_session)
+    updated = service.update_student(student.id, StudentCreate(
+        student_id=student.student_id,
+        first_name="Changed",
+        last_name=student.last_name,
+        email=student.email,
+        student_type=StudentType.UNDERGRADUATE,
+        course=Course.BSIT,
+        year_level=YearLevel.FIRST,
+    ))
+    assert updated.first_name == "Changed"

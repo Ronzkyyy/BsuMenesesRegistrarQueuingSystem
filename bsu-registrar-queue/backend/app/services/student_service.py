@@ -4,12 +4,40 @@ Student service - business logic for student management
 from sqlalchemy.orm import Session
 from typing import List, Optional, Tuple
 from sqlalchemy import func, or_
+from email_validator import validate_email, EmailNotValidError, caching_resolver
 
 from ..db_models import (
     StudentDB, StudentDBType, Course, Major, YearLevel
 )
 from ..models.student import Student, StudentCreate, StudentBase
 from .search_utils import LIKE_ESCAPE, escape_like
+
+# Reused across calls so repeated lookups of a common domain (gmail.com, the
+# school's own domain, ...) don't pay a fresh DNS round trip every time.
+_email_dns_resolver = caching_resolver(timeout=3)
+
+
+def validate_email_deliverable(email: str) -> None:
+    """EmailStr (on StudentBase.email) only checks format - a syntactically
+    valid but nonexistent or made-up domain (e.g. a typo, or a tester
+    entering something like "asdf@asdf.com") passes it silently. Confirm the
+    domain can actually receive mail too, via an MX-record lookup (falling
+    back to A/AAAA per RFC 5321, same rule a real mail transfer agent
+    follows) - this doesn't confirm the specific mailbox exists, only that
+    the domain is a real, mail-capable one.
+
+    Deliberately fails open on a transient DNS/resolver problem -
+    email_validator's own deliverability check already does this (a DNS
+    timeout or "no nameservers answered" returns an inconclusive result
+    instead of raising) - since this runs on the public, rate-limited
+    registration endpoint, which must stay available even if outbound DNS
+    has a bad moment. It only fails closed when the domain definitively
+    doesn't exist or has no mail servers at all.
+    """
+    try:
+        validate_email(email, check_deliverability=True, dns_resolver=_email_dns_resolver)
+    except EmailNotValidError as e:
+        raise ValueError(f"Email address looks fake or unreachable: {e}")
 
 
 class StudentService:
@@ -31,6 +59,8 @@ class StudentService:
         ).first()
         if existing:
             raise ValueError(f"Student with ID {student_data.student_id} already exists")
+
+        validate_email_deliverable(student_data.email)
 
         db_student = StudentDB(
             student_id=student_data.student_id,
@@ -99,6 +129,9 @@ class StudentService:
         student = self.db.query(StudentDB).filter(StudentDB.id == student_id).first()
         if not student:
             return None
+
+        if student_data.email != student.email:
+            validate_email_deliverable(student_data.email)
 
         student.first_name = student_data.first_name
         student.last_name = student_data.last_name

@@ -106,7 +106,10 @@ def update_student(
     (not StudentBase), so staff can set/correct is_scholar/is_varsity/
     is_graduating for a verified student; see StudentBase's docstring."""
     service = StudentService(db)
-    student = service.update_student(student_id, student_data)
+    try:
+        student = service.update_student(student_id, student_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     return student

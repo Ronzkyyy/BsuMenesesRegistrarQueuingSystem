@@ -165,7 +165,10 @@ def make_student(db_session):
             student_id=sid,
             first_name="Test",
             last_name="Student",
-            email=f"{sid}@example.com",
+            # example.com deliberately has a null MX record (RFC 7505) so it
+            # fails the real deliverability check create_student now runs -
+            # gmail.com is a real, always-deliverable domain instead.
+            email=f"{sid}@gmail.com",
             student_type=StudentType.UNDERGRADUATE,
             course=Course.BSIT,
             year_level=YearLevel.FIRST,

@@ -35,7 +35,7 @@ def test_public_register_without_flags_defaults_to_false(client):
     payload = {
         **_BASE_PAYLOAD,
         "student_id": "3020000002",
-        "email": "no.flags@example.com",
+        "email": "no.flags@gmail.com",
     }
     resp = client.post("/api/students", json=payload)
     assert resp.status_code == 200, resp.text
