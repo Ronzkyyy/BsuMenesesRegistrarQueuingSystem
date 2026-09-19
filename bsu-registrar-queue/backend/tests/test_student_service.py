@@ -1,9 +1,13 @@
+from datetime import date, timedelta
+
 import pytest
 
 from app.services.student_service import StudentService
 from app.services.ticket_service import TicketService
+from app.services.appointment_service import AppointmentService
 from app.models.student import StudentCreate, StudentType, Course, Major, YearLevel
 from app.models.ticket import TicketCreate
+from app.models.appointment import AppointmentCreate
 
 
 def test_create_and_fetch_student(db_session, make_student):
@@ -109,6 +113,25 @@ def test_delete_student_with_tickets_is_blocked(db_session, make_student, make_q
     student = make_student()
     queue = make_queue()
     TicketService(db_session).create_ticket(TicketCreate(student_id=student.id, queue_id=queue.id))
+
+    service = StudentService(db_session)
+    with pytest.raises(ValueError, match="Cannot delete student"):
+        service.delete_student(student.id)
+
+
+def test_delete_student_with_appointment_only_is_blocked(db_session, make_student, make_queue):
+    """A booked appointment that was never checked in leaves no ticket behind,
+    so this exercises a path the ticket check alone doesn't cover - deleting
+    the student would otherwise hit appointments.student_id's foreign key
+    and raise a raw IntegrityError instead of a clean, explained error."""
+    student = make_student()
+    queue = make_queue(booking_enabled=True)
+    AppointmentService(db_session).create_appointment(AppointmentCreate(
+        student_id=student.id,
+        queue_id=queue.id,
+        appointment_date=date.today() + timedelta(days=1),
+        slot_start_time=queue.operating_start_time,
+    ))
 
     service = StudentService(db_session)
     with pytest.raises(ValueError, match="Cannot delete student"):
