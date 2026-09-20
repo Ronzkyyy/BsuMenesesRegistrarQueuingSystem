@@ -3,7 +3,7 @@
     <img
       :src="archBackground"
       alt="Bulacan State University Meneses Campus arch"
-      class="absolute inset-0 w-full h-full object-cover"
+      class="absolute inset-0 w-full h-full object-cover blur scale-110"
     />
     <div class="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-soft-lg border border-gray-100 overflow-hidden">
       <div class="p-6 sm:p-8">
