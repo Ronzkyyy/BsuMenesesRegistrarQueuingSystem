@@ -4,7 +4,7 @@ Appointment booking and check-in endpoints
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from ..core.audit import log_security_event
 from ..core.database import get_db
@@ -12,7 +12,8 @@ from ..core.limiter import limiter
 from ..core.security import require_role
 from ..db_models import UserRole
 from ..models.appointment import (
-    Appointment, AppointmentBooked, AppointmentCheckInRequest, AppointmentCreate, SlotAvailability
+    Appointment, AppointmentBooked, AppointmentCheckInRequest, AppointmentCreate,
+    AppointmentListResponse, SlotAvailability
 )
 from ..models.ticket import Ticket
 from ..models.user import User
@@ -94,6 +95,25 @@ def search_appointments(
     """Manual lookup fallback for staff - matches student ID or reference code (staff only)"""
     service = AppointmentService(db)
     return service.search(query)
+
+
+@router.get("", response_model=AppointmentListResponse)
+def list_appointments(
+    upcoming: bool = Query(True, description="True: still-booked, dated today or later. False: history (checked-in/cancelled/expired/past)."),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STAFF))
+):
+    """Browse who's booked an appointment - upcoming by default, or history via upcoming=false,
+    optionally narrowed to a date/date range (staff only)."""
+    service = AppointmentService(db)
+    items, total = service.list_appointments(
+        upcoming=upcoming, date_from=date_from, date_to=date_to, skip=skip, limit=limit
+    )
+    return AppointmentListResponse(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.post("/checkin", response_model=Ticket)

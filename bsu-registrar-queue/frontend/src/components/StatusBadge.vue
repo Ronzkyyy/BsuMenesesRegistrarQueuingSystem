@@ -19,10 +19,10 @@ const props = defineProps({
 
 const tone = computed(() => {
   const s = (props.status || '').toLowerCase()
-  if (['active', 'completed'].includes(s)) return 'green'
+  if (['active', 'completed', 'checked_in'].includes(s)) return 'green'
   if (['paused', 'priority', 'serving'].includes(s)) return 'yellow'
-  if (['urgent', 'no_show', 'cancelled'].includes(s)) return 'red'
-  if (['waiting'].includes(s)) return 'blue'
+  if (['urgent', 'no_show', 'cancelled', 'expired'].includes(s)) return 'red'
+  if (['waiting', 'booked'].includes(s)) return 'blue'
   return 'gray'
 })
 

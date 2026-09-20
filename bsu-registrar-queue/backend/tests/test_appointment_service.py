@@ -468,3 +468,115 @@ def test_book_appointment_rejects_past_date(db_session, make_queue, make_student
 
 def test_earliest_bookable_date_is_tomorrow():
     assert earliest_bookable_date() == date.today() + timedelta(days=1)
+
+
+def test_list_appointments_upcoming_includes_only_future_booked(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    service = AppointmentService(db_session)
+    student = make_student()
+    upcoming_appt = service.create_appointment(AppointmentCreate(
+        student_id=student.id, queue_id=queue.id,
+        appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+    ))
+    # A past, resolved appointment - must not show up in the upcoming view.
+    _expired_appointment(db_session, queue, make_student(), reference_code="APT-UPC1")
+
+    items, total = service.list_appointments(upcoming=True)
+
+    assert total == 1
+    assert items[0].id == upcoming_appt.id
+    assert items[0].student_number == student.student_id
+    assert items[0].student_name == f"{student.first_name} {student.last_name}"
+    assert items[0].queue_name == queue.name
+
+
+def test_list_appointments_past_includes_expired_and_historical(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    service = AppointmentService(db_session)
+    make_student_for_upcoming = make_student()
+    service.create_appointment(AppointmentCreate(
+        student_id=make_student_for_upcoming.id, queue_id=queue.id,
+        appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+    ))
+    expired = _expired_appointment(db_session, queue, make_student(), reference_code="APT-PAST1")
+
+    items, total = service.list_appointments(upcoming=False)
+
+    assert total == 1
+    assert items[0].id == expired.id
+
+
+def test_list_appointments_filters_by_date_range(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    service = AppointmentService(db_session)
+    near = service.create_appointment(AppointmentCreate(
+        student_id=make_student().id, queue_id=queue.id,
+        appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+    ))
+    service.create_appointment(AppointmentCreate(
+        student_id=make_student().id, queue_id=queue.id,
+        appointment_date=date.today() + timedelta(days=10), slot_start_time=time(9, 0),
+    ))
+
+    items, total = service.list_appointments(
+        upcoming=True,
+        date_from=date.today(),
+        date_to=date.today() + timedelta(days=2),
+    )
+
+    assert total == 1
+    assert items[0].id == near.id
+
+
+def test_list_appointments_paginates(db_session, make_queue, make_student):
+    queue = _bookable_queue(make_queue, slot_capacity=5)
+    service = AppointmentService(db_session)
+    for _ in range(3):
+        service.create_appointment(AppointmentCreate(
+            student_id=make_student().id, queue_id=queue.id,
+            appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+        ))
+
+    page1, total = service.list_appointments(upcoming=True, skip=0, limit=2)
+    page2, _ = service.list_appointments(upcoming=True, skip=2, limit=2)
+
+    assert total == 3
+    assert len(page1) == 2
+    assert len(page2) == 1
+
+
+def test_list_appointments_api_requires_staff_login(client, make_queue, make_student):
+    queue = _bookable_queue(make_queue)
+    student = make_student()
+    client.post("/api/appointments", json={
+        "student_id": student.id, "queue_id": queue.id,
+        "appointment_date": (date.today() + timedelta(days=1)).isoformat(),
+        "slot_start_time": "09:00:00",
+    })
+
+    r = client.get("/api/appointments")
+
+    assert r.status_code == 401
+
+
+def test_list_appointments_api_returns_bookings_with_student_identity(
+    client, make_queue, make_student, make_user
+):
+    staff = make_user(role=UserRole.STAFF)
+    queue = _bookable_queue(make_queue)
+    student = make_student()
+    client.post("/api/appointments", json={
+        "student_id": student.id, "queue_id": queue.id,
+        "appointment_date": (date.today() + timedelta(days=1)).isoformat(),
+        "slot_start_time": "09:00:00",
+    })
+    client.post("/api/auth/login",
+                data={"username": staff.username, "password": staff._plain_password})
+
+    r = client.get("/api/appointments")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 1
+    assert body["items"][0]["student_number"] == student.student_id
+    assert body["items"][0]["student_name"] == f"{student.first_name} {student.last_name}"

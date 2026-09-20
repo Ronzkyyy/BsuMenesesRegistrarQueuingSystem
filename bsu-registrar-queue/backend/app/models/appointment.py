@@ -41,6 +41,8 @@ class Appointment(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     queue_name: Optional[str] = None
+    student_number: Optional[str] = None
+    student_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -65,3 +67,10 @@ class AppointmentCheckInRequest(BaseModel):
     token: Optional[str] = Field(default=None, max_length=64)
     reference_code: Optional[str] = Field(default=None, max_length=20)
     force: bool = False
+
+
+class AppointmentListResponse(BaseModel):
+    items: List[Appointment]
+    total: int
+    skip: int
+    limit: int

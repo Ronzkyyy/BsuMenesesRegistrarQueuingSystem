@@ -137,6 +137,8 @@ export const useQueueStore = defineStore('queue', {
     bookedAppointment: null,
     appointmentSearchResults: [],
     checkInResult: null,
+    appointmentsList: [],
+    appointmentsTotal: 0,
 
     // Auth
     currentUser: null,
@@ -912,6 +914,25 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    async fetchAppointmentsList({ upcoming = true, dateFrom = null, dateTo = null, skip = 0, limit = 50 } = {}) {
+      this.loading = true
+      this.error = null
+      try {
+        const params = { upcoming, skip, limit }
+        if (dateFrom) params.date_from = dateFrom
+        if (dateTo) params.date_to = dateTo
+        const response = await api.get('/appointments', { params })
+        this.appointmentsList = response.data.items
+        this.appointmentsTotal = response.data.total
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to load appointments'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     async checkInAppointment({ token = null, referenceCode = null, force = false }) {
       this.loading = true
       this.error = null
@@ -1158,6 +1179,8 @@ export const useQueueStore = defineStore('queue', {
       this.bookedAppointment = null
       this.appointmentSearchResults = []
       this.checkInResult = null
+      this.appointmentsList = []
+      this.appointmentsTotal = 0
       this.loading = false
       this.error = null
       this.stopPolling()

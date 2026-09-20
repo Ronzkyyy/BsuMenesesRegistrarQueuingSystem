@@ -54,6 +54,13 @@
             Check-In
           </router-link>
           <router-link
+            to="/admin/appointments"
+            class="block px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150"
+            :class="route.path === '/admin/appointments' ? 'bg-bsu-primary text-white shadow-sm' : 'text-gray-600 hover:bg-bsu-primary/10 hover:text-bsu-primary-dark'"
+          >
+            Appointments
+          </router-link>
+          <router-link
             to="/admin/students"
             class="block px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150"
             :class="route.path === '/admin/students' ? 'bg-bsu-primary text-white shadow-sm' : 'text-gray-600 hover:bg-bsu-primary/10 hover:text-bsu-primary-dark'"

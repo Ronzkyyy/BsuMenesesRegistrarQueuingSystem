@@ -5,7 +5,7 @@ import secrets
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from ..db_models import AppointmentDB, AppointmentDBStatus, PriorityLevel, QueueDB, StudentDB
 from ..models.appointment import (
@@ -165,7 +165,7 @@ class AppointmentService:
         self.db.add(appointment)
         self.db.commit()
         self.db.refresh(appointment)
-        return self._to_appointment(appointment, queue, include_token=True)
+        return self._to_appointment(appointment, queue, student, include_token=True)
 
     def lookup(self, student_id_str: str, reference_code: str) -> Optional[Appointment]:
         """Student re-views a booking by student ID + reference code"""
@@ -179,7 +179,7 @@ class AppointmentService:
         if not appointment:
             return None
         queue = self.db.query(QueueDB).filter(QueueDB.id == appointment.queue_id).first()
-        return self._to_appointment(appointment, queue)
+        return self._to_appointment(appointment, queue, student)
 
     def cancel(self, appointment_id: int, student_id_str: str) -> Optional[Appointment]:
         """Student cancels their own still-booked appointment"""
@@ -200,7 +200,7 @@ class AppointmentService:
         self.db.commit()
         self.db.refresh(appointment)
         queue = self.db.query(QueueDB).filter(QueueDB.id == appointment.queue_id).first()
-        return self._to_appointment(appointment, queue)
+        return self._to_appointment(appointment, queue, student)
 
     def search(self, query: str) -> List[Appointment]:
         """Staff manual lookup fallback - matches student ID or reference code.
@@ -210,7 +210,9 @@ class AppointmentService:
         removable via staff_cancel_expired - after expire_stale_appointments
         flips it, instead of silently vanishing from search."""
         pattern = f"%{escape_like(query)}%"
-        rows = self.db.query(AppointmentDB).join(StudentDB, AppointmentDB.student_id == StudentDB.id).filter(
+        rows = self.db.query(AppointmentDB, StudentDB).join(
+            StudentDB, AppointmentDB.student_id == StudentDB.id
+        ).filter(
             AppointmentDB.status.in_([AppointmentDBStatus.BOOKED, AppointmentDBStatus.EXPIRED]),
             or_(
                 StudentDB.student_id.ilike(pattern, escape=LIKE_ESCAPE),
@@ -219,10 +221,63 @@ class AppointmentService:
         ).order_by(AppointmentDB.appointment_date, AppointmentDB.slot_start_time).limit(20).all()
 
         result = []
-        for appt in rows:
+        for appt, student in rows:
             queue = self.db.query(QueueDB).filter(QueueDB.id == appt.queue_id).first()
-            result.append(self._to_appointment(appt, queue))
+            result.append(self._to_appointment(appt, queue, student))
         return result
+
+    def list_appointments(
+        self,
+        upcoming: bool = True,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> Tuple[List[Appointment], int]:
+        """Browse appointments for staff (Admin/Registrar/Staff) - "who's booked in".
+
+        upcoming=True (default): still-BOOKED appointments dated today or
+        later, soonest first - what's coming up.
+        upcoming=False: everything else (checked-in, cancelled, expired, or
+        just past-dated), most recent first - the history view.
+        date_from/date_to further narrow either view to a specific day or
+        range, applied on top of the upcoming/past split.
+        """
+        today = date.today()
+        query = self.db.query(AppointmentDB, StudentDB, QueueDB).join(
+            StudentDB, AppointmentDB.student_id == StudentDB.id
+        ).join(
+            QueueDB, AppointmentDB.queue_id == QueueDB.id
+        )
+
+        if upcoming:
+            query = query.filter(
+                AppointmentDB.appointment_date >= today,
+                AppointmentDB.status == AppointmentDBStatus.BOOKED,
+            )
+        else:
+            query = query.filter(
+                or_(
+                    AppointmentDB.appointment_date < today,
+                    AppointmentDB.status != AppointmentDBStatus.BOOKED,
+                )
+            )
+
+        if date_from:
+            query = query.filter(AppointmentDB.appointment_date >= date_from)
+        if date_to:
+            query = query.filter(AppointmentDB.appointment_date <= date_to)
+
+        total = query.count()
+
+        if upcoming:
+            query = query.order_by(AppointmentDB.appointment_date.asc(), AppointmentDB.slot_start_time.asc())
+        else:
+            query = query.order_by(AppointmentDB.appointment_date.desc(), AppointmentDB.slot_start_time.desc())
+
+        rows = query.offset(skip).limit(limit).all()
+        items = [self._to_appointment(appt, queue, student) for appt, student, queue in rows]
+        return items, total
 
     def check_in(
         self,
@@ -358,7 +413,8 @@ class AppointmentService:
         self.db.commit()
         self.db.refresh(appointment)
         queue = self.db.query(QueueDB).filter(QueueDB.id == appointment.queue_id).first()
-        return self._to_appointment(appointment, queue)
+        student = self.db.query(StudentDB).filter(StudentDB.id == appointment.student_id).first()
+        return self._to_appointment(appointment, queue, student)
 
     def _generate_reference_code(self) -> str:
         for _ in range(10):
@@ -368,7 +424,13 @@ class AppointmentService:
                 return candidate
         raise RuntimeError("Could not generate a unique appointment reference code")
 
-    def _to_appointment(self, db_appt: AppointmentDB, queue: Optional[QueueDB] = None, include_token: bool = False):
+    def _to_appointment(
+        self,
+        db_appt: AppointmentDB,
+        queue: Optional[QueueDB] = None,
+        student: Optional[StudentDB] = None,
+        include_token: bool = False,
+    ):
         """Convert DB model to Pydantic model"""
         data = dict(
             id=db_appt.id,
@@ -385,6 +447,8 @@ class AppointmentService:
             created_at=db_appt.created_at,
             updated_at=db_appt.updated_at,
             queue_name=queue.name if queue else None,
+            student_number=student.student_id if student else None,
+            student_name=f"{student.first_name} {student.last_name}" if student else None,
         )
         if include_token:
             return AppointmentBooked(**data, qr_token=db_appt.qr_token)
