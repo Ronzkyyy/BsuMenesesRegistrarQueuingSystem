@@ -21,16 +21,17 @@
         />
         <div class="absolute inset-0 bg-gradient-to-r from-bsu-surface/70 via-bsu-surface/30 to-transparent"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-bsu-surface/40 via-transparent to-transparent"></div>
+        <div class="absolute inset-0" style="background: linear-gradient(to right, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0))"></div>
 
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 w-full py-24 sm:py-0">
           <div class="max-w-xl text-center sm:text-left">
             <h1 class="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.05] text-[#C81E4E] [text-shadow:0_2px_10px_rgba(0,0,0,0.4)]">
               WELCOME
             </h1>
-            <p class="mt-2 text-2xl sm:text-3xl md:text-4xl font-bold text-bsu-ink drop-shadow-sm">
+            <p class="mt-2 text-2xl sm:text-3xl md:text-4xl font-bold text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.4)]">
               to BSU Registrar Queue System
             </p>
-            <p class="mt-5 text-base sm:text-lg font-semibold text-gray-700 max-w-md mx-auto sm:mx-0 drop-shadow-sm">
+            <p class="mt-5 text-base sm:text-lg font-semibold text-white max-w-md mx-auto sm:mx-0 [text-shadow:0_2px_10px_rgba(0,0,0,0.4)]">
               Fast, transparent, and accessible queue management for students.
             </p>
 
