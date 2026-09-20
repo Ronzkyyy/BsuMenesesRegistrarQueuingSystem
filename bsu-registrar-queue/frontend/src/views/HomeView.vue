@@ -29,7 +29,7 @@
               WELCOME
             </h1>
             <p class="mt-2 text-2xl sm:text-3xl md:text-4xl font-bold text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.4)]">
-              to BSU Registrar Queue System
+              to BSU Meneses Registrar Queue System
             </p>
             <p class="mt-5 text-base sm:text-lg font-semibold text-white max-w-md mx-auto sm:mx-0 [text-shadow:0_2px_10px_rgba(0,0,0,0.4)]">
               Fast, transparent, and accessible queue management for students.
