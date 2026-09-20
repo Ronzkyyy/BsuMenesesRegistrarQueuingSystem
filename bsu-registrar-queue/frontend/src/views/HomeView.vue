@@ -70,20 +70,20 @@
         </div>
 
         <div class="grid sm:grid-cols-2 gap-6 sm:gap-8">
-          <div class="bg-white rounded-3xl shadow-soft border border-gray-100 p-8 sm:p-10">
-            <div class="flex items-center gap-3 mb-5 border-l-4 border-bsu-primary pl-4">
-              <h3 class="text-sm font-bold tracking-[0.2em] uppercase text-bsu-primary">Vision</h3>
+          <div class="bg-gradient-to-r from-bsu-primary to-bsu-peach rounded-3xl shadow-soft p-8 sm:p-10">
+            <div class="flex items-center gap-3 mb-5 border-l-4 border-white/60 pl-4">
+              <h3 class="text-sm font-bold tracking-[0.2em] uppercase text-white">Vision</h3>
             </div>
-            <p class="text-lg sm:text-xl leading-relaxed text-bsu-ink font-medium">
+            <p class="text-lg sm:text-xl leading-relaxed text-white font-medium">
               {{ vision }}
             </p>
           </div>
 
-          <div class="bg-white rounded-3xl shadow-soft border border-gray-100 p-8 sm:p-10">
-            <div class="flex items-center gap-3 mb-5 border-l-4 border-bsu-peach pl-4">
-              <h3 class="text-sm font-bold tracking-[0.2em] uppercase text-bsu-peach-dark">Mission</h3>
+          <div class="bg-gradient-to-r from-bsu-primary to-bsu-peach rounded-3xl shadow-soft p-8 sm:p-10">
+            <div class="flex items-center gap-3 mb-5 border-l-4 border-white/60 pl-4">
+              <h3 class="text-sm font-bold tracking-[0.2em] uppercase text-white">Mission</h3>
             </div>
-            <p class="text-lg sm:text-xl leading-relaxed text-bsu-ink font-medium">
+            <p class="text-lg sm:text-xl leading-relaxed text-white font-medium">
               {{ mission }}
             </p>
           </div>
