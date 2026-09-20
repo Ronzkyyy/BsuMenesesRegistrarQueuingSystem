@@ -62,7 +62,7 @@
   <header v-else class="bg-white shadow-soft border-b border-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div class="flex items-center justify-between">
-        <router-link to="/" class="flex items-center space-x-3">
+        <div class="flex items-center space-x-3">
           <div class="flex items-center space-x-2 flex-shrink-0">
             <img :src="BSUlogo" alt="BSU Logo" class="h-12 w-auto sm:h-14 object-contain" />
             <img :src="MENESESlogo" alt="Meneses Campus Logo" class="h-12 w-auto sm:h-14 object-contain" />
@@ -71,7 +71,7 @@
             <h1 class="text-lg sm:text-xl font-bold leading-tight text-bsu-ink">BSU Meneses Campus</h1>
             <p class="text-sm text-bsu-primary-dark font-medium">{{ subtitle }}</p>
           </div>
-        </router-link>
+        </div>
         <div class="flex items-center space-x-3">
           <slot name="actions" />
         </div>
