@@ -47,8 +47,13 @@ jobs:
       # ECDSA-signing timing side-channel in `ecdsa` (pulled in by python-jose)
       # with no upstream fix planned; this app only issues HS256 (HMAC) tokens,
       # so that code path is never executed. Revisit if auth moves to PyJWT.
+      # PYSEC-2026-4175/4176/4177 are in urllib3, pulled in by pip-audit's own
+      # `requests`/`CacheControl` dependency chain - installed by the line
+      # below, never by requirements.txt, so it never ships in the app/image.
       - run: pip install pip-audit
-      - run: pip-audit --ignore-vuln PYSEC-2026-1325
+      - run: >
+          pip-audit --ignore-vuln PYSEC-2026-1325
+          --ignore-vuln PYSEC-2026-4175 --ignore-vuln PYSEC-2026-4176 --ignore-vuln PYSEC-2026-4177
 
       - run: python -m pytest
 

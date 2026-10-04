@@ -489,7 +489,8 @@ trusted to set. One real case fixed here:
   into one PR per ecosystem to cut noise.
 - **CI gates** (`.github/workflows/ci.yml`) fail the build on a known-vulnerable
   dependency:
-  - backend: `pip-audit --ignore-vuln PYSEC-2026-1325`
+  - backend: `pip-audit --ignore-vuln PYSEC-2026-1325 --ignore-vuln
+    PYSEC-2026-4175 --ignore-vuln PYSEC-2026-4176 --ignore-vuln PYSEC-2026-4177`
   - frontend: `npm audit --omit=dev --audit-level=high` (audits only what ships
     in the bundle)
 - Run the same checks locally: `pip-audit` in `backend/`, `npm audit` in
@@ -502,6 +503,11 @@ trusted to set. One real case fixed here:
   - `vite` / `esbuild` dev-server advisories — build tooling only
     (`devDependencies`), not in the deployed app. The vite 5→8 major bump is
     left for a dedicated Dependabot PR so it can be tested in isolation.
+  - `PYSEC-2026-4175`/`4176`/`4177` — in `urllib3`, pulled in transitively by
+    `pip-audit`'s own `requests`/`CacheControl` dependency chain (the
+    `pip install pip-audit` CI step itself), never by `requirements.txt` —
+    this `urllib3` is never installed by `pip install -r requirements.txt`
+    alone and never ships in the app or its Docker image.
 
 ## Software Supply Chain
 
