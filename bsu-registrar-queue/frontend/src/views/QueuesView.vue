@@ -31,64 +31,86 @@
 
         <!-- Ticket status view (already has an active ticket) -->
         <div v-else-if="showMyQueueStatus">
-          <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-bsu-primary text-white rounded-2xl mb-4 shadow-soft">
-              <span class="text-3xl font-bold">{{ myTicket?.ticket_code }}</span>
+          <!-- The ticket just got served (or otherwise left Waiting/Serving) -
+               the my-ticket endpoint only tracks active tickets, so polling
+               picks this up as the ticket disappearing, not a "completed"
+               status to display. -->
+          <div v-if="ticketResolved" class="text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-green-500 text-white rounded-2xl mb-4 shadow-soft">
+              <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
             </div>
-            <h3 class="text-lg font-bold text-bsu-ink">Your Ticket Number</h3>
-            <p class="text-gray-500">Queue: {{ myTicket?.queue_name }}</p>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="bg-bsu-surface rounded-xl p-4 text-center">
-              <p class="text-sm text-gray-500 mb-1">Position</p>
-              <p class="text-2xl font-bold text-bsu-primary">{{ myTicket?.position || 0 }}</p>
-            </div>
-            <div class="bg-bsu-surface rounded-xl p-4 text-center">
-              <p class="text-sm text-gray-500 mb-1">Estimated Wait</p>
-              <p class="text-2xl font-bold text-bsu-gold-dark">{{ myTicket?.estimated_wait_time_minutes || 0 }} min</p>
-            </div>
-          </div>
-
-          <div class="bg-bsu-surface rounded-xl p-4 mb-6">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-gray-600 text-sm">Status</span>
-              <StatusBadge :status="myTicket?.status" />
-            </div>
-            <div v-if="myTicket?.priority !== 'normal'" class="flex items-center justify-between">
-              <span class="text-gray-600 text-sm">Priority</span>
-              <span class="text-bsu-ink font-medium capitalize">{{ myTicket?.priority }}</span>
-            </div>
-          </div>
-
-          <div class="flex flex-col sm:flex-row gap-3">
+            <h3 class="text-lg font-bold text-bsu-ink">Ticket {{ resolvedTicketCode }} Served</h3>
+            <p class="text-gray-500 mt-1 mb-6">Thank you! Your transaction is complete.</p>
             <button
-              v-if="myTicket?.status === 'waiting'"
-              @click="cancelTicket"
-              :disabled="loading"
-              class="btn btn-danger-solid flex-1 py-2.5"
+              @click="returnHome"
+              class="btn btn-primary w-full py-2.5"
             >
-              Cancel Ticket
-            </button>
-            <button
-              v-if="myTicket?.status === 'waiting'"
-              @click="refreshTicket"
-              :disabled="loading"
-              class="btn btn-primary flex-1 py-2.5"
-            >
-              Refresh
+              Return Home
             </button>
           </div>
 
-          <div class="flex flex-col sm:flex-row gap-3 mt-3">
-            <button
-              @click="takeAnotherTicket"
-              :disabled="loading"
-              class="btn btn-secondary flex-1 py-2.5"
-            >
-              Take Another Ticket
-            </button>
-          </div>
+          <template v-else>
+            <div class="text-center mb-6">
+              <div class="inline-flex items-center justify-center w-20 h-20 bg-bsu-primary text-white rounded-2xl mb-4 shadow-soft">
+                <span class="text-3xl font-bold">{{ myTicket?.ticket_code }}</span>
+              </div>
+              <h3 class="text-lg font-bold text-bsu-ink">Your Ticket Number</h3>
+              <p class="text-gray-500">Queue: {{ myTicket?.queue_name }}</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div class="bg-bsu-surface rounded-xl p-4 text-center">
+                <p class="text-sm text-gray-500 mb-1">Position</p>
+                <p class="text-2xl font-bold text-bsu-primary">{{ myTicket?.position || 0 }}</p>
+              </div>
+              <div class="bg-bsu-surface rounded-xl p-4 text-center">
+                <p class="text-sm text-gray-500 mb-1">Estimated Wait</p>
+                <p class="text-2xl font-bold text-bsu-gold-dark">{{ myTicket?.estimated_wait_time_minutes || 0 }} min</p>
+              </div>
+            </div>
+
+            <div class="bg-bsu-surface rounded-xl p-4 mb-6">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-600 text-sm">Status</span>
+                <StatusBadge :status="myTicket?.status" />
+              </div>
+              <div v-if="myTicket?.priority !== 'normal'" class="flex items-center justify-between">
+                <span class="text-gray-600 text-sm">Priority</span>
+                <span class="text-bsu-ink font-medium capitalize">{{ myTicket?.priority }}</span>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+              <button
+                v-if="myTicket?.status === 'waiting'"
+                @click="cancelTicket"
+                :disabled="loading"
+                class="btn btn-danger-solid flex-1 py-2.5"
+              >
+                Cancel Ticket
+              </button>
+              <button
+                v-if="myTicket?.status === 'waiting'"
+                @click="refreshTicket"
+                :disabled="loading"
+                class="btn btn-primary flex-1 py-2.5"
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 mt-3">
+              <button
+                @click="takeAnotherTicket"
+                :disabled="loading"
+                class="btn btn-secondary flex-1 py-2.5"
+              >
+                Take Another Ticket
+              </button>
+            </div>
+          </template>
         </div>
 
         <!-- STEP 1: Select a Service -->
@@ -383,7 +405,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
@@ -416,6 +438,8 @@ const studentFound = ref(false)
 const showConfirmModal = ref(false)
 const showMyQueueStatus = ref(false)
 const ticketResult = ref(null)
+const ticketResolved = ref(false)
+const resolvedTicketCode = ref('')
 
 const registrationForm = ref(emptyRegistrationForm())
 
@@ -435,6 +459,25 @@ const selectedDocumentTypeLabel = computed(() => {
   return dt ? dt.label : selectedDocumentType.value
 })
 const myTicket = computed(() => queueStore.myTicket)
+
+// /tickets/my-ticket only ever returns a WAITING/SERVING ticket - once staff
+// completes it, the next poll 404s and queueStore.myTicket goes from the
+// ticket object straight to null (same shape as a student-initiated cancel).
+// Only treat the "had a ticket, now don't" transition as a served ticket
+// when we're still on this status view and didn't cause it ourselves -
+// cancelTicket/takeAnotherTicket already flip showMyQueueStatus to false
+// in the same tick, before this watcher runs, so that case is excluded here.
+watch(
+  () => queueStore.myTicket,
+  (newTicket, oldTicket) => {
+    if (showMyQueueStatus.value && oldTicket && !newTicket) {
+      resolvedTicketCode.value = oldTicket.ticket_code
+      ticketResolved.value = true
+      queueStore.stopPolling()
+    }
+  }
+)
+
 const displayedStep = computed(() => (showConfirmModal.value ? 3 : currentStep.value))
 const formattedTicketDate = computed(() => {
   if (!ticketResult.value?.created_at) return ''
@@ -569,10 +612,17 @@ const viewMyQueueFromSuccess = () => {
   showMyQueueStatus.value = true
 }
 
+const returnHome = () => {
+  queueStore.stopPolling()
+  router.push('/')
+}
+
 const takeAnotherTicket = () => {
   queueStore.stopPolling()
   showMyQueueStatus.value = false
   ticketResult.value = null
+  ticketResolved.value = false
+  resolvedTicketCode.value = ''
   selectedServiceKey.value = null
   selectedDocumentType.value = ''
   currentStep.value = 1
