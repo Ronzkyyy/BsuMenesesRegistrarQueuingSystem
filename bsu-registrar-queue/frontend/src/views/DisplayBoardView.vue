@@ -1,23 +1,26 @@
 <template>
-  <div class="min-h-screen bg-bsu-surface text-bsu-ink flex flex-col">
+  <div class="min-h-screen board-bg text-bsu-ink flex flex-col">
     <!-- Top bar -->
-    <header class="flex items-center justify-between px-8 py-5 bg-white border-b border-gray-100 shadow-soft">
+    <header class="flex items-center justify-between px-8 py-5 board-header">
       <div class="flex items-center space-x-3">
-        <img :src="BSUlogo" alt="BSU Logo" class="w-10 h-10 object-contain" />
-        <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-10 h-10 object-contain" />
+        <div class="flex items-center space-x-1.5 university-badge">
+          <img :src="BSUlogo" alt="BSU Logo" class="w-10 h-10 object-contain" />
+          <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-10 h-10 object-contain" />
+        </div>
         <div>
-          <h1 class="text-lg font-bold leading-tight text-bsu-ink">BSU Meneses Campus</h1>
-          <p class="text-sm text-gray-500">{{ queueName || 'Queue Display' }}</p>
+          <h1 class="text-lg font-extrabold leading-tight text-white tracking-tight">BSU Meneses Campus</h1>
+          <p class="text-sm text-white/75">{{ queueName || 'Queue Display' }}</p>
         </div>
       </div>
       <div class="flex items-center space-x-6">
-        <div class="text-right">
-          <p class="text-2xl font-bold tabular-nums text-bsu-ink">{{ clockTime }}</p>
-          <p class="text-xs text-gray-500">{{ clockDate }}</p>
+        <div class="flex items-center space-x-2 text-white">
+          <p class="text-2xl font-bold tabular-nums">{{ clockTime }}</p>
+          <span class="w-1.5 h-1.5 rounded-full bg-bsu-gold"></span>
+          <p class="text-xs text-white/75">{{ clockDate }}</p>
         </div>
         <button
           @click="toggleFullscreen"
-          class="p-2 rounded-xl border border-gray-200 text-gray-500 hover:text-bsu-primary hover:border-bsu-primary/40 transition-colors"
+          class="p-2 rounded-xl border border-white/30 text-white/80 hover:text-white hover:border-white/60 transition-colors"
           title="Toggle fullscreen"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,21 +63,30 @@
       <!-- Board -->
       <div v-else class="w-full max-w-5xl">
         <!-- Now Serving -->
-        <section class="text-center mb-12">
-          <h2 class="text-xl md:text-2xl font-bold tracking-[0.25em] text-bsu-ink uppercase mb-6">Now Serving</h2>
-
-          <div v-if="servingTickets.length > 0" class="flex flex-wrap justify-center gap-6">
-            <div
-              v-for="ticket in servingTickets"
-              :key="ticket.ticket_number"
-              class="bg-gradient-to-br from-bsu-primary to-bsu-peach rounded-3xl px-16 py-12 shadow-soft-lg"
-              :class="justCalled[ticket.ticket_number] ? 'animate-called-pulse' : 'animate-pulse-slow'"
-            >
-              <span class="text-8xl md:text-9xl font-extrabold text-white tabular-nums drop-shadow-lg">{{ ticket.ticket_code }}</span>
-            </div>
+        <section class="window-card max-w-2xl mx-auto mb-10 text-center">
+          <div class="window-card-heading">
+            <p class="window-name">
+              {{ queueName }}
+              <span class="open-label">Open</span>
+            </p>
           </div>
-          <div v-else class="inline-block bg-white rounded-3xl px-16 py-12 border border-gray-100 shadow-soft">
-            <span class="text-7xl md:text-8xl font-extrabold text-gray-300">--</span>
+
+          <p class="serving-label">Now Serving</p>
+
+          <div class="py-10 px-6">
+            <div v-if="servingTickets.length > 0" class="flex flex-wrap justify-center gap-6">
+              <div
+                v-for="ticket in servingTickets"
+                :key="ticket.ticket_number"
+                class="bg-gradient-to-br from-bsu-primary to-bsu-peach rounded-xl px-16 py-12 shadow-soft-lg"
+                :class="justCalled[ticket.ticket_number] ? 'animate-called-pulse' : 'animate-pulse-slow'"
+              >
+                <span class="text-8xl md:text-9xl font-extrabold text-white tabular-nums drop-shadow-lg">{{ ticket.ticket_code }}</span>
+              </div>
+            </div>
+            <div v-else class="inline-block bg-bsu-surface rounded-xl px-16 py-12 border border-gray-100">
+              <span class="text-7xl md:text-8xl font-extrabold text-gray-300">--</span>
+            </div>
           </div>
         </section>
 
@@ -88,7 +100,7 @@
             <div
               v-for="(ticket, idx) in waitingPreview"
               :key="ticket.ticket_number"
-              class="rounded-2xl px-6 py-4 text-center shadow-soft"
+              class="rounded-xl px-6 py-4 text-center shadow-soft"
               :class="idx === 0 ? 'bg-bsu-gold text-bsu-ink' : 'bg-white border border-gray-100 text-bsu-ink'"
             >
               <p class="text-3xl font-bold tabular-nums">{{ ticket.ticket_code }}</p>
@@ -98,7 +110,7 @@
             </div>
             <div
               v-if="waitingOverflow > 0"
-              class="rounded-2xl px-6 py-4 text-center bg-white border border-gray-100 text-gray-400 shadow-soft flex items-center justify-center"
+              class="rounded-xl px-6 py-4 text-center bg-white border border-gray-100 text-gray-400 shadow-soft flex items-center justify-center"
             >
               <span class="text-sm font-medium">+{{ waitingOverflow }} more</span>
             </div>
@@ -110,7 +122,7 @@
 
     <MediaAnnouncementPanel />
 
-    <footer class="text-center py-4 text-xs text-gray-400 border-t border-gray-100">
+    <footer class="text-center py-2.5 text-xs text-gray-400 border-t border-gray-200 bg-white uppercase tracking-widest font-medium">
       Bulacan State University - Meneses Campus &middot; Registrar Queue Management System
       <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-2 align-middle animate-pulse"></span>
     </footer>
@@ -259,6 +271,84 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.board-bg {
+  font-family: 'Inter', sans-serif;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px),
+    #e9eef7;
+  background-size: 100% 2.5rem;
+}
+
+.board-header {
+  background: linear-gradient(to right, #E85D8E, #F7A76C);
+  border-bottom: 0.3rem solid #C94577;
+  box-shadow: 0 6px 16px rgba(201, 69, 119, 0.25);
+}
+
+.university-badge {
+  padding: 0.4rem 0.55rem;
+  border-radius: 9999px;
+  background: #F8C95A;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 0 0 3px #C94577;
+}
+
+.window-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d5dce8;
+  border-radius: 0.6rem;
+  box-shadow: 0 6px 16px rgba(45, 58, 79, 0.1);
+}
+
+.window-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: #F8C95A;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.window-card-heading {
+  padding: 1rem 1.25rem 0.6rem;
+}
+
+.window-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 0;
+  color: #C94577;
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.open-label {
+  color: #26945a;
+  font-size: 0.55em;
+  font-weight: 800;
+}
+
+.serving-label {
+  margin: 0;
+  padding: 0.5rem 0.5rem;
+  background: #e0c71b;
+  color: #211d16;
+  font-size: clamp(0.75rem, 1.4vw, 0.95rem);
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 @keyframes pulse-slow {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.85; }

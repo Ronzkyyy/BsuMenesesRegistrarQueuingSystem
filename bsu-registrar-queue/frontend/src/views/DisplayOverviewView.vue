@@ -1,23 +1,26 @@
 <template>
-  <div class="h-screen overflow-hidden bg-bsu-surface text-bsu-ink flex flex-col">
+  <div class="h-screen overflow-hidden board-bg text-bsu-ink flex flex-col">
     <!-- Top bar -->
-    <header class="flex items-center justify-between px-6 py-2 bg-white border-b border-gray-100 shadow-soft shrink-0">
-      <div class="flex items-center space-x-2">
-        <img :src="BSUlogo" alt="BSU Logo" class="w-7 h-7 object-contain" />
-        <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-7 h-7 object-contain" />
+    <header class="flex items-center justify-between px-6 py-2.5 board-header shrink-0">
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-1.5 university-badge">
+          <img :src="BSUlogo" alt="BSU Logo" class="w-7 h-7 object-contain" />
+          <img :src="MENESESlogo" alt="Meneses Campus Logo" class="w-7 h-7 object-contain" />
+        </div>
         <div>
-          <h1 class="text-sm font-bold leading-tight text-bsu-ink">BSU Meneses Campus</h1>
-          <p class="text-xs text-gray-500">All Queues Overview</p>
+          <h1 class="text-sm font-extrabold leading-tight text-white tracking-tight">BSU Meneses Campus</h1>
+          <p class="text-[0.65rem] text-white/70 font-semibold uppercase tracking-widest">All Queues Overview</p>
         </div>
       </div>
       <div class="flex items-center space-x-4">
-        <div class="text-right">
-          <p class="text-lg font-bold tabular-nums leading-tight text-bsu-ink">{{ clockTime }}</p>
-          <p class="text-xs text-gray-500">{{ clockDate }}</p>
+        <div class="flex items-center space-x-2 text-white">
+          <p class="text-lg font-bold tabular-nums leading-tight">{{ clockTime }}</p>
+          <span class="w-1.5 h-1.5 rounded-full bg-bsu-gold"></span>
+          <p class="text-xs text-white/70">{{ clockDate }}</p>
         </div>
         <button
           @click="toggleFullscreen"
-          class="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-bsu-primary hover:border-bsu-primary/40 transition-colors"
+          class="p-1.5 rounded-lg border border-white/30 text-white/80 hover:text-white hover:border-white/60 transition-colors"
           title="Toggle fullscreen"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,48 +59,45 @@
       <!-- Grid -->
       <div
         v-else
-        class="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr gap-3"
+        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
       >
-        <div
+        <article
           v-for="q in overview"
           :key="q.queue_id"
-          class="bg-white border border-gray-100 shadow-soft rounded-2xl p-3 flex flex-col items-center justify-center text-center min-h-0"
+          class="window-card flex flex-col text-center"
         >
-          <h2 class="text-[clamp(0.65rem,1.4vh,0.9rem)] font-semibold tracking-[0.2em] text-gray-400 uppercase mb-2">{{ q.queue_name }}</h2>
-
-          <div class="mb-2">
-            <p class="text-[clamp(0.6rem,1.3vh,0.85rem)] font-bold uppercase tracking-wide text-gray-500 mb-1">Now Serving</p>
-            <div v-if="q.serving_ticket_codes.length > 0" class="flex flex-wrap justify-center gap-2">
-              <span
-                v-for="code in q.serving_ticket_codes"
-                :key="code"
-                class="inline-block bg-gradient-to-br from-bsu-primary to-bsu-peach rounded-xl px-4 py-2 text-[clamp(1.5rem,5.5vh,3rem)] font-extrabold text-white tabular-nums drop-shadow"
-              >
-                {{ code }}
-              </span>
-            </div>
-            <span v-else class="inline-block bg-bsu-surface border border-gray-100 rounded-xl px-4 py-2 text-[clamp(1.5rem,5.5vh,3rem)] font-extrabold text-gray-300">
-              --
-            </span>
+          <div class="window-card-heading">
+            <p class="window-name">
+              {{ q.queue_name }}
+              <span class="open-label">Open</span>
+            </p>
+            <p class="service-name">{{ formatQueueType(q.queue_type) }}</p>
           </div>
 
-          <div class="flex items-center justify-center space-x-4 text-[clamp(0.65rem,1.3vh,0.875rem)]">
+          <p class="serving-label">Now Serving</p>
+
+          <p v-if="q.serving_ticket_codes.length > 0" class="served-ticket">
+            {{ q.serving_ticket_codes.join(', ') }}
+          </p>
+          <p v-else class="served-ticket text-gray-300">--</p>
+
+          <div class="queue-stats">
             <div>
-              <p class="text-gray-400">Waiting</p>
-              <p class="font-bold tabular-nums text-bsu-ink">{{ q.waiting_count }}</p>
+              <p class="queue-stats-label">Waiting</p>
+              <p class="queue-stats-value">{{ q.waiting_count }}</p>
             </div>
             <div>
-              <p class="text-gray-400">Next</p>
-              <p class="font-bold tabular-nums text-bsu-ink">{{ q.next_ticket_code ?? '--' }}</p>
+              <p class="queue-stats-label">Next</p>
+              <p class="queue-stats-value">{{ q.next_ticket_code ?? '--' }}</p>
             </div>
           </div>
-        </div>
+        </article>
       </div>
     </main>
 
-    <MediaAnnouncementPanel :media-max-height-vh="26" class="shrink-0" />
+    <MediaAnnouncementPanel :media-max-height-vh="36" class="shrink-0" />
 
-    <footer class="text-center py-1.5 text-xs text-gray-400 border-t border-gray-100 shrink-0">
+    <footer class="text-center py-1.5 text-xs text-gray-400 border-t border-gray-200 bg-white shrink-0 uppercase tracking-widest font-medium">
       Bulacan State University - Meneses Campus &middot; Registrar Queue Management System
       <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-2 align-middle animate-pulse"></span>
     </footer>
@@ -109,6 +109,7 @@ import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
 import MediaAnnouncementPanel from '@/components/MediaAnnouncementPanel.vue'
+import { formatQueueType } from '@/components/icons/QueueIcons'
 import BSUlogo from '@/assets/BSUlogo.png'
 import MENESESlogo from '@/assets/MENESESlogo.png'
 
@@ -158,3 +159,137 @@ onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
 })
 </script>
+
+<style scoped>
+.board-bg {
+  font-family: 'Inter', sans-serif;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px),
+    #e9eef7;
+  background-size: 100% 2.5rem;
+}
+
+.board-header {
+  background: linear-gradient(to right, #E85D8E, #F7A76C);
+  border-bottom: 0.3rem solid #C94577;
+  box-shadow: 0 6px 16px rgba(201, 69, 119, 0.25);
+}
+
+.university-badge {
+  padding: 0.3rem 0.45rem;
+  border-radius: 9999px;
+  background: #F8C95A;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 0 0 3px #C94577;
+}
+
+.window-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d5dce8;
+  border-radius: 0.35rem;
+  box-shadow: 0 6px 16px rgba(45, 58, 79, 0.1);
+}
+
+.window-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1rem;
+  height: 1rem;
+  background: #F8C95A;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.window-card-heading {
+  display: flex;
+  min-height: 3.2rem;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.55rem 0.6rem 0.4rem;
+}
+
+.window-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: #4c1820;
+  font-size: clamp(0.68rem, 1.5vh, 0.95rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.open-label {
+  color: #26945a;
+  font-size: 0.6em;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.service-name {
+  overflow: hidden;
+  margin: 0.2rem 0 0;
+  color: #8b929f;
+  font-size: clamp(0.5rem, 1vh, 0.62rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.serving-label {
+  flex: none;
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  background: #e0c71b;
+  color: #211d16;
+  font-size: clamp(0.55rem, 1vh, 0.7rem);
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.served-ticket {
+  margin: 0;
+  padding: 0.85rem 0.6rem;
+  color: #171d29;
+  font-size: clamp(1.3rem, 5vh, 2.3rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.queue-stats {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 0.5rem 0.6rem 0.6rem;
+  border-top: 1px solid #ebeef4;
+}
+
+.queue-stats-label {
+  margin: 0;
+  color: #9aa1ad;
+  font-size: clamp(0.52rem, 1vh, 0.65rem);
+}
+
+.queue-stats-value {
+  margin: 0;
+  color: #2d2d2d;
+  font-weight: 700;
+  font-size: clamp(0.62rem, 1.2vh, 0.78rem);
+  font-variant-numeric: tabular-nums;
+}
+</style>
