@@ -184,6 +184,19 @@ const playChime = () => {
   }
 }
 
+const speak = (text) => {
+  try {
+    if (!window.speechSynthesis) return
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.9
+    window.speechSynthesis.speak(utterance)
+  } catch (err) {
+    // Speech synthesis may be unsupported/blocked - the chime and visual
+    // pulse already fired, so a missing voice announcement isn't fatal.
+  }
+}
+
 watch(servingTickets, (tickets) => {
   // Object keys are always strings, so ticket_number (a number) must be
   // stringified here to match - otherwise every key looks stale on every
@@ -208,6 +221,7 @@ watch(servingTickets, (tickets) => {
     if (hasBaseline && ticket.called_at && previous !== ticket.called_at) {
       justCalled.value[key] = true
       playChime()
+      setTimeout(() => speak(`Now serving ticket ${ticket.ticket_code} at ${queueName.value}`), 500)
       setTimeout(() => {
         justCalled.value[key] = false
       }, 2000)

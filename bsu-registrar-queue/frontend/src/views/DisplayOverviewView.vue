@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
 import MediaAnnouncementPanel from '@/components/MediaAnnouncementPanel.vue'
@@ -123,6 +123,65 @@ const clockTime = computed(() => format(now.value, 'h:mm:ss a'))
 const clockDate = computed(() => format(now.value, 'EEEE, MMMM d, yyyy'))
 
 const overview = computed(() => queueStore.nowServingOverview)
+
+const playChime = () => {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext
+    const ctx = new AudioContextClass()
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.value = 880
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.start()
+    oscillator.stop(ctx.currentTime + 0.4)
+  } catch (err) {
+    // Audio may be blocked by the browser's autoplay policy - fail silent,
+    // the visual update already happened regardless.
+  }
+}
+
+const speak = (text) => {
+  try {
+    if (!window.speechSynthesis) return
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.9
+    window.speechSynthesis.speak(utterance)
+  } catch (err) {
+    // Speech synthesis may be unsupported/blocked - the chime already fired,
+    // so a missing voice announcement isn't fatal.
+  }
+}
+
+// Unlike the single-queue board, this endpoint only ever gives us each
+// queue's current serving_ticket_codes - no called_at timestamp - so "just
+// called" here means "a ticket code that wasn't in this queue's serving
+// list on the last poll just appeared in it".
+const lastServingCodes = ref({})
+
+watch(overview, (queues) => {
+  queues.forEach((q) => {
+    const key = q.queue_id
+    // hasBaseline avoids announcing every queue's current ticket the moment
+    // this board loads - only codes that appear after we've already seen a
+    // baseline count as a fresh call.
+    const hasBaseline = Object.prototype.hasOwnProperty.call(lastServingCodes.value, key)
+    const previousCodes = lastServingCodes.value[key] || []
+    const newCodes = q.serving_ticket_codes.filter((code) => !previousCodes.includes(code))
+    lastServingCodes.value[key] = q.serving_ticket_codes
+
+    if (hasBaseline) {
+      newCodes.forEach((code) => {
+        playChime()
+        setTimeout(() => speak(`Now serving ticket ${code} at ${q.queue_name}`), 500)
+      })
+    }
+  })
+})
 
 let clockTimer = null
 
