@@ -9,14 +9,14 @@
 
         <div class="flex justify-center gap-2 mb-6">
           <button
-            @click="mode = 'book'"
+            @click="switchMode('book')"
             class="btn-sm px-4 py-1.5 rounded-xl"
             :class="mode === 'book' ? 'btn-primary' : 'btn-secondary'"
           >
             New Appointment
           </button>
           <button
-            @click="mode = 'lookup'"
+            @click="switchMode('lookup')"
             class="btn-sm px-4 py-1.5 rounded-xl"
             :class="mode === 'lookup' ? 'btn-primary' : 'btn-secondary'"
           >
@@ -26,10 +26,6 @@
 
         <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
           <p class="text-sm text-red-700">{{ error }}</p>
-        </div>
-
-        <div v-if="successMessage" class="mb-4 p-3 bg-green-50 border border-green-100 rounded-xl">
-          <p class="text-sm text-green-700">{{ successMessage }}</p>
         </div>
 
         <!-- ===================== BOOKING FLOW ===================== -->
@@ -168,7 +164,11 @@
 
             <img v-if="qrDataUrl" :src="qrDataUrl" alt="Appointment QR code" class="mx-auto mb-3 rounded-xl border border-gray-200" />
             <p class="text-2xl font-bold text-bsu-ink tracking-wide mb-1">{{ bookedAppointment.reference_code }}</p>
-            <p class="text-xs text-gray-500 mb-4">Show this QR code (or the code above) at the registrar counter.</p>
+            <p class="text-xs text-gray-500 mb-3">Show this QR code (or the code above) at the registrar counter.</p>
+
+            <p class="text-xs font-medium text-bsu-primary-dark bg-bsu-primary/10 border border-bsu-primary/20 rounded-xl px-3 py-2 mb-4">
+              Take a screenshot of this QR code together with your reference code ({{ bookedAppointment.reference_code }}) before leaving this page.
+            </p>
 
             <a
               v-if="qrDataUrl"
@@ -184,7 +184,18 @@
 
         <!-- ===================== LOOKUP / CANCEL FLOW ===================== -->
         <template v-else>
-          <div v-if="!myAppointment" class="space-y-4">
+          <div v-if="appointmentCancelled" class="text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-gray-100 text-gray-500 rounded-2xl mb-4">
+              <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-bold text-bsu-ink mb-1">Appointment Cancelled</h3>
+            <p class="text-sm text-gray-500 mb-6">Your appointment has been cancelled.</p>
+            <button @click="returnHome" class="btn btn-primary w-full py-2.5">Return Home</button>
+          </div>
+
+          <div v-else-if="!myAppointment" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Student ID</label>
               <input
@@ -246,18 +257,24 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import { useQueueStore } from '@/stores/queue'
 import { DOCUMENT_TYPES } from '@/services/documentTypes'
 import { digitsOnly } from '@/services/inputFilters'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
+const router = useRouter()
 const queueStore = useQueueStore()
 const loading = computed(() => queueStore.loading)
 const error = ref('')
-const successMessage = ref('')
 
 const mode = ref('book')
+const switchMode = (key) => {
+  mode.value = key
+  appointmentCancelled.value = false
+}
+const returnHome = () => router.push('/')
 
 // --- booking flow state ---
 const studentIdInput = ref('')
@@ -392,6 +409,7 @@ const submitBooking = async () => {
 const lookupStudentId = ref('')
 const lookupReferenceCode = ref('')
 const myAppointment = ref(null)
+const appointmentCancelled = ref(false)
 
 // An appointment is expired once the backend has flipped it to EXPIRED, or -
 // before the periodic expiry task has run - once its slot end has passed while
@@ -408,14 +426,13 @@ const statusLabel = computed(() => myAppointment.value?.status.replace('_', ' ')
 
 const startNewBooking = () => {
   myAppointment.value = null
+  appointmentCancelled.value = false
   error.value = ''
-  successMessage.value = ''
   mode.value = 'book'
 }
 
 const doLookup = async () => {
   error.value = ''
-  successMessage.value = ''
   try {
     myAppointment.value = await queueStore.lookupAppointment(
       lookupStudentId.value.trim(),
@@ -431,7 +448,7 @@ const doCancel = async () => {
   try {
     await queueStore.cancelAppointment(myAppointment.value.id, lookupStudentId.value.trim())
     myAppointment.value = null
-    successMessage.value = 'Appointment cancelled.'
+    appointmentCancelled.value = true
   } catch (err) {
     // The slot can lapse between the lookup and the click - the backend refuses
     // to cancel an EXPIRED booking. Show the expired state rather than the 400.
