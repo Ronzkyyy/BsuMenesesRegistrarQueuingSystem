@@ -8,7 +8,8 @@ from sqlalchemy import func, and_, case
 
 from ..db_models import (
     TicketDB, TicketDBStatus, PriorityLevel,
-    StudentDB, QueueDB, QueueDBStatus, QueueDBType
+    StudentDB, QueueDB, QueueDBStatus, QueueDBType,
+    AppointmentDB, AppointmentDBStatus
 )
 from ..models.ticket import (
     Ticket, TicketCreate, TicketStatus, PriorityLevel as PydanticPriorityLevel,
@@ -119,6 +120,29 @@ class TicketService:
             return None
 
         validate_document_type(queue, ticket_data.document_type)
+
+        # A student with a live (booked, not-yet-expired) appointment should
+        # check in with it rather than also taking a walk-in ticket - one
+        # transaction in flight per student, same as the active-ticket rule
+        # below. An appointment past its window no longer blocks this; see
+        # AppointmentService._is_overdue for the identical cutoff.
+        booked_appointment = self.db.query(AppointmentDB).filter(
+            AppointmentDB.student_id == ticket_data.student_id,
+            AppointmentDB.status == AppointmentDBStatus.BOOKED
+        ).first()
+        if booked_appointment:
+            # Imported lazily - appointment_service imports TicketService at
+            # module load time, so importing it back at the top here would
+            # be circular.
+            from .appointment_service import AppointmentService as _AppointmentService
+            if not _AppointmentService._is_overdue(booked_appointment):
+                raise ValueError(
+                    f"You already have a booked appointment ({booked_appointment.reference_code}) on "
+                    f"{booked_appointment.appointment_date} at "
+                    f"{booked_appointment.slot_start_time.strftime('%I:%M %p')}. "
+                    f"Check in with your QR code at that time, or cancel the appointment before "
+                    f"taking a walk-in ticket."
+                )
 
         # Check if student already has an active ticket in ANY queue - only
         # one transaction in flight per student is allowed, across all queues.
