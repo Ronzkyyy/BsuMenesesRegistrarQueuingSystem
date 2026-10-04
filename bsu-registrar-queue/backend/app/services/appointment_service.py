@@ -7,13 +7,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional, Tuple
 
-from ..db_models import AppointmentDB, AppointmentDBStatus, PriorityLevel, QueueDB, StudentDB
+from ..db_models import (
+    AppointmentDB, AppointmentDBStatus, PriorityLevel, QueueDB, StudentDB, TicketDB, TicketDBStatus
+)
 from ..models.appointment import (
     Appointment, AppointmentBooked, AppointmentCreate, AppointmentStatus, SlotAvailability
 )
 from ..models.ticket import DocumentType, Ticket, TicketCreate
 from .search_utils import LIKE_ESCAPE, escape_like
-from .ticket_service import TicketService, validate_document_type
+from .ticket_service import TicketService, _format_ticket_code, validate_document_type
 
 
 class AppointmentWindowError(Exception):
@@ -128,6 +130,26 @@ class AppointmentService:
             raise ValueError(
                 f"You already have an active appointment ({existing.reference_code}) on "
                 f"{existing.appointment_date.isoformat()}. Cancel it before booking another."
+            )
+
+        # A student with an active walk-in ticket should finish that
+        # transaction before booking an appointment too - mirrors the reverse
+        # rule in TicketService.create_ticket (one transaction in flight per
+        # student, across all queues, whichever flow they started first).
+        active_ticket = self.db.query(TicketDB).filter(
+            TicketDB.student_id == data.student_id,
+            TicketDB.status.in_([TicketDBStatus.WAITING, TicketDBStatus.SERVING]),
+        ).first()
+        if active_ticket:
+            ticket_queue = self.db.query(QueueDB).filter(QueueDB.id == active_ticket.queue_id).first()
+            queue_label = ticket_queue.name if ticket_queue else "another queue"
+            ticket_code = (
+                _format_ticket_code(ticket_queue.ticket_letter, active_ticket.ticket_number)
+                if ticket_queue else ""
+            )
+            raise ValueError(
+                f"You already have an active ticket in {queue_label} ({ticket_code}). "
+                f"Complete or cancel it before booking an appointment."
             )
 
         slot_delta = timedelta(minutes=queue.slot_duration_minutes)
