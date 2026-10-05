@@ -4,10 +4,9 @@ Ticket service - core queue logic for student tickets
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 from sqlalchemy import func, and_, case
 
-from ..core.config import settings
+from ..core import campus_time
 from ..db_models import (
     TicketDB, TicketDBStatus, PriorityLevel,
     StudentDB, QueueDB, QueueDBStatus, QueueDBType,
@@ -381,9 +380,7 @@ class TicketService:
 
     def _campus_today_start(self) -> datetime:
         """Midnight today in campus time - the cutoff for "same day" recalls."""
-        return datetime.now(ZoneInfo(settings.CAMPUS_TIMEZONE)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        return campus_time.campus_today_start()
 
     def get_recallable_tickets(self, queue_id: int) -> List[Ticket]:
         """Today's skipped (no-show) tickets in this queue that haven't used

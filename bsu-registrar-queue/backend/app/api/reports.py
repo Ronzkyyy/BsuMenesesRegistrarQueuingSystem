@@ -1,16 +1,15 @@
 """Admin-only reporting endpoints: transaction history + peak-volume calendar."""
 import csv
 import io
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Optional
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..core.audit import log_security_event
-from ..core.config import settings
+from ..core import campus_time
 from ..core.database import get_db
 from ..core.security import require_role
 from ..db_models import UserRole
@@ -25,7 +24,7 @@ router = APIRouter()
 
 
 def _today_campus() -> date:
-    return datetime.now(ZoneInfo(settings.CAMPUS_TIMEZONE)).date()
+    return campus_time.campus_today()
 
 
 def _resolve_window(date_from: Optional[date], date_to: Optional[date]) -> tuple[date, date]:

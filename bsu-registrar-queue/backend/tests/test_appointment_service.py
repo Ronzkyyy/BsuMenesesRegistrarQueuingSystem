@@ -1,5 +1,7 @@
 from datetime import date, datetime, time, timedelta
 
+from app.core.campus_time import campus_today
+
 import pytest
 
 from app.services.appointment_service import (
@@ -28,7 +30,7 @@ def test_availability_empty_when_booking_disabled(db_session, make_queue):
     queue = make_queue(booking_enabled=False)
     service = AppointmentService(db_session)
 
-    slots = service.get_availability(queue.id, date.today() + timedelta(days=1))
+    slots = service.get_availability(queue.id, campus_today() + timedelta(days=1))
 
     assert slots == []
 
@@ -37,7 +39,7 @@ def test_availability_computes_slots_from_queue_hours(db_session, make_queue):
     queue = _bookable_queue(make_queue, operating_start_time=time(8, 0), operating_end_time=time(9, 0))
     service = AppointmentService(db_session)
 
-    slots = service.get_availability(queue.id, date.today() + timedelta(days=1))
+    slots = service.get_availability(queue.id, campus_today() + timedelta(days=1))
 
     # queue's slot_duration_minutes defaults to 30 -> two 30-min slots between 8-9am
     assert len(slots) == 2
@@ -48,7 +50,7 @@ def test_availability_computes_slots_from_queue_hours(db_session, make_queue):
 def test_book_appointment_happy_path(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
 
@@ -70,13 +72,13 @@ def test_book_appointment_rejects_booking_disabled_queue(db_session, make_queue,
     with pytest.raises(ValueError, match="not open for appointment booking"):
         service.create_appointment(AppointmentCreate(
             student_id=student.id, queue_id=queue.id,
-            appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+            appointment_date=campus_today() + timedelta(days=1), slot_start_time=time(9, 0),
         ))
 
 
 def test_book_appointment_rejects_full_slot(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue, slot_capacity=1)
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
 
@@ -95,7 +97,7 @@ def test_book_appointment_rejects_full_slot(db_session, make_queue, make_student
 def test_book_appointment_rejects_second_active_booking_for_same_student(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue, slot_capacity=5)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slots = service.get_availability(queue.id, target_date)
 
@@ -119,14 +121,14 @@ def test_book_appointment_rejects_beyond_booking_window(db_session, make_queue, 
     with pytest.raises(ValueError, match="days in advance"):
         service.create_appointment(AppointmentCreate(
             student_id=student.id, queue_id=queue.id,
-            appointment_date=date.today() + timedelta(days=5), slot_start_time=time(9, 0),
+            appointment_date=campus_today() + timedelta(days=5), slot_start_time=time(9, 0),
         ))
 
 
 def test_book_appointment_for_document_request_requires_document_type(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue, queue_type=QueueType.DOCUMENT_REQUEST)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
 
@@ -140,7 +142,7 @@ def test_book_appointment_for_document_request_requires_document_type(db_session
 def test_book_appointment_rejects_document_type_outside_document_request(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue)  # not Document Request
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
 
@@ -155,7 +157,7 @@ def test_book_appointment_rejects_document_type_outside_document_request(db_sess
 def test_check_in_carries_document_type_onto_the_created_ticket(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue, queue_type=QueueType.DOCUMENT_REQUEST)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
     booked = service.create_appointment(AppointmentCreate(
@@ -174,7 +176,7 @@ def test_check_in_carries_document_type_onto_the_created_ticket(db_session, make
 def test_lookup_and_cancel(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
     booked = service.create_appointment(AppointmentCreate(
@@ -198,7 +200,7 @@ def test_lookup_and_cancel(db_session, make_queue, make_student):
 def test_check_in_rejects_out_of_window_without_force(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
     booked = service.create_appointment(AppointmentCreate(
@@ -213,7 +215,7 @@ def test_check_in_rejects_out_of_window_without_force(db_session, make_queue, ma
 def test_check_in_creates_ticket_and_links_appointment(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
     booked = service.create_appointment(AppointmentCreate(
@@ -234,7 +236,7 @@ def test_check_in_creates_ticket_and_links_appointment(db_session, make_queue, m
 def test_check_in_rejects_reuse_of_checked_in_token(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
     booked = service.create_appointment(AppointmentCreate(
@@ -250,7 +252,7 @@ def test_check_in_rejects_reuse_of_checked_in_token(db_session, make_queue, make
 def test_search_excludes_checked_in_appointments(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
     booked = service.create_appointment(AppointmentCreate(
@@ -275,7 +277,7 @@ def test_expire_stale_appointments(db_session, make_queue, make_student):
         reference_code="APT-STALE1",
         student_id=student.id,
         queue_id=queue.id,
-        appointment_date=date.today() - timedelta(days=1),
+        appointment_date=campus_today() - timedelta(days=1),
         slot_start_time=time(8, 0),
         slot_end_time=time(8, 30),
         qr_token="stale-token-for-test",
@@ -301,7 +303,7 @@ def _expired_appointment(db_session, queue, student, reference_code="APT-EXPIR1"
         reference_code=reference_code,
         student_id=student.id,
         queue_id=queue.id,
-        appointment_date=date.today() - timedelta(days=2),
+        appointment_date=campus_today() - timedelta(days=2),
         slot_start_time=time(9, 0),
         slot_end_time=time(9, 30),
         qr_token=f"token-{reference_code}",
@@ -375,7 +377,7 @@ def test_staff_cancel_expired_cancels_a_stale_booked_appointment(db_session, mak
     student = make_student()
     stale = AppointmentDB(
         reference_code="APT-STALE2", student_id=student.id, queue_id=queue.id,
-        appointment_date=date.today() - timedelta(days=1),
+        appointment_date=campus_today() - timedelta(days=1),
         slot_start_time=time(8, 0), slot_end_time=time(8, 30),
         qr_token="stale-token-for-cancel-test", status=AppointmentDBStatus.BOOKED,
     )
@@ -392,7 +394,7 @@ def test_staff_cancel_expired_cancels_a_stale_booked_appointment(db_session, mak
 def test_staff_cancel_expired_rejects_a_still_valid_booking(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue)
     student = make_student()
-    target_date = date.today() + timedelta(days=1)
+    target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
     booked = service.create_appointment(AppointmentCreate(
@@ -429,15 +431,15 @@ def test_availability_is_empty_for_today(db_session, make_queue):
 
     # Deliberately a full-day queue: were same-day booking still allowed, some
     # slot would always remain open no matter what time this test runs.
-    assert service.get_availability(queue.id, date.today()) == []
-    assert service.get_availability(queue.id, date.today() - timedelta(days=1)) == []
+    assert service.get_availability(queue.id, campus_today()) == []
+    assert service.get_availability(queue.id, campus_today() - timedelta(days=1)) == []
 
 
 def test_availability_starts_from_tomorrow(db_session, make_queue):
     queue = _bookable_queue(make_queue)
     service = AppointmentService(db_session)
 
-    slots = service.get_availability(queue.id, date.today() + timedelta(days=1))
+    slots = service.get_availability(queue.id, campus_today() + timedelta(days=1))
 
     assert len(slots) > 0
 
@@ -450,7 +452,7 @@ def test_book_appointment_rejects_today(db_session, make_queue, make_student):
     with pytest.raises(ValueError, match="at least one day ahead"):
         service.create_appointment(AppointmentCreate(
             student_id=student.id, queue_id=queue.id,
-            appointment_date=date.today(), slot_start_time=time(9, 0),
+            appointment_date=campus_today(), slot_start_time=time(9, 0),
         ))
 
 
@@ -462,12 +464,12 @@ def test_book_appointment_rejects_past_date(db_session, make_queue, make_student
     with pytest.raises(ValueError, match="at least one day ahead"):
         service.create_appointment(AppointmentCreate(
             student_id=student.id, queue_id=queue.id,
-            appointment_date=date.today() - timedelta(days=1), slot_start_time=time(9, 0),
+            appointment_date=campus_today() - timedelta(days=1), slot_start_time=time(9, 0),
         ))
 
 
 def test_earliest_bookable_date_is_tomorrow():
-    assert earliest_bookable_date() == date.today() + timedelta(days=1)
+    assert earliest_bookable_date() == campus_today() + timedelta(days=1)
 
 
 def test_list_appointments_upcoming_includes_only_future_booked(db_session, make_queue, make_student):
@@ -476,7 +478,7 @@ def test_list_appointments_upcoming_includes_only_future_booked(db_session, make
     student = make_student()
     upcoming_appt = service.create_appointment(AppointmentCreate(
         student_id=student.id, queue_id=queue.id,
-        appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+        appointment_date=campus_today() + timedelta(days=1), slot_start_time=time(9, 0),
     ))
     # A past, resolved appointment - must not show up in the upcoming view.
     _expired_appointment(db_session, queue, make_student(), reference_code="APT-UPC1")
@@ -496,7 +498,7 @@ def test_list_appointments_past_includes_expired_and_historical(db_session, make
     make_student_for_upcoming = make_student()
     service.create_appointment(AppointmentCreate(
         student_id=make_student_for_upcoming.id, queue_id=queue.id,
-        appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+        appointment_date=campus_today() + timedelta(days=1), slot_start_time=time(9, 0),
     ))
     expired = _expired_appointment(db_session, queue, make_student(), reference_code="APT-PAST1")
 
@@ -511,17 +513,17 @@ def test_list_appointments_filters_by_date_range(db_session, make_queue, make_st
     service = AppointmentService(db_session)
     near = service.create_appointment(AppointmentCreate(
         student_id=make_student().id, queue_id=queue.id,
-        appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+        appointment_date=campus_today() + timedelta(days=1), slot_start_time=time(9, 0),
     ))
     service.create_appointment(AppointmentCreate(
         student_id=make_student().id, queue_id=queue.id,
-        appointment_date=date.today() + timedelta(days=10), slot_start_time=time(9, 0),
+        appointment_date=campus_today() + timedelta(days=10), slot_start_time=time(9, 0),
     ))
 
     items, total = service.list_appointments(
         upcoming=True,
-        date_from=date.today(),
-        date_to=date.today() + timedelta(days=2),
+        date_from=campus_today(),
+        date_to=campus_today() + timedelta(days=2),
     )
 
     assert total == 1
@@ -534,7 +536,7 @@ def test_list_appointments_paginates(db_session, make_queue, make_student):
     for _ in range(3):
         service.create_appointment(AppointmentCreate(
             student_id=make_student().id, queue_id=queue.id,
-            appointment_date=date.today() + timedelta(days=1), slot_start_time=time(9, 0),
+            appointment_date=campus_today() + timedelta(days=1), slot_start_time=time(9, 0),
         ))
 
     page1, total = service.list_appointments(upcoming=True, skip=0, limit=2)
@@ -550,7 +552,7 @@ def test_list_appointments_api_requires_staff_login(client, make_queue, make_stu
     student = make_student()
     client.post("/api/appointments", json={
         "student_id": student.id, "queue_id": queue.id,
-        "appointment_date": (date.today() + timedelta(days=1)).isoformat(),
+        "appointment_date": (campus_today() + timedelta(days=1)).isoformat(),
         "slot_start_time": "09:00:00",
     })
 
@@ -567,7 +569,7 @@ def test_list_appointments_api_returns_bookings_with_student_identity(
     student = make_student()
     client.post("/api/appointments", json={
         "student_id": student.id, "queue_id": queue.id,
-        "appointment_date": (date.today() + timedelta(days=1)).isoformat(),
+        "appointment_date": (campus_today() + timedelta(days=1)).isoformat(),
         "slot_start_time": "09:00:00",
     })
     client.post("/api/auth/login",
