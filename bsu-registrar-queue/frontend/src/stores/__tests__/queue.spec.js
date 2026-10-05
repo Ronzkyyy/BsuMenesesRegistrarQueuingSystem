@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 // queue.js creates its own private `axios.create()` instance internally
@@ -22,6 +22,7 @@ const { mockApi, interceptor, axiosInterceptor } = vi.hoisted(() => {
       post: vi.fn(),
       patch: vi.fn(),
       delete: vi.fn(),
+      request: vi.fn(),
       interceptors: {
         response: {
           use: vi.fn((_onFulfilled, onRejected) => {
@@ -414,5 +415,101 @@ describe('response interceptor', () => {
 
     expect(mockApi.get).not.toHaveBeenCalledWith('/auth/me')
     expect(err.response.data.detail).toBe('Incorrect username or password')
+  })
+})
+
+describe('waking a sleeping backend (Render free-tier cold start)', () => {
+  function timeoutError(config) {
+    const err = new Error('timeout of 10000ms exceeded')
+    err.code = 'ECONNABORTED'
+    err.config = config
+    return err
+  }
+
+  function gatewayError(status) {
+    const err = new Error('bad gateway')
+    err.response = { status, data: {} }
+    return err
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('classifies timeouts, network errors and 502/503/504 as "server waking"', async () => {
+    const { isServerWakingError } = await import('../queue.js')
+    expect(isServerWakingError(timeoutError({}))).toBe(true)
+    expect(isServerWakingError(new Error('Network Error'))).toBe(true)
+    expect(isServerWakingError(gatewayError(502))).toBe(true)
+    expect(isServerWakingError(gatewayError(504))).toBe(true)
+    // A proxy's bare 500 (backend unreachable) vs the backend's own JSON 500
+    expect(isServerWakingError(gatewayError(500))).toBe(true)
+    const apiError = gatewayError(500)
+    apiError.response.data = { detail: 'An unexpected error occurred. Please try again later.' }
+    expect(isServerWakingError(apiError)).toBe(false)
+    expect(isServerWakingError(gatewayError(404))).toBe(false)
+    expect(isServerWakingError({ code: 'ERR_CANCELED' })).toBe(false)
+  })
+
+  it('waits for the server, then retries a failed GET once and shows the banner meanwhile', async () => {
+    const store = useQueueStore()
+    const config = { url: '/queues/active', method: 'get' }
+    mockApi.get
+      .mockImplementationOnce(() => Promise.reject(timeoutError({ wakeProbe: true })))
+      .mockReturnValueOnce(ok([]))
+    mockApi.request.mockReturnValueOnce(ok([{ id: 1 }]))
+
+    const pending = interceptor.onRejected(timeoutError(config))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(store.serverWaking).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(2000 + 4000)
+    await expect(pending).resolves.toEqual({ data: [{ id: 1 }] })
+
+    expect(mockApi.get).toHaveBeenCalledWith('/queues/active', { wakeProbe: true })
+    expect(mockApi.request).toHaveBeenCalledWith(expect.objectContaining({ url: '/queues/active', wakeRetried: true }))
+    expect(store.serverWaking).toBe(false)
+  })
+
+  it('never replays a write (POST) automatically', async () => {
+    const err = timeoutError({ url: '/tickets', method: 'post' })
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(mockApi.request).not.toHaveBeenCalled()
+    expect(mockApi.get).not.toHaveBeenCalled()
+  })
+
+  it('gives up after ~90s and rejects with the original error', async () => {
+    const store = useQueueStore()
+    mockApi.get.mockImplementation(() => Promise.reject(gatewayError(503)))
+    const err = gatewayError(503)
+    err.config = { url: '/queues/active', method: 'get' }
+
+    const pending = interceptor.onRejected(err)
+    const assertion = expect(pending).rejects.toBe(err)
+    await vi.advanceTimersByTimeAsync(100000)
+    await assertion
+
+    expect(mockApi.request).not.toHaveBeenCalled()
+    expect(store.serverWaking).toBe(false)
+    mockApi.get.mockReset()
+  })
+
+  it('shares one probe loop between concurrent waiting requests', async () => {
+    mockApi.get.mockReturnValueOnce(ok([]))
+    mockApi.request.mockReturnValueOnce(ok('a')).mockReturnValueOnce(ok('b'))
+
+    const first = interceptor.onRejected(timeoutError({ url: '/queues/active', method: 'get' }))
+    const second = interceptor.onRejected(timeoutError({ url: '/announcements/active', method: 'get' }))
+    await vi.advanceTimersByTimeAsync(2000)
+
+    await expect(first).resolves.toEqual({ data: 'a' })
+    await expect(second).resolves.toEqual({ data: 'b' })
+    expect(mockApi.get).toHaveBeenCalledTimes(1)
   })
 })
