@@ -3,7 +3,7 @@ Ticket service - core queue logic for student tickets
 """
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, and_, case
 
 from ..core import campus_time
@@ -381,6 +381,40 @@ class TicketService:
     def _campus_today_start(self) -> datetime:
         """Midnight today in campus time - the cutoff for "same day" recalls."""
         return campus_time.campus_today_start()
+
+    def expire_previous_day_tickets(self) -> int:
+        """End-of-day cleanup: tickets still waiting/serving from an earlier
+        campus day become no-show. Left alone, they block that student from
+        taking a new ticket or booking, inflate today's positions, and get
+        picked first by serve-next (oldest first). Returns how many expired."""
+        stale = self.db.query(TicketDB).filter(
+            TicketDB.status.in_([TicketDBStatus.WAITING, TicketDBStatus.SERVING]),
+            TicketDB.created_at < self._campus_today_start(),
+        ).all()
+        if not stale:
+            return 0
+
+        now = datetime.now(timezone.utc)
+        for ticket in stale:
+            ticket.status = TicketDBStatus.NO_SHOW
+            ticket.updated_at = now
+        self.db.commit()
+
+        for queue_id in {ticket.queue_id for ticket in stale}:
+            self._renumber_waiting(queue_id)
+        return len(stale)
+
+    def _renumber_waiting(self, queue_id: int):
+        """Close gaps in a queue's waiting line so positions run 1..n again."""
+        tickets = self.db.query(TicketDB).filter(
+            TicketDB.queue_id == queue_id,
+            TicketDB.status == TicketDBStatus.WAITING,
+        ).order_by(TicketDB.position.asc().nullslast(), TicketDB.created_at.asc()).all()
+
+        for position, ticket in enumerate(tickets, start=1):
+            ticket.position = position
+            ticket.estimated_wait_time_minutes = self.estimate_wait_time(queue_id, position)
+        self.db.commit()
 
     def get_recallable_tickets(self, queue_id: int) -> List[Ticket]:
         """Today's skipped (no-show) tickets in this queue that haven't used

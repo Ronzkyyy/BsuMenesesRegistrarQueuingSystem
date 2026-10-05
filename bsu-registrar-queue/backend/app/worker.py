@@ -41,10 +41,9 @@ celery.conf.beat_schedule = {
         "task": "app.services.notifications.check_no_show_tickets",
         "schedule": 300.0,
     },
-    "send-reminders-every-5-minutes": {
-        "task": "app.services.notifications.send_reminder_check",
-        "schedule": 300.0,
-    },
+    # send_reminder_check is paused: there's no SMS/email channel yet, so it
+    # only re-logged the next few tickets every 5 minutes. Re-add it here once
+    # send_ticket_reminder actually delivers something.
     "expire-stale-appointments-every-5-minutes": {
         "task": "app.services.notifications.expire_stale_appointments",
         "schedule": 300.0,
