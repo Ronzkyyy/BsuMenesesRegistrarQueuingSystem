@@ -62,9 +62,9 @@ def send_ticket_reminder(self, ticket_id: int):
 
         # In a real implementation, this would send SMS/email
         # For now, we'll just log it
+        # Ticket/queue only - student names don't belong in server logs.
         logger.info(
-            f"REMINDER: Ticket #{ticket.ticket_number} for "
-            f"{student.first_name} {student.last_name} in {queue.name}. "
+            f"REMINDER: Ticket #{ticket.ticket_number} in {queue.name}. "
             f"Position: {ticket.position}, Est. wait: {ticket.estimated_wait_time_minutes} min"
         )
 
@@ -97,8 +97,7 @@ def send_ticket_called(self, ticket_id: int):
             return
 
         logger.info(
-            f"CALLED: Ticket #{ticket.ticket_number} for "
-            f"{student.first_name} {student.last_name} in {queue.name}. "
+            f"CALLED: Ticket #{ticket.ticket_number} in {queue.name}. "
             f"Please proceed to the counter."
         )
 
@@ -149,30 +148,16 @@ def update_all_wait_times():
 
 @celery.task
 def check_no_show_tickets():
-    """Check for tickets that have been waiting too long and mark as no-show"""
+    """End-of-day cleanup: tickets left waiting/serving from an earlier campus
+    day become no-show. Today's tickets are never touched - staff decide those
+    with Skip/Complete. (The old rule auto-skipped anyone served for 30+
+    minutes, even a student still at the counter, and crashed on a
+    naive-vs-aware datetime subtraction, so it never actually ran.)"""
     db = SessionLocal()
     try:
-        from datetime import datetime, timedelta
-
-        # Find tickets that have been waiting/serving for too long
-        # For serving tickets: if no completion after 30 minutes
-        # For waiting tickets: if position is 1 and not served after 10 minutes
-
-        serving_tickets = db.query(TicketDB).filter(
-            TicketDB.status == TicketDBStatus.SERVING,
-            TicketDB.served_at.isnot(None)
-        ).all()
-
-        for ticket in serving_tickets:
-            if ticket.served_at and datetime.utcnow() - ticket.served_at > timedelta(minutes=30):
-                logger.info(f"Marking ticket {ticket.id} as no-show (serving timeout)")
-                ticket.status = TicketDBStatus.NO_SHOW
-
-        # Also check waiting tickets that were first in line but not served
-        # This would need a more sophisticated implementation tracking when they became position 1
-
-        db.commit()
-
+        count = TicketService(db).expire_previous_day_tickets()
+        if count:
+            logger.info(f"Marked {count} ticket(s) from a previous day as no-show")
     except Exception as exc:
         logger.error(f"Error checking no-show tickets: {exc}")
     finally:
@@ -225,8 +210,8 @@ def send_queue_closed_notification(queue_id: int):
             student = db.query(StudentDB).filter(StudentDB.id == ticket.student_id).first()
             if student:
                 logger.info(
-                    f"QUEUE CLOSED NOTIFICATION: {student.first_name} {student.last_name}, "
-                    f"your ticket #{ticket.ticket_number} in {queue.name} - queue is now closed"
+                    f"QUEUE CLOSED NOTIFICATION: ticket #{ticket.ticket_number} "
+                    f"in {queue.name} - queue is now closed"
                 )
                 # TODO: Send actual notification
 
