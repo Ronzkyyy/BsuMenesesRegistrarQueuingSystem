@@ -107,6 +107,8 @@ alembic history                   # Show migration history
 | POST | `/api/tickets/{id}/serve` | Staff | Mark ticket as serving |
 | POST | `/api/tickets/{id}/complete` | Staff | Mark ticket completed |
 | POST | `/api/tickets/queue/{id}/next` | Staff | Serve next ticket (priority-aware) |
+| GET | `/api/tickets/queue/{id}/recallable` | Staff | Today's skipped (no-show) tickets that can still be recalled |
+| POST | `/api/tickets/{id}/recall` | Staff | Recall a skipped ticket and serve it now (once per ticket, same campus day) |
 | GET | `/api/reports/transactions` | Admin | Filterable merged ticket+appointment history |
 | GET | `/api/reports/calendar` | Admin | Per-day transaction volume for a month (peak/heatmap) |
 | GET | `/api/reports/transactions.csv` | Admin | CSV audit export of the filtered history |
@@ -138,7 +140,7 @@ Defined in `app/worker.py` with Redis broker:
   `auth.user_deactivated` / `auth.user_activated`, `authz.denied` (role check
   failed, from `require_role`), `student.deleted`, `student.bulk_imported`,
   `queue.deleted`, `report.exported`, `security.rate_limited`,
-  `appointment.staff_cancelled`. Add a `log_security_event` call
+  `appointment.staff_cancelled`, `ticket.recalled`. Add a `log_security_event` call
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.

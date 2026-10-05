@@ -59,6 +59,7 @@ class Ticket(TicketBase):
     served_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     called_at: Optional[datetime] = None
+    recalled_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     queue_name: Optional[str] = None

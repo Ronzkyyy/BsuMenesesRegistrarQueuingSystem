@@ -830,6 +830,27 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    // Today's skipped tickets that still have their one recall available.
+    // Polled by the Counter page, so it doesn't toggle the shared loading flag.
+    async fetchRecallableTickets(queueId) {
+      const response = await api.get(`/tickets/queue/${queueId}/recallable`)
+      return response.data
+    },
+
+    async recallTicket(ticketId) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post(`/tickets/${ticketId}/recall`)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to recall ticket'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     // ============ APPOINTMENT ACTIONS ============
 
     async fetchAppointmentAvailability(queueId, appointmentDate) {
