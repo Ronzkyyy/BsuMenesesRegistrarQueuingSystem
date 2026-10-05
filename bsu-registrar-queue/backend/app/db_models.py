@@ -129,6 +129,9 @@ class TicketDB(Base):
     served_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
     called_at = Column(DateTime(timezone=True))
+    # Set when a skipped (no-show) ticket is recalled; non-null means its
+    # single allowed recall has been used.
+    recalled_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

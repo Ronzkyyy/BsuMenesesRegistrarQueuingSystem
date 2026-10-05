@@ -115,6 +115,12 @@
               >
                 {{ servingTicket.priority }}
               </span>
+              <span
+                v-if="servingTicket.recalled_at"
+                class="text-xs px-2 py-0.5 rounded-xl bg-blue-100 text-blue-800"
+              >
+                recalled
+              </span>
             </div>
 
             <div class="flex flex-wrap gap-3">
@@ -215,6 +221,46 @@
               View full queue &rarr;
             </router-link>
           </div>
+
+          <!-- Skipped today: a late student can be recalled once -->
+          <div class="mt-6 pt-5 border-t border-gray-200/70">
+            <div class="flex items-center justify-between mb-1">
+              <h4 class="font-bold text-bsu-ink">Skipped</h4>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-red-50 text-red-700 font-semibold">
+                {{ skippedTickets.length }} today
+              </span>
+            </div>
+            <p class="text-sm text-gray-400 mb-4">
+              <template v-if="servingTicket">Finish the current ticket to recall one</template>
+              <template v-else>Recall a late student &middot; once per ticket</template>
+            </p>
+
+            <div class="space-y-2">
+              <div
+                v-for="ticket in skippedTickets"
+                :key="ticket.id"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white shadow-soft"
+              >
+                <div class="min-w-0">
+                  <p class="font-bold text-bsu-ink text-sm truncate">{{ ticket.ticket_code }}</p>
+                  <p v-if="ticket.updated_at" class="text-xs text-gray-400 truncate">
+                    Skipped {{ format(new Date(ticket.updated_at), 'h:mm a') }}
+                  </p>
+                </div>
+                <button
+                  @click="recallSkippedTicket(ticket)"
+                  :disabled="loading || !!servingTicket"
+                  class="btn-gold btn-sm rounded-full ml-auto shrink-0"
+                >
+                  Recall
+                </button>
+              </div>
+
+              <div v-if="skippedTickets.length === 0" class="text-center py-4 text-gray-400 text-sm">
+                No skipped tickets
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -264,6 +310,7 @@ const selectedQueueId = computed(() => {
 
 const waitingTicketsRaw = ref([])
 const servingTicket = ref(null)
+const skippedTickets = ref([])
 const waitingTickets = computed(() =>
   waitingTicketsRaw.value.filter(t => t.status === 'waiting').slice().sort((a, b) => a.position - b.position)
 )
@@ -346,6 +393,15 @@ const updateQueueDisplay = async () => {
     // display above still updates, just without reconciling who's
     // currently being served.
   }
+
+  try {
+    const recallable = await queueStore.fetchRecallableTickets(targetQueueId)
+    if (selectedQueueId.value === targetQueueId) {
+      skippedTickets.value = recallable
+    }
+  } catch (err) {
+    // Keep the last known list; the next refresh will try again.
+  }
 }
 
 const serveNext = async () => {
@@ -398,6 +454,21 @@ const skipCurrentTicket = async () => {
   }
 }
 
+const recallSkippedTicket = async (ticket) => {
+  if (servingTicket.value) return
+  loading.value = true
+  counterError.value = ''
+  try {
+    servingTicket.value = await queueStore.recallTicket(ticket.id)
+    await updateQueueDisplay()
+  } catch (err) {
+    counterError.value = err.response?.data?.detail || 'Failed to recall ticket'
+    await updateQueueDisplay()
+  } finally {
+    loading.value = false
+  }
+}
+
 const completeCurrentTicket = async () => {
   if (!servingTicket.value) return
   loading.value = true
@@ -416,6 +487,7 @@ const completeCurrentTicket = async () => {
 watch(selectedQueueId, () => {
   servingTicket.value = null
   waitingTicketsRaw.value = []
+  skippedTickets.value = []
   updateQueueDisplay()
 })
 

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
+from ..core.audit import log_security_event
 from ..core.database import get_db
 from ..core.limiter import limiter
 from ..core.security import get_current_active_user, require_role
@@ -137,6 +138,30 @@ def mark_no_show(
     return ticket
 
 
+@router.post("/{ticket_id}/recall", response_model=Ticket)
+def recall_ticket(
+    request: Request,
+    ticket_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STAFF))
+):
+    """Recall a skipped (no-show) ticket and serve it immediately.
+    Once per ticket, same day only."""
+    service = TicketService(db)
+    try:
+        ticket = service.recall_ticket(ticket_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    log_security_event(
+        "ticket.recalled", outcome="success", request=request,
+        actor=current_user.username, target=f"ticket#{ticket_id}",
+    )
+    return ticket
+
+
 @router.get("/queue/{queue_id}", response_model=List[Ticket])
 def get_queue_tickets(
     queue_id: int,
@@ -154,6 +179,17 @@ def get_queue_tickets(
 
     tickets = service.get_queue_tickets(queue_id, db_status)
     return tickets
+
+
+@router.get("/queue/{queue_id}/recallable", response_model=List[Ticket])
+def get_recallable_tickets(
+    queue_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Today's skipped tickets in this queue that can still be recalled"""
+    service = TicketService(db)
+    return service.get_recallable_tickets(queue_id)
 
 
 @router.get("/queue/{queue_id}/display", response_model=List[TicketPublic])

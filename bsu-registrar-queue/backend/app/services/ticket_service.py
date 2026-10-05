@@ -4,8 +4,10 @@ Ticket service - core queue logic for student tickets
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from sqlalchemy import func, and_, case
 
+from ..core.config import settings
 from ..db_models import (
     TicketDB, TicketDBStatus, PriorityLevel,
     StudentDB, QueueDB, QueueDBStatus, QueueDBType,
@@ -377,6 +379,64 @@ class TicketService:
 
         return self._to_ticket(ticket, student, queue)
 
+    def _campus_today_start(self) -> datetime:
+        """Midnight today in campus time - the cutoff for "same day" recalls."""
+        return datetime.now(ZoneInfo(settings.CAMPUS_TIMEZONE)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+    def get_recallable_tickets(self, queue_id: int) -> List[Ticket]:
+        """Today's skipped (no-show) tickets in this queue that haven't used
+        their one recall yet, most recently skipped first."""
+        tickets = self.db.query(TicketDB).filter(
+            TicketDB.queue_id == queue_id,
+            TicketDB.status == TicketDBStatus.NO_SHOW,
+            TicketDB.recalled_at.is_(None),
+            TicketDB.created_at >= self._campus_today_start(),
+        ).order_by(TicketDB.updated_at.desc().nullslast()).all()
+
+        queue = self.db.query(QueueDB).filter(QueueDB.id == queue_id).first()
+        result = []
+        for ticket in tickets:
+            student = self.db.query(StudentDB).filter(StudentDB.id == ticket.student_id).first()
+            result.append(self._to_ticket(ticket, student, queue))
+        return result
+
+    def recall_ticket(self, ticket_id: int) -> Optional[Ticket]:
+        """Bring a skipped (no-show) ticket back and serve it immediately -
+        for a student who turns up late after being skipped.
+
+        Allowed once per ticket, and only for tickets taken today. Returns
+        None if the ticket doesn't exist; raises ValueError with a
+        staff-facing message if it exists but can't be recalled.
+        """
+        ticket = self.db.query(TicketDB).filter(TicketDB.id == ticket_id).first()
+        if not ticket:
+            return None
+
+        if ticket.status != TicketDBStatus.NO_SHOW:
+            raise ValueError("Only skipped tickets can be recalled.")
+        if ticket.recalled_at is not None:
+            raise ValueError("This ticket has already been recalled once.")
+        if ticket.created_at < self._campus_today_start():
+            raise ValueError("Only tickets from today can be recalled.")
+
+        now = datetime.now()
+        ticket.status = TicketDBStatus.SERVING
+        ticket.recalled_at = now
+        # Fresh served_at so the serving-timeout no-show check measures from
+        # the recall, and fresh called_at so display boards announce it again.
+        ticket.served_at = now
+        ticket.called_at = now
+        ticket.updated_at = now
+        self.db.commit()
+        self.db.refresh(ticket)
+
+        student = self.db.query(StudentDB).filter(StudentDB.id == ticket.student_id).first()
+        queue = self.db.query(QueueDB).filter(QueueDB.id == ticket.queue_id).first()
+
+        return self._to_ticket(ticket, student, queue)
+
     def cancel_ticket(self, ticket_id: int, student_number: str) -> Optional[Ticket]:
         """Cancel a ticket, but only if it belongs to the student proving
         ownership with their 10-digit student number.
@@ -555,6 +615,7 @@ class TicketService:
             served_at=db_ticket.served_at,
             completed_at=db_ticket.completed_at,
             called_at=db_ticket.called_at,
+            recalled_at=db_ticket.recalled_at,
             created_at=db_ticket.created_at,
             updated_at=db_ticket.updated_at,
             queue_name=queue.name if queue else None,
