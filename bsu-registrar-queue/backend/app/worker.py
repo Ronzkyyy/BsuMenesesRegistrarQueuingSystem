@@ -4,6 +4,7 @@ Handles queue processing, notifications, reminders
 """
 from celery import Celery
 from app.core.config import settings
+from app.core.redis_ssl import configure_redis_ssl
 
 celery = Celery(
     "worker",
@@ -11,6 +12,7 @@ celery = Celery(
     backend=settings.REDIS_URL,
     include=["app.services.notifications"]
 )
+configure_redis_ssl(celery, settings.REDIS_URL)
 
 celery.conf.task_routes = {
     "app.services.notifications.*": {"queue": "notifications"},

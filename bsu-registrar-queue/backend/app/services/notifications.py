@@ -5,6 +5,7 @@ Handles SMS, email, and WebSocket notifications for queue updates
 from celery import Celery
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.redis_ssl import configure_redis_ssl
 from app.db_models import TicketDB, TicketDBStatus, QueueDB, StudentDB
 from app.services.ticket_service import TicketService
 import logging
@@ -16,6 +17,7 @@ celery = Celery(
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
 )
+configure_redis_ssl(celery, settings.REDIS_URL)
 
 celery.conf.task_routes = {
     "app.services.notifications.*": {"queue": "notifications"},
