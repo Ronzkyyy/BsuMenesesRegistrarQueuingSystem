@@ -93,25 +93,99 @@ async function resyncStaleSession(err) {
   }
 }
 
-// Normalize validation-error responses before any caller reads `.detail`,
-// and resync currentUser when a request reveals the session has changed.
-async function handleResponseError(err) {
-  const detail = err.response?.data?.detail
-  if (Array.isArray(detail)) {
-    err.response.data.detail = humanizeValidationErrors(detail)
-  }
-  await resyncStaleSession(err)
-  return Promise.reject(err)
+// The backend runs on Render's free tier, which sleeps after ~15 idle minutes
+// and takes 30-60s+ to wake. Until then requests time out, can't connect, or
+// get a gateway error from the Vercel/Render proxy - without this, the first
+// visitor after an idle spell saw "Failed to load services" and had to keep
+// refreshing.
+const WAKE_STATUSES = [502, 503, 504]
+const WAKE_MAX_MS = 90000
+const WAKE_FIRST_DELAY_MS = 2000
+const WAKE_MAX_DELAY_MS = 8000
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+export function isServerWakingError(err) {
+  if (err?.code === 'ERR_CANCELED') return false
+  if (!err?.response) return true // timeout or network error - no reply at all
+  const { status, data } = err.response
+  if (WAKE_STATUSES.includes(status)) return true
+  // The backend's own 500s always carry a JSON `detail` (app/main.py's
+  // catch-all handler); a bare 500 came from a proxy that couldn't reach it
+  // (e.g. Vite's dev proxy on ECONNREFUSED/ECONNRESET).
+  return status === 500 && !data?.detail
 }
 
-api.interceptors.response.use((response) => response, handleResponseError)
+// One shared probe loop no matter how many requests are waiting, so a
+// polling page (display board, counter) doesn't stack up retries against a
+// server that's still booting. Resolves true once the server answers.
+let wakePromise = null
+
+function waitForServer() {
+  if (wakePromise) return wakePromise
+  const store = useQueueStore()
+  store.serverWaking = true
+  wakePromise = (async () => {
+    const start = Date.now()
+    let delay = WAKE_FIRST_DELAY_MS
+    while (Date.now() - start < WAKE_MAX_MS) {
+      await sleep(delay)
+      try {
+        await api.get('/queues/active', { wakeProbe: true })
+        return true
+      } catch (err) {
+        // Any real reply (even an error) means the server is up again.
+        if (!isServerWakingError(err)) return true
+      }
+      delay = Math.min(delay * 2, WAKE_MAX_DELAY_MS)
+    }
+    return false
+  })().finally(() => {
+    wakePromise = null
+    store.serverWaking = false
+  })
+  return wakePromise
+}
+
+// Normalize validation-error responses before any caller reads `.detail`,
+// and resync currentUser when a request reveals the session has changed.
+// Read-only (GET) requests that hit a sleeping server wait for it to wake
+// and are then retried once; writes are never replayed automatically.
+function makeResponseErrorHandler(instance) {
+  return async function handleResponseError(err) {
+    const config = err.config
+    if (config?.wakeProbe) return Promise.reject(err)
+
+    if (
+      config &&
+      (config.method || 'get').toLowerCase() === 'get' &&
+      !config.wakeRetried &&
+      isServerWakingError(err)
+    ) {
+      config.wakeRetried = true
+      if (await waitForServer()) return instance.request(config)
+    }
+
+    const detail = err.response?.data?.detail
+    if (Array.isArray(detail)) {
+      err.response.data.detail = humanizeValidationErrors(detail)
+    }
+    await resyncStaleSession(err)
+    return Promise.reject(err)
+  }
+}
+
+api.interceptors.response.use((response) => response, makeResponseErrorHandler(api))
 // QueueManagementView's booking/queue-settings calls go through the bare
 // axios default instance, not `api` - registering here too so they get the
 // same resync instead of a raw "Insufficient permissions".
-axios.interceptors.response.use((response) => response, handleResponseError)
+axios.interceptors.response.use((response) => response, makeResponseErrorHandler(axios))
 
 export const useQueueStore = defineStore('queue', {
   state: () => ({
+    // True while requests are waiting for a sleeping backend to wake up
+    serverWaking: false,
+
     // Queues
     queues: [],
     activeQueues: [],
