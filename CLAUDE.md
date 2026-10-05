@@ -114,11 +114,22 @@ alembic history                   # Show migration history
 | GET | `/api/reports/transactions.csv` | Admin | CSV audit export of the filtered history |
 
 ### Background Tasks (Celery)
-Defined in `app/worker.py` with Redis broker:
+Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`), Redis broker:
 - `update_all_wait_times` - Every minute
-- `check_no_show_tickets` - Every 5 minutes
-- `send_reminder_check` - Every 5 minutes
-- `send_ticket_reminder` / `send_ticket_called` - On-demand tasks
+- `check_no_show_tickets` - Every 5 minutes. **End-of-day cleanup only**:
+  tickets still waiting/serving from an earlier campus day (`CAMPUS_TIMEZONE`)
+  become no-show and the remaining waiting line is renumbered from 1
+  (`TicketService.expire_previous_day_tickets`). Today's tickets are never
+  auto-skipped - staff use Skip/Complete/Recall.
+- `expire_stale_appointments` - Every 5 minutes
+- `send_reminder_check` - **Not scheduled** until a real SMS/email channel
+  exists (it only logged). `send_ticket_reminder` / `send_ticket_called` remain
+  on-demand tasks.
+- Task logs name the ticket and queue, never the student.
+- The inline worker on Render needs TLS options for its `rediss://` URL -
+  `app/core/redis_ssl.py` (`configure_redis_ssl`) sets them on both Celery apps.
+- Test tasks by calling them directly with `SessionLocal` swapped for the
+  test session (`tests/test_celery_tasks.py`).
 
 ### Authentication & Authorization
 - Passwords hashed with **bcrypt** via passlib `CryptContext(schemes=["bcrypt"])`
