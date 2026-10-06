@@ -1,21 +1,21 @@
-fastapi==0.139.0
-uvicorn[standard]==0.50.2
-sqlalchemy==2.0.51
-alembic==1.18.5
-psycopg2-binary==2.9.12
-redis==8.0.1
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+sqlalchemy==2.1.3
+alembic==1.20.0
+psycopg2-binary==2.9.13
+redis==8.1.0
 celery==5.6.3
 python-multipart==0.0.32
 PyJWT==2.15.1  # replaced python-jose (CVE-2026-85394, unmaintained); HS256 needs no crypto backend
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1  # passlib 1.7.4 breaks on bcrypt>=4.1 (removed bcrypt.__about__)
-python-dotenv==1.2.2
-pytz==2026.2
-pydantic[email]==2.13.4
-pydantic-settings==2.14.2
+python-dotenv==1.2.4
+pytz==2026.4
+pydantic[email]==2.13.5
+pydantic-settings==2.15.0
 email-validator==2.3.0  # pydantic EmailStr format check + student_service's MX-record deliverability check
 httpx==0.28.1
-anyio==4.14.2  # patches PYSEC-2026-4023/4024/4025; httpx/starlette/watchfiles' transitive floor resolves too low otherwise
+anyio==4.15.1  # patches PYSEC-2026-4023/4024/4025; httpx/starlette/watchfiles' transitive floor resolves too low otherwise
 slowapi==0.1.10
 pytest==9.1.1
 setuptools==84.0.0  # patches PYSEC-2026-3447; GitHub Actions' Python image ships 79.0.1 and nothing else upgrades it, tripping the pip-audit CI gate
