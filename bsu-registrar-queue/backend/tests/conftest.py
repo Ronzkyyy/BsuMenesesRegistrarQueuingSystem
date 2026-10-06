@@ -30,11 +30,10 @@ def _ensure_test_database_exists():
     time this suite was ever set up - so this makes the suite
     self-provisioning everywhere instead of relying on a one-off manual step.
     """
-    import psycopg2
+    import psycopg
 
     maintenance_url = urlunparse(_parsed._replace(path="/postgres"))
-    conn = psycopg2.connect(maintenance_url)
-    conn.autocommit = True
+    conn = psycopg.connect(maintenance_url, autocommit=True, prepare_threshold=None)
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (TEST_DB_NAME,))
@@ -72,9 +71,9 @@ def _apply_migrations():
     command.upgrade(alembic_cfg, "head")
 
     import app.db_models as db_models  # noqa: F401  (registers all tables on Base.metadata)
-    from app.core.database import Base
+    from app.core.database import Base, connect_args_for
 
-    engine = create_engine(TEST_DATABASE_URL)
+    engine = create_engine(TEST_DATABASE_URL, connect_args=connect_args_for(TEST_DATABASE_URL))
     with engine.begin() as connection:
         # Table names are SQL identifiers (not bindable values) and come from
         # SQLAlchemy's own schema metadata, not from any request/user input, so
@@ -92,7 +91,9 @@ def _engine():
     """One shared engine/connection pool for the whole test run - the test
     DB is on a remote Supabase pooler, so opening a fresh TCP/TLS connection
     per test (as a per-test create_engine() would) dominates runtime."""
-    engine = create_engine(TEST_DATABASE_URL)
+    from app.core.database import connect_args_for
+
+    engine = create_engine(TEST_DATABASE_URL, connect_args=connect_args_for(TEST_DATABASE_URL))
     yield engine
     engine.dispose()
 

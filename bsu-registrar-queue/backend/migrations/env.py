@@ -7,7 +7,7 @@ import os
 # Add the backend directory to sys.path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from app.core.database import Base
+from app.core.database import Base, connect_args_for
 from app.core.config import settings
 from app.db_models import QueueDB, StudentDB, TicketDB, UserDB
 
@@ -51,6 +51,7 @@ def run_migrations_online() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args_for(settings.DATABASE_URL),
     )
 
     with connectable.connect() as connection:
