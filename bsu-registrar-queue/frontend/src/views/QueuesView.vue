@@ -119,18 +119,18 @@
 
           <router-link
             to="/appointments"
-            class="group flex items-center gap-4 mb-6 p-4 rounded-2xl border border-bsu-primary/20 bg-bsu-primary/5 hover:bg-bsu-primary/10 transition-colors"
+            class="group flex flex-wrap sm:flex-nowrap items-center gap-4 mb-6 p-4 rounded-2xl border border-bsu-primary/20 bg-bsu-primary/5 hover:bg-bsu-primary/10 transition-colors"
           >
             <div class="w-11 h-11 shrink-0 rounded-xl bg-bsu-primary/15 flex items-center justify-center">
               <svg class="w-6 h-6 text-bsu-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <div class="flex-1 text-left">
+            <div class="flex-1 min-w-0 text-left">
               <p class="font-bold text-bsu-ink">Prefer to schedule ahead?</p>
               <p class="text-sm text-gray-500">Book an appointment and get a QR code to check in with.</p>
             </div>
-            <span class="btn btn-primary btn-sm px-4 py-2 shrink-0 whitespace-nowrap group-hover:brightness-105">
+            <span class="btn btn-primary btn-sm px-4 py-2 w-full sm:w-auto justify-center text-center shrink-0 whitespace-nowrap group-hover:brightness-105">
               Book an Appointment
             </span>
           </router-link>

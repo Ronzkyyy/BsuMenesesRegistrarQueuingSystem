@@ -502,17 +502,17 @@ trusted to set. One real case fixed here:
   into one PR per ecosystem to cut noise.
 - **CI gates** (`.github/workflows/ci.yml`) fail the build on a known-vulnerable
   dependency:
-  - backend: `pip-audit --ignore-vuln PYSEC-2026-1325 --ignore-vuln
-    PYSEC-2026-4175 --ignore-vuln PYSEC-2026-4176 --ignore-vuln PYSEC-2026-4177`
+  - backend: `pip-audit --ignore-vuln PYSEC-2026-4175 --ignore-vuln
+    PYSEC-2026-4176 --ignore-vuln PYSEC-2026-4177`
   - frontend: `npm audit --omit=dev --audit-level=high` (audits only what ships
     in the bundle)
 - Run the same checks locally: `pip-audit` in `backend/`, `npm audit` in
   `frontend/`.
 - **Known exceptions:**
-  - `PYSEC-2026-1325` — timing side-channel in `ecdsa` (via `python-jose`), no
-    upstream fix. Unreachable here: tokens are HS256 (HMAC), the ECDSA signing
-    path is never called. The real fix is to move auth off `python-jose` to
-    `PyJWT` — worth doing in its own PR.
+- **JWTs use `PyJWT`, not `python-jose`.** `python-jose` was dropped after
+  CVE-2026-85394 (HMAC algorithm confusion, no fixed release); that also
+  removed `ecdsa` and with it the old `PYSEC-2026-1325` ignore. Catch
+  `jwt.PyJWTError` around `jwt.decode`.
   - `vite` / `esbuild` dev-server advisories — build tooling only
     (`devDependencies`), not in the deployed app. The vite 5→8 major bump is
     left for a dedicated Dependabot PR so it can be tested in isolation.

@@ -6,8 +6,7 @@ psycopg2-binary==2.9.12
 redis==8.0.1
 celery==5.6.3
 python-multipart==0.0.32
-python-jose[cryptography]==3.5.0
-cryptography==50.0.0  # patches PYSEC-2026-3552 (python-jose's transitive floor resolves too low otherwise)
+PyJWT==2.15.1  # replaced python-jose (CVE-2026-85394, unmaintained); HS256 needs no crypto backend
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1  # passlib 1.7.4 breaks on bcrypt>=4.1 (removed bcrypt.__about__)
 python-dotenv==1.2.2

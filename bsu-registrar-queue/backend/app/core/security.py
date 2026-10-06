@@ -3,7 +3,7 @@ Security utilities for authentication: JWT tokens, password hashing
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from jose import JWTError, jwt
+import jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -68,7 +68,7 @@ def decode_access_token(token: str) -> Optional[TokenData]:
         if username is None:
             return None
         return TokenData(username=username)
-    except JWTError:
+    except jwt.PyJWTError:
         return None
 
 
