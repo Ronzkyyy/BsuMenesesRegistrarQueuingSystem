@@ -250,8 +250,27 @@
             <button @click="myAppointment = null" class="btn-secondary btn-md w-full py-2.5 mt-3">Back</button>
           </div>
         </template>
+
+        <!-- The cancelled screen already has its own Return Home button -->
+        <button
+          v-if="!(mode === 'lookup' && appointmentCancelled)"
+          @click="requestReturnHome"
+          class="btn-secondary btn-md w-full py-2.5 mt-3"
+        >
+          Back to Home
+        </button>
       </div>
     </div>
+
+    <ConfirmDialog
+      v-model="discardDialogOpen"
+      title="Discard this booking?"
+      message="The details you entered will not be saved."
+      confirm-label="Discard"
+      cancel-label="Keep Editing"
+      variant="danger"
+      @confirm="returnHome"
+    />
   </div>
 </template>
 
@@ -260,6 +279,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import { useQueueStore } from '@/stores/queue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { DOCUMENT_TYPES } from '@/services/documentTypes'
 import { digitsOnly } from '@/services/inputFilters'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
@@ -300,6 +320,22 @@ const checkingAvailability = ref(false)
 const selectedDocumentType = ref('')
 const bookedAppointment = ref(null)
 const qrDataUrl = ref('')
+
+// Leaving mid-booking throws away what the student typed, so confirm first;
+// a finished booking or an untouched form leaves straight away.
+const discardDialogOpen = ref(false)
+const hasUnsavedBooking = computed(() => {
+  if (mode.value !== 'book' || bookedAppointment.value) return false
+  const formEdited = JSON.stringify(registrationForm.value) !== JSON.stringify(emptyRegistrationForm())
+  return Boolean(
+    studentIdInput.value.trim() || student.value || formEdited ||
+    selectedQueueId.value || selectedDate.value || selectedSlot.value || selectedDocumentType.value
+  )
+})
+const requestReturnHome = () => {
+  if (hasUnsavedBooking.value) discardDialogOpen.value = true
+  else returnHome()
+}
 
 // Local calendar date, not toISOString() - the campus is UTC+8, so a UTC
 // date string names the previous day for the whole first 8 hours of business.
