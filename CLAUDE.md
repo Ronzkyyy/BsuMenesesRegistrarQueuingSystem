@@ -202,6 +202,20 @@ is `DEBUG=False` — see **Secure Defaults** above. Production deployments may
 also set `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` to bootstrap the
 first admin account.
 
+### Campus Time
+The production container runs on **UTC**, 8 hours behind campus. Anything that
+means "the registrar's today/now" (booking-ahead rule, "today's" lists and
+dashboard counts, check-in windows, appointment expiry, same-day recall) goes
+through `app/core/campus_time.py` (`campus_now()`, `campus_today()`,
+`campus_today_start()`, `campus_datetime(date, time)` for slot times), driven by
+`CAMPUS_TIMEZONE` (default `Asia/Manila`). Never use `date.today()` /
+naive `datetime.now()` for those - they were "yesterday" until 8am Manila and put
+check-in/expiry 8 hours off. Don't "fix" it with a `TZ` env var either: naive
+timestamps written to `timestamptz` columns would then be stored 8 hours off.
+Call it through the module (`campus_time.campus_now()`) so tests can pin the
+clock with `monkeypatch.setattr(campus_time, "campus_now", ...)`
+(`tests/test_campus_time.py`).
+
 ### Frontend Proxy (vite.config.js)
 Proxies `/api` requests to `http://localhost:8000` during development.
 

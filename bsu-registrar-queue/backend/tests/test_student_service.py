@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 
+from app.core.campus_time import campus_today
+
 import pytest
 
 from app.services.student_service import StudentService
@@ -153,7 +155,7 @@ def test_delete_student_with_appointment_only_is_blocked(db_session, make_studen
     AppointmentService(db_session).create_appointment(AppointmentCreate(
         student_id=student.id,
         queue_id=queue.id,
-        appointment_date=date.today() + timedelta(days=1),
+        appointment_date=campus_today() + timedelta(days=1),
         slot_start_time=queue.operating_start_time,
     ))
 

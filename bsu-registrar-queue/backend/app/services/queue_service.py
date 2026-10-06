@@ -3,8 +3,9 @@ Queue service - business logic for queue management
 """
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime
 
+from ..core import campus_time
 from ..db_models import QueueDB, QueueDBStatus, QueueDBType
 from ..models.queue import Queue, QueueCreate, QueueStatus
 
@@ -228,7 +229,8 @@ class QueueService:
             TicketDB.status == TicketDBStatus.SERVING
         ).scalar()
 
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        # Campus midnight, not UTC midnight (which is 8am in Manila).
+        today_start = campus_time.campus_today_start()
 
         status_rows = self.db.query(
             TicketDB.status, func.count(TicketDB.id)

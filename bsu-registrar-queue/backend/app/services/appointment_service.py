@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from typing import List, Optional, Tuple
 
+from ..core import campus_time
 from ..db_models import (
     AppointmentDB, AppointmentDBStatus, PriorityLevel, QueueDB, StudentDB, TicketDB, TicketDBStatus
 )
@@ -43,9 +44,10 @@ def earliest_bookable_date() -> date:
 
     Same-day appointments are not offered, so the registrar has the day's
     bookings settled before it opens. Availability and creation both read the
-    rule from here rather than each re-deriving it from date.today().
+    rule from here rather than each re-deriving it from the clock. "Tomorrow"
+    is on the campus calendar, not the (UTC) server's.
     """
-    return date.today() + timedelta(days=1)
+    return campus_time.campus_today() + timedelta(days=1)
 
 
 # How far before/after a slot's start/end time a check-in is accepted without
@@ -111,7 +113,7 @@ class AppointmentService:
 
         validate_document_type(queue, data.document_type)
 
-        today = date.today()
+        today = campus_time.campus_today()
         earliest = earliest_bookable_date()
         if data.appointment_date < earliest:
             raise ValueError(
@@ -265,7 +267,7 @@ class AppointmentService:
         date_from/date_to further narrow either view to a specific day or
         range, applied on top of the upcoming/past split.
         """
-        today = date.today()
+        today = campus_time.campus_today()
         query = self.db.query(AppointmentDB, StudentDB, QueueDB).join(
             StudentDB, AppointmentDB.student_id == StudentDB.id
         ).join(
@@ -321,16 +323,19 @@ class AppointmentService:
             raise ValueError("Appointment not found - invalid code")
 
         if appointment.status == AppointmentDBStatus.CHECKED_IN:
-            when = appointment.checked_in_at.strftime('%I:%M %p') if appointment.checked_in_at else "an earlier time"
+            when = (
+                appointment.checked_in_at.astimezone(campus_time.campus_tz()).strftime('%I:%M %p')
+                if appointment.checked_in_at else "an earlier time"
+            )
             raise ValueError(f"This appointment was already checked in at {when}.")
         if appointment.status == AppointmentDBStatus.CANCELLED:
             raise ValueError("This appointment was cancelled.")
         if appointment.status == AppointmentDBStatus.EXPIRED:
             raise AppointmentExpiredError(appointment)
 
-        now = datetime.now()
-        slot_start = datetime.combine(appointment.appointment_date, appointment.slot_start_time)
-        slot_end = datetime.combine(appointment.appointment_date, appointment.slot_end_time)
+        now = campus_time.campus_now()
+        slot_start = campus_time.campus_datetime(appointment.appointment_date, appointment.slot_start_time)
+        slot_end = campus_time.campus_datetime(appointment.appointment_date, appointment.slot_end_time)
         window_start = slot_start - timedelta(minutes=GRACE_MINUTES_BEFORE)
         window_end = slot_end + timedelta(minutes=GRACE_MINUTES_AFTER)
         if not force and not (window_start <= now <= window_end):
@@ -388,11 +393,11 @@ class AppointmentService:
 
     def expire_stale_appointments(self, buffer_minutes: int = EXPIRE_BUFFER_MINUTES) -> int:
         """Mark BOOKED appointments whose window has fully passed as EXPIRED. Returns count expired."""
-        cutoff = datetime.now() - timedelta(minutes=buffer_minutes)
+        cutoff = campus_time.campus_now() - timedelta(minutes=buffer_minutes)
         stale = self.db.query(AppointmentDB).filter(AppointmentDB.status == AppointmentDBStatus.BOOKED).all()
         count = 0
         for appt in stale:
-            slot_end = datetime.combine(appt.appointment_date, appt.slot_end_time)
+            slot_end = campus_time.campus_datetime(appt.appointment_date, appt.slot_end_time)
             if slot_end < cutoff:
                 appt.status = AppointmentDBStatus.EXPIRED
                 appt.updated_at = datetime.now()
@@ -411,8 +416,8 @@ class AppointmentService:
             return True
         if appt.status != AppointmentDBStatus.BOOKED:
             return False
-        slot_end = datetime.combine(appt.appointment_date, appt.slot_end_time)
-        return slot_end < datetime.now() - timedelta(minutes=EXPIRE_BUFFER_MINUTES)
+        slot_end = campus_time.campus_datetime(appt.appointment_date, appt.slot_end_time)
+        return slot_end < campus_time.campus_now() - timedelta(minutes=EXPIRE_BUFFER_MINUTES)
 
     def staff_cancel_expired(self, appointment_id: int) -> Optional[Appointment]:
         """Staff removes a specific overdue appointment from the check-in flow.
