@@ -39,7 +39,15 @@
             <td class="px-6 py-4">
               <StatusBadge :status="user.is_active ? 'active' : 'inactive'" />
             </td>
-            <td class="px-6 py-4 text-right">
+            <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+              <button
+                v-if="user.id !== queueStore.currentUser?.id"
+                @click="confirmReset(user)"
+                :disabled="actionLoading"
+                class="btn-secondary btn-sm"
+              >
+                Reset Password
+              </button>
               <button
                 v-if="user.is_active"
                 @click="deactivate(user.id)"
@@ -155,6 +163,40 @@
       </Transition>
     </div>
     </Transition>
+
+    <ConfirmDialog
+      v-model="resetConfirm.open"
+      title="Reset password?"
+      :message="`${resetConfirm.user?.username} will get a temporary password and must choose a new one at their next login. Their current password stops working immediately.`"
+      confirm-label="Reset Password"
+      variant="danger"
+      :loading="actionLoading"
+      @confirm="resetPassword"
+    />
+
+    <!-- Temporary password - shown once, never stored -->
+    <div v-if="resetResult" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-[70] p-4">
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-sm w-full">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">Temporary Password</h3>
+        </div>
+        <div class="px-6 py-4 space-y-4">
+          <p class="text-sm text-gray-600">
+            Give this to <span class="font-medium text-bsu-ink">{{ resetResult.username }}</span> in person.
+            It is shown only once - they will be asked to replace it when they log in.
+          </p>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 px-3 py-2 bg-bsu-surface rounded-xl text-lg font-mono tracking-wider text-bsu-ink text-center select-all">
+              {{ resetResult.temporary_password }}
+            </code>
+            <button @click="copyTemp" class="btn-secondary btn-sm">{{ copied ? 'Copied' : 'Copy' }}</button>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end">
+          <button @click="closeResetResult" class="btn-primary btn-md">Done</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -162,6 +204,7 @@
 import { ref, onMounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const queueStore = useQueueStore()
 
@@ -208,6 +251,42 @@ const createUser = async () => {
   } finally {
     actionLoading.value = false
   }
+}
+
+const resetConfirm = ref({ open: false, user: null })
+const resetResult = ref(null)
+const copied = ref(false)
+
+const confirmReset = (user) => {
+  resetConfirm.value = { open: true, user }
+}
+
+const resetPassword = async () => {
+  actionLoading.value = true
+  listError.value = ''
+  try {
+    resetResult.value = await queueStore.resetUserPassword(resetConfirm.value.user.id)
+    copied.value = false
+  } catch (err) {
+    listError.value = err.response?.data?.detail || 'Failed to reset password'
+  } finally {
+    actionLoading.value = false
+    resetConfirm.value = { open: false, user: null }
+  }
+}
+
+const copyTemp = async () => {
+  try {
+    await navigator.clipboard.writeText(resetResult.value.temporary_password)
+    copied.value = true
+  } catch {
+    // Clipboard blocked (e.g. plain http) - the code is select-all, copy by hand.
+  }
+}
+
+const closeResetResult = () => {
+  resetResult.value = null
+  copied.value = false
 }
 
 const activate = async (userId) => {

@@ -28,6 +28,7 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     is_active: bool = True
+    must_change_password: bool = False
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -44,6 +45,12 @@ class PasswordChange(BaseModel):
 
     current_password: str = Field(..., min_length=1, max_length=72)
     new_password: str = Field(..., min_length=8, max_length=72)
+
+
+class PasswordResetResult(BaseModel):
+    """Returned once to the admin who reset an account - never stored."""
+    username: str
+    temporary_password: str
 
 
 class TokenData(BaseModel):

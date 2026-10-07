@@ -7,7 +7,6 @@
           Logged in as: <span class="font-medium text-bsu-ink">{{ queueStore.currentUser?.full_name || queueStore.currentUser?.username || 'Staff' }}</span>
         </span>
         <button
-          v-if="queueStore.currentUser?.role === 'admin'"
           @click="openChangePasswordModal"
           class="btn btn-sm btn-secondary"
         >
