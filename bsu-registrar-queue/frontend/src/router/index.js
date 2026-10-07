@@ -15,6 +15,12 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue')
     },
     {
+      path: '/change-password',
+      name: 'change-password',
+      component: () => import('../views/ChangePasswordView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/queues',
       name: 'queues',
       component: () => import('../views/QueuesView.vue')
@@ -106,6 +112,14 @@ router.beforeEach(async (to) => {
     } catch (err) {
       return { name: 'login' }
     }
+  }
+
+  // After an admin reset, nothing else is usable (the backend refuses it
+  // too) until the user replaces the temporary password.
+  if (to.meta.requiresAuth) {
+    const mustChange = !!queueStore.currentUser?.must_change_password
+    if (mustChange && to.name !== 'change-password') return { name: 'change-password' }
+    if (!mustChange && to.name === 'change-password') return { name: 'admin-dashboard' }
   }
 
   if (to.meta.requiresAdmin) {

@@ -97,6 +97,8 @@ alembic history                   # Show migration history
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/api/auth/login` | Public | Staff login |
+| POST | `/api/auth/change-password` | Any staff | Change your own password (also clears a pending forced change) |
+| POST | `/api/auth/users/{id}/reset-password` | Admin | Reset another account to a one-time temporary password |
 | GET | `/api/queues/active` | Public | List active queues for students |
 | POST | `/api/tickets` | Public | Student takes a ticket |
 | GET | `/api/tickets/my-ticket` | Public | Get student's current ticket |
@@ -151,10 +153,28 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   `auth.user_deactivated` / `auth.user_activated`, `authz.denied` (role check
   failed, from `require_role`), `student.deleted`, `student.bulk_imported`,
   `queue.deleted`, `report.exported`, `security.rate_limited`,
-  `appointment.staff_cancelled`, `ticket.recalled`. Add a `log_security_event` call
+  `appointment.staff_cancelled`, `ticket.recalled`, `auth.password_reset`
+  (admin route, or `actor="server-cli"`). Add a `log_security_event` call
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.
+- **Forgotten passwords** (no email channel, so no self-service link):
+  - An Admin resets another account from User Management →
+    `POST /auth/users/{id}/reset-password`. The server generates a one-time
+    password (`generate_temporary_password`, e.g. `k7pq-x3mz-9tah`), returns it
+    once (`Cache-Control: no-store`), clears the lockout, and sets
+    `users.must_change_password`. Admins can't reset themselves this way.
+  - While `must_change_password` is set, `get_current_active_user` returns
+    `403` on every staff route (including sessions already open). Only
+    `/auth/me` and `/auth/change-password` take
+    `get_current_active_user_pending_password`. The frontend router sends the
+    user to `/change-password`. The new password must differ from the
+    temporary one.
+  - **Break glass** when no admin can log in: from `backend/` with
+    `DATABASE_URL` set, `python -m app.cli reset-password <username>`
+    (`--temporary` to force a change at next login). It prompts without
+    echo, unlocks, and prints which database it targets. Render's free tier
+    has no shell, so run it locally against the production `DATABASE_URL`.
 - JWT tokens (HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`-minute expiry, default 30)
   via `app/core/security.py`, transported in an httpOnly `registrar_token`
   cookie — never in the response body or an `Authorization` header. See
@@ -259,7 +279,7 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 | Query params | `student_id` (search/lookup/cancel) | `^\d{10}$` |
 | | `skip` / `limit` (student & queue lists) | `skip ≥ 0`; `limit` bounded (`1–100` students, `1–200` queues) |
 | | `my-ticket` `student_id` / `queue_id` | `> 0` |
-| | id path params (`get`/`update`/`delete` student, `cancel` appointment) | `> 0` |
+| | id path params (`get`/`update`/`delete` student, `cancel` appointment, `reset-password` user) | `> 0` |
 | | appointment `search` `query` | 1–50 chars |
 
 `EmailStr` requires the `email-validator` package (in `requirements.txt`).

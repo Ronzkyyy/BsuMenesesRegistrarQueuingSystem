@@ -1,7 +1,7 @@
 """
 Authentication endpoints for registrar staff
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Form
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
@@ -15,12 +15,15 @@ from ..core.security import (
     verify_password,
     create_access_token,
     get_current_active_user,
+    get_current_active_user_pending_password,
+    generate_temporary_password,
+    reset_user_password,
     create_user_token,
     require_role,
     COOKIE_NAME,
 )
 from ..db_models import UserDB, UserRole
-from ..models.user import User, UserCreate, PasswordChange
+from ..models.user import User, UserCreate, PasswordChange, PasswordResetResult
 from ..services import QueueService, TicketService, StudentService
 
 
@@ -146,9 +149,10 @@ def logout(response: Response):
 
 @router.get("/me", response_model=User)
 def get_current_user_info(
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user_pending_password)
 ):
-    """Get current authenticated user info"""
+    """Get current authenticated user info - still answers while a password
+    change is pending, so the frontend can send the user to that screen."""
     return current_user
 
 
@@ -195,9 +199,14 @@ def change_password(
     request: Request,
     payload: PasswordChange,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN))
+    current_user: User = Depends(get_current_active_user_pending_password)
 ):
-    """Change the current admin's own password (admin only)"""
+    """Change your own password (any active staff account).
+
+    Also the only way out of must_change_password after an admin reset - the
+    temporary password is the `current_password` here, and the new one must
+    differ from it.
+    """
     user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
     if not user:
         raise HTTPException(
@@ -215,8 +224,15 @@ def change_password(
             detail="Current password is incorrect"
         )
 
+    if payload.new_password == payload.current_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from the current one"
+        )
+
     from ..core.security import get_password_hash
     user.hashed_password = get_password_hash(payload.new_password)
+    user.must_change_password = False
     db.commit()
     log_security_event(
         "auth.password_changed", outcome="success", request=request,
@@ -233,6 +249,47 @@ def list_users(
     """List all staff users (admin only)"""
     users = db.query(UserDB).all()
     return [User.model_validate(u) for u in users]
+
+
+@router.post("/users/{user_id}/reset-password", response_model=PasswordResetResult)
+def reset_password(
+    request: Request,
+    response: Response,
+    user_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Reset another account's forgotten password (admin only).
+
+    Generates a temporary password, returns it once for the admin to hand
+    over, unlocks the account, and forces a change at its next login - so the
+    admin never knows the password the user ends up with.
+    """
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Use Change Password to change your own password"
+        )
+
+    user = db.query(UserDB).filter(UserDB.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    temporary_password = generate_temporary_password()
+    reset_user_password(user, temporary_password, must_change=True)
+    db.commit()
+
+    # The body carries a live credential - keep it out of every cache.
+    response.headers["Cache-Control"] = "no-store"
+    log_security_event(
+        "auth.password_reset", outcome="success", request=request,
+        actor=current_user.username, target=user.username,
+        detail="temporary password issued",
+    )
+    return PasswordResetResult(username=user.username, temporary_password=temporary_password)
 
 
 @router.patch("/users/{user_id}/deactivate")

@@ -82,7 +82,9 @@ async function resyncStaleSession(err) {
   try {
     const { data: user } = await api.get('/auth/me')
     store.currentUser = user
-    if (status === 403) {
+    if (user.must_change_password) {
+      err.response.data.detail = 'You must change your password before continuing.'
+    } else if (status === 403) {
       err.response.data.detail =
         `You're now signed in as ${user.username} (${user.role}) - this doesn't have ` +
         'permission for that. Log in again if you meant to continue as a different account.'
@@ -396,6 +398,22 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    // Returns { username, temporary_password } - shown to the admin once,
+    // never kept in store state.
+    async resetUserPassword(userId) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post(`/auth/users/${userId}/reset-password`)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to reset password'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     async activateUser(userId) {
       this.loading = true
       this.error = null
@@ -434,6 +452,7 @@ export const useQueueStore = defineStore('queue', {
           current_password: currentPassword,
           new_password: newPassword,
         })
+        if (this.currentUser) this.currentUser.must_change_password = false
         return response.data
       } catch (err) {
         this.error = err.response?.data?.detail || 'Failed to change password'

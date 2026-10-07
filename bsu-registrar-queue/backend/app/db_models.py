@@ -4,7 +4,7 @@ SQLAlchemy database models - for actual database tables
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Text, Date, Time
 from datetime import time
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy.sql import false, func
 from .core.database import Base
 import enum
 
@@ -159,6 +159,10 @@ class UserDB(Base):
     # all logins (even correct ones) until it passes.
     failed_login_attempts = Column(Integer, nullable=False, server_default="0")
     locked_until = Column(DateTime(timezone=True), nullable=True)
+    # Set when an admin (or the server CLI with --temporary) resets the
+    # password: the account can log in but every staff route refuses it until
+    # it picks its own password via /auth/change-password.
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default=false())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

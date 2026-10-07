@@ -3,6 +3,7 @@ Security utilities for authentication: JWT tokens, password hashing
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import secrets
 import jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, Request, status
@@ -92,13 +93,59 @@ async def get_current_user(
     return User.model_validate(user)
 
 
-async def get_current_active_user(
+PASSWORD_CHANGE_REQUIRED_DETAIL = "You must change your password before continuing."
+
+
+async def get_current_active_user_pending_password(
     current_user: User = Depends(get_current_user)
 ) -> User:
-    """Get current active user, raise exception if inactive"""
+    """Active user who may still owe a password change after an admin reset.
+
+    Only /auth/me and /auth/change-password take this - everything else uses
+    get_current_active_user, which refuses such an account.
+    """
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+async def get_current_active_user(
+    current_user: User = Depends(get_current_active_user_pending_password)
+) -> User:
+    """Get current active user, raise exception if inactive or if an admin
+    reset left a temporary password that hasn't been replaced yet.
+
+    Checked from the DB row on every request, so a reset also stops any
+    session the account already had open.
+    """
+    if current_user.must_change_password:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=PASSWORD_CHANGE_REQUIRED_DETAIL,
+        )
+    return current_user
+
+
+# No 0/O, 1/l/I - the admin reads this to the user or writes it down.
+_TEMP_PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+
+
+def generate_temporary_password() -> str:
+    """Random one-time password like `k7pq-x3mz-9tah` (12 random chars,
+    ~59 bits) - only ever valid until its first use, via must_change_password."""
+    return "-".join(
+        "".join(secrets.choice(_TEMP_PASSWORD_ALPHABET) for _ in range(4))
+        for _ in range(3)
+    )
+
+
+def reset_user_password(user: UserDB, new_password: str, *, must_change: bool) -> None:
+    """Set a new password and lift any failed-login lock - shared by the
+    admin reset route and the server CLI. The caller commits."""
+    user.hashed_password = get_password_hash(new_password)
+    user.must_change_password = must_change
+    user.failed_login_attempts = 0
+    user.locked_until = None
 
 
 def create_user_token(user: UserDB) -> str:
