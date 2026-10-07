@@ -64,6 +64,15 @@ function humanizeValidationErrors(detail) {
 // the message here would just be confusing on a login screen.
 const SESSION_CHECK_EXEMPT_PATHS = ['/auth/login', '/auth/me']
 
+// Must match ACCOUNT_DEACTIVATED_DETAIL in backend app/core/security.py.
+const ACCOUNT_DEACTIVATED_DETAIL = 'This account has been deactivated.'
+
+function sessionEndedMessage(meErr) {
+  return meErr.response?.data?.detail === ACCOUNT_DEACTIVATED_DETAIL
+    ? 'Your account has been deactivated. Please contact an administrator.'
+    : 'Your session has expired. Please log in again.'
+}
+
 /**
  * This app uses one shared login cookie for the whole site, not one per
  * portal - logging into a different portal in another tab silently swaps
@@ -89,9 +98,12 @@ async function resyncStaleSession(err) {
         `You're now signed in as ${user.username} (${user.role}) - this doesn't have ` +
         'permission for that. Log in again if you meant to continue as a different account.'
     }
-  } catch {
-    store.currentUser = null
-    err.response.data.detail = 'Your session has expired. Please log in again.'
+  } catch (meErr) {
+    // Only a definite 401 ends the session - a network blip or a sleeping
+    // server is not a reason to log anyone out.
+    if (meErr.response?.status !== 401) return
+    store.endSession(sessionEndedMessage(meErr))
+    err.response.data.detail = store.sessionEndedMessage
   }
 }
 
@@ -188,6 +200,10 @@ export const useQueueStore = defineStore('queue', {
     // True while requests are waiting for a sleeping backend to wake up
     serverWaking: false,
 
+    // Why the last staff session ended (deactivated / expired) - shown once
+    // on the login page.
+    sessionEndedMessage: '',
+
     // Queues
     queues: [],
     activeQueues: [],
@@ -281,6 +297,7 @@ export const useQueueStore = defineStore('queue', {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })
         this.currentUser = response.data
+        this.sessionEndedMessage = ''
         return response.data
       } catch (err) {
         this.error = err.response?.data?.detail || 'Invalid username or password'
@@ -299,6 +316,23 @@ export const useQueueStore = defineStore('queue', {
         this.currentUser = null
         throw err
       }
+    },
+
+    // Polled by AdminLayout so an idle tab notices a deactivation or expiry
+    // without waiting for the next click.
+    async verifySession() {
+      try {
+        const response = await api.get('/auth/me')
+        this.currentUser = response.data
+      } catch (err) {
+        if (err.response?.status === 401) this.endSession(sessionEndedMessage(err))
+      }
+    },
+
+    endSession(message) {
+      this.currentUser = null
+      this.sessionEndedMessage = message
+      this.stopPolling()
     },
 
     async logout() {

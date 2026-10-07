@@ -158,6 +158,12 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.
+- **Deactivation ends open sessions.** `is_active` is read from the DB row on
+  every request. A deactivated account gets `401 "This account has been
+  deactivated."` (not 400), so the frontend's session handling applies.
+  `AdminLayout` also calls `verifySession()` every 30 s, so an idle tab goes
+  to `/login` with a notice. Only a definite 401 ends a session; network
+  errors or a sleeping Render server never log anyone out.
 - **Forgotten passwords** (no email channel, so no self-service link):
   - An Admin resets another account from User Management →
     `POST /auth/users/{id}/reset-password`. The server generates a one-time
@@ -627,7 +633,11 @@ trusted to set. One real case fixed here:
 4. Include router in `app/api/router.py`
 
 ### Running Tests
-No test framework currently configured. Consider adding pytest for backend and Vitest for frontend.
+Both sides have suites, and CI (`.github/workflows/ci.yml`) runs both:
+- **Backend**: `python -m pytest` in `backend/` (pytest, `tests/`). It runs
+  against the disposable `bsu_queue_test` database (see `tests/conftest.py`).
+- **Frontend**: `npm test` in `frontend/` (Vitest, `src/**/__tests__/*.spec.js`),
+  including the Pinia store and its axios response interceptor.
 
 ### Common Issues
 - **Database connection**: Ensure PostgreSQL is running and `DATABASE_URL` is correct

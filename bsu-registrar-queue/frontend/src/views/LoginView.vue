@@ -11,6 +11,10 @@
           <p class="mt-1 text-sm text-gray-500">Enter your credentials to continue</p>
         </div>
 
+        <div v-if="queueStore.sessionEndedMessage" class="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+          <p class="text-sm text-amber-800">{{ queueStore.sessionEndedMessage }}</p>
+        </div>
+
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
             <label for="username" class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
