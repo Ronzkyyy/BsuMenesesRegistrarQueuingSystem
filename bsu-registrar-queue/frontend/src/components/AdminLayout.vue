@@ -206,7 +206,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQueueStore } from '@/stores/queue'
 import AppHeader from '@/components/AppHeader.vue'
@@ -312,6 +312,18 @@ const submitChangePassword = async () => {
 }
 
 let waitingPollTimer = null
+let sessionCheckTimer = null
+const SESSION_CHECK_MS = 30000
+
+// Any request that finds the session gone (deactivated account, expired
+// token) clears currentUser - leave the staff pages right away instead of
+// showing stale data that can no longer be acted on.
+watch(
+  () => queueStore.currentUser,
+  (user) => {
+    if (!user) router.push({ name: 'login' })
+  },
+)
 
 onMounted(async () => {
   try {
@@ -335,9 +347,14 @@ onMounted(async () => {
   const pollWaiting = () => queueStore.fetchNowServingOverview().catch(() => {})
   pollWaiting()
   waitingPollTimer = setInterval(pollWaiting, 10000)
+
+  // The waiting poll above hits a public endpoint, so it can't notice a
+  // deactivated account - check the session itself too.
+  sessionCheckTimer = setInterval(() => queueStore.verifySession(), SESSION_CHECK_MS)
 })
 
 onUnmounted(() => {
   if (waitingPollTimer) clearInterval(waitingPollTimer)
+  if (sessionCheckTimer) clearInterval(sessionCheckTimer)
 })
 </script>

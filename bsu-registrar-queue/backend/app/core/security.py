@@ -94,6 +94,7 @@ async def get_current_user(
 
 
 PASSWORD_CHANGE_REQUIRED_DETAIL = "You must change your password before continuing."
+ACCOUNT_DEACTIVATED_DETAIL = "This account has been deactivated."
 
 
 async def get_current_active_user_pending_password(
@@ -104,8 +105,14 @@ async def get_current_active_user_pending_password(
     Only /auth/me and /auth/change-password take this - everything else uses
     get_current_active_user, which refuses such an account.
     """
+    # 401, not 400: a deactivated account's session is over, and the frontend
+    # treats 401 as "log out now". Checked from the DB row on every request,
+    # so deactivation also ends sessions that are already open.
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=ACCOUNT_DEACTIVATED_DETAIL,
+        )
     return current_user
 
 

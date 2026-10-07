@@ -158,6 +158,12 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.
+- **Deactivation ends open sessions.** `is_active` is read from the DB row on
+  every request. A deactivated account gets `401 "This account has been
+  deactivated."` (not 400), so the frontend's session handling applies.
+  `AdminLayout` also calls `verifySession()` every 30 s, so an idle tab goes
+  to `/login` with a notice. Only a definite 401 ends a session; network
+  errors or a sleeping Render server never log anyone out.
 - **Forgotten passwords** (no email channel, so no self-service link):
   - An Admin resets another account from User Management →
     `POST /auth/users/{id}/reset-password`. The server generates a one-time
