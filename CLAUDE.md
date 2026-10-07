@@ -633,7 +633,11 @@ trusted to set. One real case fixed here:
 4. Include router in `app/api/router.py`
 
 ### Running Tests
-No test framework currently configured. Consider adding pytest for backend and Vitest for frontend.
+Both sides have suites, and CI (`.github/workflows/ci.yml`) runs both:
+- **Backend**: `python -m pytest` in `backend/` (pytest, `tests/`). It runs
+  against the disposable `bsu_queue_test` database (see `tests/conftest.py`).
+- **Frontend**: `npm test` in `frontend/` (Vitest, `src/**/__tests__/*.spec.js`),
+  including the Pinia store and its axios response interceptor.
 
 ### Common Issues
 - **Database connection**: Ensure PostgreSQL is running and `DATABASE_URL` is correct

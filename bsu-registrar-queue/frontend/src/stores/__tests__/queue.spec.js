@@ -53,9 +53,9 @@ function ok(data) {
   return Promise.resolve({ data })
 }
 
-function fail(detail) {
+function fail(detail, status) {
   const err = new Error(detail)
-  err.response = { data: { detail } }
+  err.response = { status, data: { detail } }
   return Promise.reject(err)
 }
 
@@ -131,6 +131,41 @@ describe('auth actions', () => {
 
     expect(mockApi.post).toHaveBeenCalledWith('/auth/logout')
     expect(store.currentUser).toBeNull()
+  })
+
+  it('verifySession ends the session when the account was deactivated', async () => {
+    mockApi.get.mockReturnValueOnce(fail('This account has been deactivated.', 401))
+    const store = useQueueStore()
+    store.currentUser = { id: 3, username: 'staff1' }
+
+    await store.verifySession()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/auth/me')
+    expect(store.currentUser).toBeNull()
+    expect(store.sessionEndedMessage).toBe(
+      'Your account has been deactivated. Please contact an administrator.'
+    )
+  })
+
+  it('verifySession keeps the session on a network error', async () => {
+    mockApi.get.mockReturnValueOnce(fail('Network Error'))
+    const store = useQueueStore()
+    store.currentUser = { id: 3, username: 'staff1' }
+
+    await store.verifySession()
+
+    expect(store.currentUser).toEqual({ id: 3, username: 'staff1' })
+    expect(store.sessionEndedMessage).toBe('')
+  })
+
+  it('login clears a previous session-ended notice', async () => {
+    mockApi.post.mockReturnValueOnce(ok({ id: 1, username: 'admin' }))
+    const store = useQueueStore()
+    store.sessionEndedMessage = 'Your session has expired. Please log in again.'
+
+    await store.login('admin', 'admin123', 'admin')
+
+    expect(store.sessionEndedMessage).toBe('')
   })
 })
 
@@ -395,7 +430,7 @@ describe('response interceptor', () => {
   it('clears currentUser and shows a session-expired message on 401 when resync also fails', async () => {
     const store = useQueueStore()
     store.currentUser = { id: 1, username: 'admin', role: 'admin' }
-    mockApi.get.mockReturnValueOnce(fail('Not authenticated'))
+    mockApi.get.mockReturnValueOnce(fail('Not authenticated', 401))
     const err = new Error('unauthorized')
     err.config = { url: '/queues' }
     err.response = { status: 401, data: { detail: 'Not authenticated' } }
@@ -404,6 +439,37 @@ describe('response interceptor', () => {
 
     expect(store.currentUser).toBeNull()
     expect(err.response.data.detail).toBe('Your session has expired. Please log in again.')
+    expect(store.sessionEndedMessage).toBe('Your session has expired. Please log in again.')
+  })
+
+  it('says the account was deactivated when that is why the session ended', async () => {
+    const store = useQueueStore()
+    store.currentUser = { id: 3, username: 'staff1', role: 'staff' }
+    mockApi.get.mockReturnValueOnce(fail('This account has been deactivated.', 401))
+    const err = new Error('unauthorized')
+    err.config = { url: '/queues' }
+    err.response = { status: 401, data: { detail: 'This account has been deactivated.' } }
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(store.currentUser).toBeNull()
+    expect(store.sessionEndedMessage).toBe(
+      'Your account has been deactivated. Please contact an administrator.'
+    )
+  })
+
+  it('keeps the session when the resync fails for a non-auth reason', async () => {
+    const store = useQueueStore()
+    store.currentUser = { id: 1, username: 'admin', role: 'admin' }
+    mockApi.get.mockReturnValueOnce(fail('Bad gateway', 502))
+    const err = new Error('unauthorized')
+    err.config = { url: '/queues' }
+    err.response = { status: 401, data: { detail: 'Not authenticated' } }
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(store.currentUser).toEqual({ id: 1, username: 'admin', role: 'admin' })
+    expect(store.sessionEndedMessage).toBe('')
   })
 
   it('leaves a failed login 401 untouched (not a stale session)', async () => {

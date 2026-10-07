@@ -135,8 +135,9 @@ to stop.
 
 ## Test
 
-No test suite is configured for either side (confirmed — no `test_*.py`/`*.spec.js`
-files outside `node_modules`/`.venv`). Verification is driving the running app.
+Unit tests exist on both sides and run in CI: `python -m pytest` in `backend/`
+(against `bsu_queue_test`) and `npm test` (Vitest) in `frontend/`. Run both before
+pushing, then drive the running app for end-to-end checks.
 
 ## Gotchas
 
