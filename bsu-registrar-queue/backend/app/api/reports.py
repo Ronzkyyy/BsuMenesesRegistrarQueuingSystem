@@ -1,24 +1,22 @@
 """Admin-only reporting endpoints: transaction history + peak-volume calendar."""
-import csv
-import io
 from datetime import date, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from ..core.audit import log_security_event
 from ..core import campus_time
 from ..core.database import get_db
 from ..core.security import require_role
-from ..db_models import UserRole
+from ..db_models import QueueDB, UserRole
 from ..models.report import (
     CalendarSummary, ReportKind, ReportPriority, ReportStatus,
     TransactionHistoryPage,
 )
 from ..models.user import User
 from ..services import ReportService
+from ..services.report_export import ExportContext, build_transactions_workbook
 
 router = APIRouter()
 
@@ -78,25 +76,11 @@ def get_calendar(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-_CSV_COLUMNS = [
-    "kind", "reference", "student_number", "student_name",
-    "queue_name", "document_type", "status", "priority", "created_at", "occurred_at",
-    "appointment_date",
-]
+_XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-def _csv_safe(value: str) -> str:
-    """Neutralize spreadsheet formula injection. student_name comes from a
-    public unauthenticated kiosk endpoint, so a cell beginning =/+/-/@
-    (or a control char Excel strips to reach one) must not be run as a formula
-    when an admin opens the export."""
-    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
-        return "'" + value
-    return value
-
-
-@router.get("/transactions.csv")
-def export_transactions_csv(
+@router.get("/transactions.xlsx")
+def export_transactions_xlsx(
     request: Request,
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
@@ -108,7 +92,7 @@ def export_transactions_csv(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    """Download every row matching the filters as CSV (audit export)."""
+    """Download every row matching the filters as a branded Excel report (audit export)."""
     resolved_from, resolved_to = _resolve_window(date_from, date_to)
     service = ReportService(db)
     try:
@@ -122,19 +106,20 @@ def export_transactions_csv(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(_CSV_COLUMNS)
-    for r in rows:
-        writer.writerow([
-            _csv_safe(r.kind), _csv_safe(r.reference),
-            _csv_safe(r.student_number), _csv_safe(r.student_name),
-            _csv_safe(r.queue_name), _csv_safe(r.document_type or ""),
-            _csv_safe(r.status), _csv_safe(r.priority or ""),
-            r.created_at.isoformat(),
-            r.occurred_at.isoformat() if r.occurred_at else "",
-            r.appointment_date.isoformat() if r.appointment_date else "",
-        ])
+    queue_name = None
+    if queue_id is not None:
+        queue = db.get(QueueDB, queue_id)
+        queue_name = queue.name if queue else f"#{queue_id}"
+    content = build_transactions_workbook(rows, ExportContext(
+        date_from=resolved_from, date_to=resolved_to,
+        kinds=[k.value for k in kind],
+        statuses=[s.value for s in status] if status else None,
+        queue_name=queue_name,
+        priority=priority.value if priority else None,
+        student_number=student_number,
+        generated_by=f"{current_user.full_name} ({current_user.username})",
+        generated_at=campus_time.campus_now(),
+    ))
 
     log_security_event(
         "report.exported", outcome="success", request=request,
@@ -142,9 +127,9 @@ def export_transactions_csv(
         detail=f"{len(rows)} rows, {resolved_from}..{resolved_to}",
     )
 
-    filename = f"transactions_{resolved_from}_{resolved_to}.csv"
-    return StreamingResponse(
-        iter([buffer.getvalue()]),
-        media_type="text/csv",
+    filename = f"transactions_{resolved_from}_{resolved_to}.xlsx"
+    return Response(
+        content=content,
+        media_type=_XLSX_MEDIA_TYPE,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

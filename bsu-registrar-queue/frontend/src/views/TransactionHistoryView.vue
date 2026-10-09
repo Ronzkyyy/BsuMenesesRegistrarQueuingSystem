@@ -124,7 +124,7 @@
       <div class="flex gap-3 mt-4">
         <button class="btn btn-primary btn-sm" @click="applyFilters">Apply</button>
         <button class="btn btn-secondary btn-sm" @click="resetFilters">Reset</button>
-        <button class="btn btn-secondary btn-sm ml-auto" @click="downloadCsv">Download CSV</button>
+        <button class="btn btn-secondary btn-sm ml-auto" @click="downloadExcel">Download Excel</button>
       </div>
     </div>
 
@@ -363,7 +363,7 @@ function changePage(dir) {
   loadHistory(next)
 }
 
-function downloadCsv() {
+function downloadExcel() {
   const usp = new URLSearchParams()
   usp.set('date_from', filters.date_from)
   usp.set('date_to', filters.date_to)
@@ -371,7 +371,7 @@ function downloadCsv() {
   for (const s of filters.status) usp.append('status', s)
   if (filters.queue_id) usp.set('queue_id', filters.queue_id)
   if (/^\d{10}$/.test(filters.student_number)) usp.set('student_number', filters.student_number)
-  window.open(`/api/reports/transactions.csv?${usp.toString()}`, '_blank')
+  window.open(`/api/reports/transactions.xlsx?${usp.toString()}`, '_blank')
 }
 
 function formatDateTime(value) {

@@ -17,5 +17,6 @@ email-validator==2.3.0  # pydantic EmailStr format check + student_service's MX-
 httpx==0.28.1
 anyio==4.15.1  # patches PYSEC-2026-4023/4024/4025; httpx/starlette/watchfiles' transitive floor resolves too low otherwise
 slowapi==0.1.10
+XlsxWriter==3.2.9  # admin transaction-history .xlsx export (supports logos in the page header)
 pytest==9.1.1
 setuptools==84.0.0  # patches PYSEC-2026-3447; GitHub Actions' Python image ships 79.0.1 and nothing else upgrades it, tripping the pip-audit CI gate
