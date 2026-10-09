@@ -44,6 +44,8 @@ class Settings(BaseSettings):
 
     # Campus-specific
     CAMPUS_NAME: str = "Bulacan State University - Meneses Campus"
+    # Signatory printed in the footer of the transaction-history Excel export.
+    REGISTRAR_NAME: str = "Anna Marie S. Marquez"
     # IANA timezone used for day/hour bucketing in the admin reports module
     # (transaction history calendar). The campus is UTC+8; a report that
     # bucketed by naive UTC would misattribute early-morning/late-evening
