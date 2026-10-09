@@ -163,8 +163,36 @@ class UserDB(Base):
     # password: the account can log in but every staff route refuses it until
     # it picks its own password via /auth/change-password.
     must_change_password = Column(Boolean, nullable=False, default=False, server_default=false())
+    # Where self-service password reset links go. Stored lowercase. NULL only
+    # on accounts created before emails existed - every staff route refuses
+    # such an account until it adds one (see get_current_active_user). Resets
+    # are only emailed once email_verified_at is set.
+    email = Column(String(254), unique=True, index=True, nullable=True)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class EmailTokenPurpose(str, enum.Enum):
+    VERIFY_EMAIL = "verify_email"
+    RESET_PASSWORD = "reset_password"
+
+
+class EmailTokenDB(Base):
+    """One-time link sent by email. Only a SHA-256 of the token is stored, so
+    a database leak doesn't hand out working reset links."""
+    __tablename__ = "email_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    purpose = Column(Enum(EmailTokenPurpose), nullable=False)
+    token_hash = Column(String(64), unique=True, nullable=False)
+    # The address the link was sent to: a verification link stops working if
+    # the account's email changes before it is clicked.
+    email = Column(String(254), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class MediaDBType(str, enum.Enum):

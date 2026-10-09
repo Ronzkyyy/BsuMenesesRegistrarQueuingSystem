@@ -30,6 +30,25 @@ class Settings(BaseSettings):
     INITIAL_ADMIN_USERNAME: str = ""
     INITIAL_ADMIN_PASSWORD: str = ""
 
+    # Outgoing email (password reset + email verification links).
+    # "console" logs the message instead of sending it - the link itself only
+    # when DEBUG=True, so a misconfigured production server never writes live
+    # reset links to its logs. "gmail" sends through the Gmail API over HTTPS
+    # (Render's free tier blocks SMTP ports); get the refresh token with
+    # `python -m app.cli gmail-auth`.
+    EMAIL_BACKEND: str = "console"
+    EMAIL_FROM: str = ""
+    GMAIL_CLIENT_ID: str = ""
+    GMAIL_CLIENT_SECRET: str = ""
+    GMAIL_REFRESH_TOKEN: str = ""
+    # Public address of the frontend - links in emails point here.
+    FRONTEND_URL: str = "http://localhost:5173"
+    PASSWORD_RESET_TOKEN_MINUTES: int = 15
+    EMAIL_VERIFICATION_TOKEN_HOURS: int = 48
+    # Per-account cap on reset emails within one token lifetime, on top of
+    # the per-IP rate limit - stops someone flooding a colleague's inbox.
+    MAX_PASSWORD_RESET_EMAILS: int = 3
+
     # Comma-separated list of origins allowed to call the API cross-origin.
     # Set this to the real deployed frontend domain(s) in production.
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"

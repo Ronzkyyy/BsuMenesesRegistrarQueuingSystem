@@ -123,6 +123,7 @@ def db_session(_engine):
 
 import itertools  # noqa: E402
 import string  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
 
 # Module-level so letters/ids stay unique across every test in the run, not
 # just within one test - cheap insurance against uniqueness-constraint
@@ -190,12 +191,17 @@ def make_user(db_session):
     from app.core.security import get_password_hash
 
     def _make(password="secret-pass-123", role=UserRole.STAFF, **overrides):
+        username = overrides.pop("username", f"user{next(_username_counter)}")
+        # A verified email by default - an account without one is refused on
+        # every staff route. Pass email=None to get a pre-email account.
         defaults = dict(
-            username=overrides.pop("username", f"user{next(_username_counter)}"),
+            username=username,
             full_name="Test User",
             role=role,
             hashed_password=get_password_hash(password),
             is_active=True,
+            email=f"{username.lower()}@staff.example.org",
+            email_verified_at=datetime.now(timezone.utc),
         )
         defaults.update(overrides)
         user = UserDB(**defaults)

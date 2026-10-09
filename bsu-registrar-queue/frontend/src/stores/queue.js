@@ -93,6 +93,8 @@ async function resyncStaleSession(err) {
     store.currentUser = user
     if (user.must_change_password) {
       err.response.data.detail = 'You must change your password before continuing.'
+    } else if (!user.email) {
+      err.response.data.detail = 'You must add an email address before continuing.'
     } else if (status === 403) {
       err.response.data.detail =
         `You're now signed in as ${user.username} (${user.role}) - this doesn't have ` +
@@ -494,6 +496,49 @@ export const useQueueStore = defineStore('queue', {
       } finally {
         this.loading = false
       }
+    },
+
+    // ============ EMAIL + SELF-SERVICE RESET ============
+
+    // Same reply whether or not the email has an account - returns its message.
+    async requestPasswordReset(email) {
+      const response = await api.post('/auth/forgot-password', { email })
+      return response.data.message
+    },
+
+    async resetPasswordWithToken(token, newPassword) {
+      const response = await api.post('/auth/reset-password', { token, new_password: newPassword })
+      return response.data.message
+    },
+
+    async verifyEmail(token) {
+      const response = await api.post('/auth/verify-email', { token })
+      return response.data.message
+    },
+
+    // Adds (or fixes an unconfirmed) email on your own account.
+    async setMyEmail(email) {
+      const response = await api.put('/auth/me/email', { email })
+      this.currentUser = response.data
+      return response.data
+    },
+
+    async resendMyVerification() {
+      const response = await api.post('/auth/me/email/resend-verification')
+      return response.data.message
+    },
+
+    async setUserEmail(userId, email) {
+      const response = await api.patch(`/auth/users/${userId}/email`, { email })
+      const idx = this.users.findIndex(u => u.id === userId)
+      if (idx !== -1) this.users[idx] = response.data
+      if (this.currentUser?.id === userId) this.currentUser = response.data
+      return response.data
+    },
+
+    async resendUserVerification(userId) {
+      const response = await api.post(`/auth/users/${userId}/resend-verification`)
+      return response.data.message
     },
 
     // ============ MEDIA ACTIONS ============

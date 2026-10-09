@@ -99,6 +99,13 @@ alembic history                   # Show migration history
 | POST | `/api/auth/login` | Public | Staff login |
 | POST | `/api/auth/change-password` | Any staff | Change your own password (also clears a pending forced change) |
 | POST | `/api/auth/users/{id}/reset-password` | Admin | Reset another account to a one-time temporary password |
+| POST | `/api/auth/forgot-password` | Public | Email a 15-minute reset link to a confirmed address (same 202 reply either way) |
+| POST | `/api/auth/reset-password` | Public | Set a new password with the emailed token |
+| POST | `/api/auth/verify-email` | Public | Confirm an email from the verification link |
+| PUT | `/api/auth/me/email` | Any staff | Add your own email (or fix an unconfirmed one) |
+| POST | `/api/auth/me/email/resend-verification` | Any staff | Re-send your confirmation link |
+| PATCH | `/api/auth/users/{id}/email` | Admin | Set/change an account's email (un-confirms it, sends a link) |
+| POST | `/api/auth/users/{id}/resend-verification` | Admin | Re-send an account's confirmation link |
 | GET | `/api/queues/active` | Public | List active queues for students |
 | POST | `/api/tickets` | Public | Student takes a ticket |
 | GET | `/api/tickets/my-ticket` | Public | Get student's current ticket |
@@ -154,7 +161,9 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   failed, from `require_role`), `student.deleted`, `student.bulk_imported`,
   `queue.deleted`, `report.exported`, `security.rate_limited`,
   `appointment.staff_cancelled`, `ticket.recalled`, `auth.password_reset`
-  (admin route, or `actor="server-cli"`). Add a `log_security_event` call
+  (admin route, or `actor="server-cli"`), `auth.email_changed`,
+  `auth.email_verified`, `auth.password_reset_requested`,
+  `auth.password_reset_completed` (never the token). Add a `log_security_event` call
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.
@@ -164,7 +173,38 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   `AdminLayout` also calls `verifySession()` every 30 s, so an idle tab goes
   to `/login` with a notice. Only a definite 401 ends a session; network
   errors or a sleeping Render server never log anyone out.
-- **Forgotten passwords** (no email channel, so no self-service link):
+- **Staff emails + self-service reset** (`app/services/account_email.py`):
+  - `users.email` (unique, stored lowercase) + `email_verified_at`. An admin
+    must give every new account one (`UserCreate.email`). Accounts from before
+    emails have `NULL` and get `403 "You must add an email address before
+    continuing."` on every staff route (same gate as `must_change_password`,
+    checked after it) until they add one via `PUT /auth/me/email`; the
+    frontend router sends them to `/add-email`. Adding an email is enough to
+    work - confirming it only enables email resets.
+  - One-time links (`email_tokens`, purpose `verify_email` / `reset_password`)
+    store only a SHA-256 of the token. Each is single-use, tied to the
+    address it was sent to, and a new one retires older ones. Reset: 15 min
+    (`PASSWORD_RESET_TOKEN_MINUTES`); verification: 48 h. The token rides in
+    the URL **fragment** (`/reset-password#token=…`) so it never reaches a
+    server log; `services/emailLinkToken.js` strips it from the address bar.
+  - `POST /auth/forgot-password` always returns the same 202 message and
+    only mails an *active* account with a *confirmed* email; capped per
+    account (`MAX_PASSWORD_RESET_EMAILS` per token lifetime) on top of the
+    per-IP limit. A successful reset clears lockout and `must_change_password`.
+  - A user can change only an *unconfirmed* email of their own; a confirmed
+    one is admin-only, so a hijacked session can't redirect reset links.
+  - Mail is sent after the response with FastAPI `BackgroundTasks`
+    (`app/services/email_sender.py`, never raises). `EMAIL_BACKEND=gmail`
+    uses the **Gmail API over HTTPS** - Render's free tier blocks SMTP
+    ports. `EMAIL_BACKEND=console` (default) logs the message, including the
+    link only when `DEBUG=True`. Tests capture mail by patching
+    `email_sender.send_email` (`tests/test_email_password_reset.py`).
+  - Gmail setup: Google Cloud project with the Gmail API enabled, OAuth
+    client of type **Desktop app**, consent screen published **In
+    production** (in "Testing" the refresh token dies after 7 days), then
+    `python -m app.cli gmail-auth` prints `GMAIL_REFRESH_TOKEN` (scope
+    `gmail.send` only).
+- **Forgotten passwords, fallbacks** (an account with no confirmed email):
   - An Admin resets another account from User Management →
     `POST /auth/users/{id}/reset-password`. The server generates a one-time
     password (`generate_temporary_password`, e.g. `k7pq-x3mz-9tah`), returns it
@@ -198,6 +238,8 @@ not a control.
 - Deliberately public endpoints: `POST /auth/login`, `GET /queues/active`,
   `GET /queues/{id}`, the display-board reads (`/tickets/queue/{id}/display`,
   `/tickets/now-serving-overview`, `/announcements/active`, `/media/active`),
+  the emailed-link routes (`POST /auth/forgot-password`,
+  `/auth/reset-password`, `/auth/verify-email`),
   student self-service (`POST /students`, `GET /students/search`,
   `POST /tickets`, `GET /tickets/my-ticket`, `POST /tickets/{id}/cancel`,
   the `/appointments` booking/lookup/cancel routes).
@@ -226,7 +268,10 @@ CAMPUS_NAME=Bulacan State University - Meneses Campus
 default (when a var is absent entirely, as in a bare production environment)
 is `DEBUG=False` — see **Secure Defaults** above. `REGISTRAR_NAME` (default
 `Anna Marie S. Marquez`) is the signatory printed in the Excel export's
-footer; change it there when the registrar changes. Production deployments may
+footer; change it there when the registrar changes. Email: `EMAIL_BACKEND`
+(`console`|`gmail`), `EMAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`,
+`GMAIL_REFRESH_TOKEN`, and `FRONTEND_URL` (base of the links in emails - set
+it to the real https frontend in production). Production deployments may
 also set `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` to bootstrap the
 first admin account.
 
@@ -282,6 +327,8 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 | `UserBase` | `username` | 3–50 chars, `^[A-Za-z0-9_.-]+$` |
 | | `full_name` | 1–100 chars |
 | `UserCreate` / `PasswordChange` | `password` / `new_password` | 8–72 chars (72 = bcrypt limit) |
+| `UserCreate` / `EmailUpdate` / `ForgotPasswordRequest` | `email` | `EmailStr`, ≤ 254; create/update also MX-checked (`validate_email_deliverable`) and unique |
+| `EmailTokenRequest` / `ResetPasswordWithToken` | `token` / `new_password` | 20–128 chars / 8–72 chars |
 | `AnnouncementBase` | `text` | 1–500 chars, whitespace-stripped |
 | `MediaItemBase` / `MediaItemUpdate` | `url` | ≤ 2048 chars; must start `http://`, `https://`, or `/api/uploads/media/` (blocks `javascript:`/`data:`/`file:` — rendered as `src` on the public display board) |
 | Query params | `student_id` (search/lookup/cancel) | `^\d{10}$` |

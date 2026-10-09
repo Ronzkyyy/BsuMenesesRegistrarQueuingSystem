@@ -94,16 +94,19 @@ async def get_current_user(
 
 
 PASSWORD_CHANGE_REQUIRED_DETAIL = "You must change your password before continuing."
+EMAIL_REQUIRED_DETAIL = "You must add an email address before continuing."
 ACCOUNT_DEACTIVATED_DETAIL = "This account has been deactivated."
 
 
 async def get_current_active_user_pending_password(
     current_user: User = Depends(get_current_user)
 ) -> User:
-    """Active user who may still owe a password change after an admin reset.
+    """Active user who may still owe account setup: a password change after
+    an admin reset, or an email address on an account from before emails.
 
-    Only /auth/me and /auth/change-password take this - everything else uses
-    get_current_active_user, which refuses such an account.
+    Only /auth/me, /auth/change-password and /auth/me/email take this -
+    everything else uses get_current_active_user, which refuses such an
+    account.
     """
     # 401, not 400: a deactivated account's session is over, and the frontend
     # treats 401 as "log out now". Checked from the DB row on every request,
@@ -119,8 +122,9 @@ async def get_current_active_user_pending_password(
 async def get_current_active_user(
     current_user: User = Depends(get_current_active_user_pending_password)
 ) -> User:
-    """Get current active user, raise exception if inactive or if an admin
-    reset left a temporary password that hasn't been replaced yet.
+    """Get current active user, raise exception if inactive, if an admin
+    reset left a temporary password that hasn't been replaced yet, or if the
+    account has no email address (so it could never self-reset).
 
     Checked from the DB row on every request, so a reset also stops any
     session the account already had open.
@@ -129,6 +133,11 @@ async def get_current_active_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=PASSWORD_CHANGE_REQUIRED_DETAIL,
+        )
+    if not current_user.email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=EMAIL_REQUIRED_DETAIL,
         )
     return current_user
 

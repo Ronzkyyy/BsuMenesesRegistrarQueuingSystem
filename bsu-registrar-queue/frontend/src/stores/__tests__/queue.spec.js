@@ -20,6 +20,7 @@ const { mockApi, interceptor, axiosInterceptor } = vi.hoisted(() => {
     mockApi: {
       get: vi.fn(),
       post: vi.fn(),
+      put: vi.fn(),
       patch: vi.fn(),
       delete: vi.fn(),
       request: vi.fn(),
@@ -412,7 +413,8 @@ describe('response interceptor', () => {
   it('resyncs currentUser and rewrites the message on a stale-session 403', async () => {
     const store = useQueueStore()
     store.currentUser = { id: 1, username: 'admin', role: 'admin' }
-    mockApi.get.mockReturnValueOnce(ok({ id: 2, username: 'staff1', role: 'staff' }))
+    const staff1 = { id: 2, username: 'staff1', role: 'staff', email: 'staff1@example.org' }
+    mockApi.get.mockReturnValueOnce(ok(staff1))
     const err = new Error('forbidden')
     err.config = { url: '/queues/1/booking-settings' }
     err.response = { status: 403, data: { detail: 'Insufficient permissions' } }
@@ -420,11 +422,24 @@ describe('response interceptor', () => {
     await expect(interceptor.onRejected(err)).rejects.toBe(err)
 
     expect(mockApi.get).toHaveBeenCalledWith('/auth/me')
-    expect(store.currentUser).toEqual({ id: 2, username: 'staff1', role: 'staff' })
+    expect(store.currentUser).toEqual(staff1)
     expect(err.response.data.detail).toBe(
       "You're now signed in as staff1 (staff) - this doesn't have permission for that. " +
       'Log in again if you meant to continue as a different account.'
     )
+  })
+
+  it('says an email is required when the resync shows the account has none', async () => {
+    const store = useQueueStore()
+    mockApi.get.mockReturnValueOnce(ok({ id: 4, username: 'old', role: 'staff', email: null }))
+    const err = new Error('forbidden')
+    err.config = { url: '/queues' }
+    err.response = { status: 403, data: { detail: 'You must add an email address before continuing.' } }
+
+    await expect(interceptor.onRejected(err)).rejects.toBe(err)
+
+    expect(store.currentUser.email).toBeNull()
+    expect(err.response.data.detail).toBe('You must add an email address before continuing.')
   })
 
   it('clears currentUser and shows a session-expired message on 401 when resync also fails', async () => {
@@ -577,5 +592,61 @@ describe('waking a sleeping backend (Render free-tier cold start)', () => {
     await expect(first).resolves.toEqual({ data: 'a' })
     await expect(second).resolves.toEqual({ data: 'b' })
     expect(mockApi.get).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('email + self-service reset actions', () => {
+  it('requestPasswordReset posts the email and returns the generic reply', async () => {
+    const store = useQueueStore()
+    mockApi.post.mockReturnValueOnce(ok({ message: 'If that email belongs to a staff account...' }))
+    await expect(store.requestPasswordReset('a@example.org')).resolves.toBe(
+      'If that email belongs to a staff account...'
+    )
+    expect(mockApi.post).toHaveBeenCalledWith('/auth/forgot-password', { email: 'a@example.org' })
+  })
+
+  it('resetPasswordWithToken sends token + new_password', async () => {
+    const store = useQueueStore()
+    mockApi.post.mockReturnValueOnce(ok({ message: 'Password updated.' }))
+    await store.resetPasswordWithToken('tok', 'new-pass-123')
+    expect(mockApi.post).toHaveBeenCalledWith('/auth/reset-password', {
+      token: 'tok',
+      new_password: 'new-pass-123',
+    })
+  })
+
+  it('verifyEmail posts the token and rethrows a bad link', async () => {
+    const store = useQueueStore()
+    mockApi.post.mockReturnValueOnce(fail('This link is invalid or has expired.', 400))
+    await expect(store.verifyEmail('tok')).rejects.toThrow()
+    expect(mockApi.post).toHaveBeenCalledWith('/auth/verify-email', { token: 'tok' })
+  })
+
+  it('setMyEmail replaces currentUser with the server copy', async () => {
+    const store = useQueueStore()
+    store.currentUser = { id: 1, username: 'old', email: null }
+    const updated = { id: 1, username: 'old', email: 'old@example.org', email_verified_at: null }
+    mockApi.put.mockReturnValueOnce(ok(updated))
+    await store.setMyEmail('old@example.org')
+    expect(mockApi.put).toHaveBeenCalledWith('/auth/me/email', { email: 'old@example.org' })
+    expect(store.currentUser).toEqual(updated)
+  })
+
+  it('setUserEmail updates that row in the user list', async () => {
+    const store = useQueueStore()
+    store.users = [{ id: 1, email: 'a@example.org' }, { id: 2, email: null }]
+    const updated = { id: 2, email: 'b@example.org', email_verified_at: null }
+    mockApi.patch.mockReturnValueOnce(ok(updated))
+    await store.setUserEmail(2, 'b@example.org')
+    expect(mockApi.patch).toHaveBeenCalledWith('/auth/users/2/email', { email: 'b@example.org' })
+    expect(store.users[1]).toEqual(updated)
+    expect(store.users[0].email).toBe('a@example.org')
+  })
+
+  it('resendUserVerification posts to that user and returns the message', async () => {
+    const store = useQueueStore()
+    mockApi.post.mockReturnValueOnce(ok({ message: 'Verification link sent to b@example.org.' }))
+    await expect(store.resendUserVerification(2)).resolves.toBe('Verification link sent to b@example.org.')
+    expect(mockApi.post).toHaveBeenCalledWith('/auth/users/2/resend-verification')
   })
 })
