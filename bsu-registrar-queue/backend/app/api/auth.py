@@ -1,7 +1,7 @@
 """
 Authentication endpoints for registrar staff
 """
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response, status, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Request, Response, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
@@ -22,8 +22,12 @@ from ..core.security import (
     require_role,
     COOKIE_NAME,
 )
-from ..db_models import UserDB, UserRole
-from ..models.user import User, UserCreate, PasswordChange, PasswordResetResult
+from ..db_models import EmailTokenPurpose, UserDB, UserRole
+from ..models.user import (
+    User, UserCreate, PasswordChange, PasswordResetResult,
+    EmailUpdate, ForgotPasswordRequest, EmailTokenRequest, ResetPasswordWithToken,
+)
+from ..services import account_email
 from ..services import QueueService, TicketService, StudentService
 
 
@@ -160,10 +164,12 @@ def get_current_user_info(
 def register_user(
     request: Request,
     user_data: UserCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
-    """Register a new staff user (admin only)"""
+    """Register a new staff user (admin only). Emails the new address a
+    verification link."""
     # Check if username exists
     existing = db.query(UserDB).filter(UserDB.username == user_data.username).first()
     if existing:
@@ -171,6 +177,10 @@ def register_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
         )
+    try:
+        email = account_email.check_email_available(db, user_data.email)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     from ..core.security import get_password_hash
     hashed_password = get_password_hash(user_data.password)
@@ -181,10 +191,14 @@ def register_user(
         role=UserRole(user_data.role.value),
         hashed_password=hashed_password,
         is_active=True,
+        email=email,
     )
     db.add(db_user)
+    db.flush()
+    message = account_email.start_email_verification(db, db_user)
     db.commit()
     db.refresh(db_user)
+    background_tasks.add_task(account_email.send, message)
 
     log_security_event(
         "auth.user_created", outcome="success", request=request,
@@ -344,3 +358,220 @@ def activate_user(
         actor=current_user.username, target=user.username,
     )
     return {"message": "User activated successfully"}
+
+
+# ---------------------------------------------------------------------------
+# Email address + self-service password reset
+# ---------------------------------------------------------------------------
+
+def _set_email(db: Session, user: UserDB, raw_email: str) -> tuple[str, dict | None]:
+    """Change an account's email, un-verify it and issue a verification link.
+    Returns (previous email or "", message to send or None if unchanged).
+    Caller commits."""
+    try:
+        email = account_email.check_email_available(db, raw_email, exclude_user_id=user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    previous = user.email or ""
+    if email == user.email:
+        return previous, None
+    user.email = email
+    user.email_verified_at = None
+    return previous, account_email.start_email_verification(db, user)
+
+
+def _resend_verification(db: Session, user: UserDB, background_tasks: BackgroundTasks) -> dict:
+    if not user.email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This account has no email address.")
+    if user.email_verified_at is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This email is already confirmed.")
+    message = account_email.start_email_verification(db, user)
+    db.commit()
+    background_tasks.add_task(account_email.send, message)
+    return {"message": f"Verification link sent to {user.email}."}
+
+
+@router.put("/me/email", response_model=User)
+@limiter.limit("5/minute")
+def set_my_email(
+    request: Request,
+    payload: EmailUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_pending_password),
+):
+    """Add your own email - how an account from before emails gets past the
+    email requirement. Once confirmed, only an admin can change it, so a
+    hijacked session can't redirect future reset links."""
+    user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
+    if user.email and user.email_verified_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your email is already confirmed. Ask an administrator to change it.",
+        )
+    previous, message = _set_email(db, user, payload.email)
+    db.commit()
+    db.refresh(user)
+    if message:
+        background_tasks.add_task(account_email.send, message)
+        log_security_event(
+            "auth.email_changed", outcome="success", request=request,
+            actor=user.username, target=user.username,
+            detail="replaced unconfirmed email" if previous else "added",
+        )
+    return User.model_validate(user)
+
+
+@router.post("/me/email/resend-verification")
+@limiter.limit("3/minute")
+def resend_my_verification(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_pending_password),
+):
+    """Send yourself a fresh verification link."""
+    user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
+    return _resend_verification(db, user, background_tasks)
+
+
+@router.patch("/users/{user_id}/email", response_model=User)
+def set_user_email(
+    request: Request,
+    payload: EmailUpdate,
+    background_tasks: BackgroundTasks,
+    user_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Set or change any account's email (admin only). Reset links only go to
+    it once its owner confirms it."""
+    user = db.query(UserDB).filter(UserDB.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    previous, message = _set_email(db, user, payload.email)
+    db.commit()
+    db.refresh(user)
+    if message:
+        background_tasks.add_task(account_email.send, message)
+        log_security_event(
+            "auth.email_changed", outcome="success", request=request,
+            actor=current_user.username, target=user.username,
+            detail="changed" if previous else "added",
+        )
+    return User.model_validate(user)
+
+
+@router.post("/users/{user_id}/resend-verification")
+def resend_user_verification(
+    background_tasks: BackgroundTasks,
+    user_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Re-send the verification link for an account's unconfirmed email."""
+    user = db.query(UserDB).filter(UserDB.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return _resend_verification(db, user, background_tasks)
+
+
+@router.post("/verify-email")
+@limiter.limit("10/minute")
+def verify_email(
+    request: Request,
+    payload: EmailTokenRequest,
+    db: Session = Depends(get_db),
+):
+    """Confirm an email address from the link in the verification email."""
+    user = account_email.consume_token(db, payload.token, EmailTokenPurpose.VERIFY_EMAIL)
+    if user is None:
+        db.rollback()
+        log_security_event(
+            "auth.email_verified", outcome="failure", request=request,
+            detail="invalid or expired link",
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=account_email.INVALID_LINK_DETAIL)
+    user.email_verified_at = datetime.now(timezone.utc)
+    db.commit()
+    log_security_event("auth.email_verified", outcome="success", request=request, target=user.username)
+    return {"message": "Email confirmed. You can now reset your password by email if you forget it."}
+
+
+FORGOT_PASSWORD_REPLY = (
+    "If that email belongs to a staff account with a confirmed email, "
+    "a reset link is on its way. It expires in {minutes} minutes."
+)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("3/minute")
+def forgot_password(
+    request: Request,
+    payload: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Email a one-time reset link. Always the same reply, so the form can't
+    be used to find out which addresses have accounts; the email itself goes
+    out after the response."""
+    reply = {"message": FORGOT_PASSWORD_REPLY.format(minutes=settings.PASSWORD_RESET_TOKEN_MINUTES)}
+    email = account_email.normalize_email(payload.email)
+    user = db.query(UserDB).filter(UserDB.email == email).first()
+
+    if user is None or not user.is_active or user.email_verified_at is None:
+        if user is None:
+            reason = "no account with that email"
+        elif not user.is_active:
+            reason = "inactive account"
+        else:
+            reason = "email not confirmed"
+        log_security_event(
+            "auth.password_reset_requested", outcome="failure", request=request,
+            target=user.username if user else None, detail=reason,
+        )
+        return reply
+
+    if account_email.recent_reset_count(db, user) >= settings.MAX_PASSWORD_RESET_EMAILS:
+        log_security_event(
+            "auth.password_reset_requested", outcome="blocked", request=request,
+            target=user.username, detail="per-account email limit reached",
+        )
+        return reply
+
+    token = account_email.issue_token(
+        db, user, EmailTokenPurpose.RESET_PASSWORD,
+        timedelta(minutes=settings.PASSWORD_RESET_TOKEN_MINUTES),
+    )
+    db.commit()
+    background_tasks.add_task(account_email.send, account_email.reset_email(user, token))
+    log_security_event(
+        "auth.password_reset_requested", outcome="success", request=request, target=user.username,
+    )
+    return reply
+
+
+@router.post("/reset-password")
+@limiter.limit("10/minute")
+def reset_password_with_token(
+    request: Request,
+    payload: ResetPasswordWithToken,
+    db: Session = Depends(get_db),
+):
+    """Set a new password from an emailed reset link. Also unlocks the
+    account and clears a pending forced change."""
+    user = account_email.consume_token(db, payload.token, EmailTokenPurpose.RESET_PASSWORD)
+    if user is None:
+        db.rollback()
+        log_security_event(
+            "auth.password_reset_completed", outcome="failure", request=request,
+            detail="invalid or expired link",
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=account_email.INVALID_LINK_DETAIL)
+
+    reset_user_password(user, payload.new_password, must_change=False)
+    db.commit()
+    log_security_event(
+        "auth.password_reset_completed", outcome="success", request=request, target=user.username,
+    )
+    return {"message": "Password updated. You can now log in with your new password."}

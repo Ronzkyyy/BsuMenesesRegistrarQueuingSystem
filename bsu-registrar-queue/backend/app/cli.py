@@ -5,6 +5,7 @@ log in to reset a password through the app.
     cd backend
     python -m app.cli reset-password <username>              # you pick it, use it as-is
     python -m app.cli reset-password <username> --temporary  # forced change at next login
+    python -m app.cli gmail-auth                             # one-time email setup (app/gmail_auth.py)
 
 Prompts for the new password without echoing it, and clears any failed-login
 lock. Whoever can run this already holds DATABASE_URL, so it grants nothing
@@ -65,6 +66,7 @@ def _reset_password(db: Session, username: str, temporary: bool, prompt: Callabl
 def run(argv: list[str], db: Session, prompt: Callable[[str], str] = getpass.getpass) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="BSU Registrar Queue account recovery")
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("gmail-auth", help="get the Gmail API refresh token for sending email (see app/gmail_auth.py)")
     reset = sub.add_parser("reset-password", help="set a staff account's password and unlock it")
     reset.add_argument("username")
     reset.add_argument(
@@ -79,13 +81,19 @@ def run(argv: list[str], db: Session, prompt: Callable[[str], str] = getpass.get
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    # Email setup needs no database - don't connect (or print one) for it.
+    if argv[:1] == ["gmail-auth"]:
+        from . import gmail_auth
+        return gmail_auth.run(argv[1:])
+
     from .core.database import SessionLocal, engine
 
     # DATABASE_URL may well be production - say which database this touches.
     print(f"Database: {engine.url.host or 'localhost'}/{engine.url.database}")
     db = SessionLocal()
     try:
-        return run(sys.argv[1:] if argv is None else argv, db)
+        return run(argv, db)
     finally:
         db.close()
 

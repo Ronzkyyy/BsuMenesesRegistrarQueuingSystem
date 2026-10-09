@@ -56,6 +56,11 @@
                 </svg>
               </button>
             </div>
+            <div class="mt-1.5 flex justify-end">
+              <router-link to="/forgot-password" class="text-xs text-bsu-primary hover:underline">
+                Forgot password?
+              </router-link>
+            </div>
           </div>
 
           <div>

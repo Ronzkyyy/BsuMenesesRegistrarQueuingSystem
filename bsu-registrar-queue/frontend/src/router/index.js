@@ -15,6 +15,27 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue')
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('../views/ForgotPasswordView.vue')
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue')
+    },
+    {
+      path: '/verify-email',
+      name: 'verify-email',
+      component: () => import('../views/VerifyEmailView.vue')
+    },
+    {
+      path: '/add-email',
+      name: 'add-email',
+      component: () => import('../views/AddEmailView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/change-password',
       name: 'change-password',
       component: () => import('../views/ChangePasswordView.vue'),
@@ -116,10 +137,16 @@ router.beforeEach(async (to) => {
 
   // After an admin reset, nothing else is usable (the backend refuses it
   // too) until the user replaces the temporary password.
+  // Then, an account from before emails existed must add one (the backend
+  // refuses it too) - otherwise it could never reset its own password.
   if (to.meta.requiresAuth) {
     const mustChange = !!queueStore.currentUser?.must_change_password
     if (mustChange && to.name !== 'change-password') return { name: 'change-password' }
     if (!mustChange && to.name === 'change-password') return { name: 'admin-dashboard' }
+
+    const needsEmail = !mustChange && !queueStore.currentUser?.email
+    if (needsEmail && to.name !== 'add-email') return { name: 'add-email' }
+    if (!needsEmail && to.name === 'add-email') return { name: 'admin-dashboard' }
   }
 
   if (to.meta.requiresAdmin) {

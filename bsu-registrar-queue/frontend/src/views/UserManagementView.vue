@@ -20,12 +20,17 @@
       <p class="text-sm text-red-700">{{ listError }}</p>
     </div>
 
+    <div v-if="notice" class="bg-green-50 border border-green-100 rounded-2xl p-4 mb-6">
+      <p class="text-sm text-green-800">{{ notice }}</p>
+    </div>
+
     <div class="panel overflow-hidden">
       <table class="min-w-full divide-y divide-gray-100">
         <thead class="bg-bsu-surface">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Username</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Full Name</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -35,11 +40,45 @@
           <tr v-for="user in queueStore.users" :key="user.id" class="table-row-hover">
             <td class="px-6 py-4 text-sm font-medium text-bsu-ink">{{ user.username }}</td>
             <td class="px-6 py-4 text-sm text-gray-600">{{ user.full_name }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">
+              <div v-if="user.email" class="flex flex-col items-start gap-1">
+                <span class="break-all">{{ user.email }}</span>
+                <span
+                  :class="[
+                    'inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold uppercase tracking-wide',
+                    user.email_verified_at ? 'bg-green-50 text-green-700' : 'bg-bsu-gold/20 text-bsu-gold-dark',
+                  ]"
+                >
+                  {{ user.email_verified_at ? 'Confirmed' : 'Unconfirmed' }}
+                </span>
+              </div>
+              <span
+                v-else
+                class="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold uppercase tracking-wide bg-red-50 text-red-600"
+              >
+                Missing
+              </span>
+            </td>
             <td class="px-6 py-4 text-sm text-gray-600 capitalize">{{ user.role }}</td>
             <td class="px-6 py-4">
               <StatusBadge :status="user.is_active ? 'active' : 'inactive'" />
             </td>
             <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+              <button
+                @click="openEmailModal(user)"
+                :disabled="actionLoading"
+                class="btn-secondary btn-sm"
+              >
+                {{ user.email ? 'Edit Email' : 'Add Email' }}
+              </button>
+              <button
+                v-if="user.email && !user.email_verified_at"
+                @click="resendVerification(user)"
+                :disabled="actionLoading"
+                class="btn-secondary btn-sm"
+              >
+                Resend Link
+              </button>
               <button
                 v-if="user.id !== queueStore.currentUser?.id"
                 @click="confirmReset(user)"
@@ -68,7 +107,7 @@
           </tr>
 
           <tr v-if="queueStore.users.length === 0">
-            <td colspan="5" class="px-6 py-8 text-center text-gray-500">No staff accounts found.</td>
+            <td colspan="6" class="px-6 py-8 text-center text-gray-500">No staff accounts found.</td>
           </tr>
         </tbody>
       </table>
@@ -118,6 +157,18 @@
           </div>
 
           <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+            <input
+              v-model="newUserForm.email"
+              type="email"
+              maxlength="254"
+              class="field"
+              placeholder="e.g., jsantos@example.com"
+            />
+            <p class="mt-1 text-xs text-gray-500">They'll get a link to confirm it. Password reset emails go here.</p>
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
             <select
               v-model="newUserForm.role"
@@ -164,6 +215,40 @@
     </div>
     </Transition>
 
+    <!-- Add / edit an account's email -->
+    <div v-if="emailModal.open" class="fixed inset-0 bg-bsu-ink/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-soft-lg max-w-md w-full">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-bold text-bsu-ink">
+            {{ emailModal.user?.email ? 'Edit Email' : 'Add Email' }} - {{ emailModal.user?.username }}
+          </h3>
+        </div>
+        <form @submit.prevent="saveEmail" class="px-6 py-4 space-y-4">
+          <div>
+            <label for="edit-email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+            <input
+              id="edit-email"
+              v-model="emailModal.email"
+              type="email"
+              required
+              maxlength="254"
+              class="field"
+            />
+            <p class="mt-1 text-xs text-gray-500">
+              A new address must be confirmed from the link we send to it before password reset emails go there.
+            </p>
+          </div>
+          <div v-if="emailModal.error" class="p-3 bg-red-50 border border-red-100 rounded-xl">
+            <p class="text-sm text-red-700">{{ emailModal.error }}</p>
+          </div>
+          <div class="flex justify-end space-x-3 pt-2">
+            <button type="button" @click="emailModal.open = false" class="btn-secondary btn-md">Cancel</button>
+            <button type="submit" :disabled="actionLoading" class="btn-primary btn-md">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <ConfirmDialog
       v-model="resetConfirm.open"
       title="Reset password?"
@@ -209,6 +294,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 const queueStore = useQueueStore()
 
 const listError = ref('')
+const notice = ref('')
 const createError = ref('')
 const actionLoading = ref(false)
 const showCreateModal = ref(false)
@@ -218,16 +304,21 @@ const newUserForm = ref({
   full_name: '',
   role: 'staff',
   password: '',
+  email: '',
 })
 
 const openCreateModal = () => {
   createError.value = ''
-  newUserForm.value = { username: '', full_name: '', role: 'staff', password: '' }
+  newUserForm.value = { username: '', full_name: '', role: 'staff', password: '', email: '' }
   showCreateModal.value = true
 }
 
 const createUser = async () => {
   if (!newUserForm.value.username || !newUserForm.value.full_name || !newUserForm.value.password) return
+  if (!newUserForm.value.email.trim()) {
+    createError.value = 'Email is required.'
+    return
+  }
 
   if (newUserForm.value.username.length < 3) {
     createError.value = 'Username must be at least 3 characters.'
@@ -241,13 +332,51 @@ const createUser = async () => {
   actionLoading.value = true
   createError.value = ''
   try {
-    await queueStore.createUser(newUserForm.value)
+    const created = await queueStore.createUser({ ...newUserForm.value, email: newUserForm.value.email.trim() })
     showCreateModal.value = false
+    notice.value = `Account created. A confirmation link was sent to ${created.email}.`
   } catch (err) {
     const detail = err.response?.data?.detail
     createError.value = Array.isArray(detail)
       ? detail.map((d) => d.msg).join('; ')
       : detail || 'Failed to create user'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const emailModal = ref({ open: false, user: null, email: '', error: '' })
+
+const openEmailModal = (user) => {
+  notice.value = ''
+  emailModal.value = { open: true, user, email: user.email || '', error: '' }
+}
+
+const saveEmail = async () => {
+  const { user, email } = emailModal.value
+  actionLoading.value = true
+  emailModal.value.error = ''
+  try {
+    const updated = await queueStore.setUserEmail(user.id, email.trim())
+    emailModal.value.open = false
+    notice.value = updated.email === user.email
+      ? 'Email unchanged.'
+      : `Email saved. A confirmation link was sent to ${updated.email}.`
+  } catch (err) {
+    emailModal.value.error = err.response?.data?.detail || 'Failed to save email'
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const resendVerification = async (user) => {
+  actionLoading.value = true
+  listError.value = ''
+  notice.value = ''
+  try {
+    notice.value = await queueStore.resendUserVerification(user.id)
+  } catch (err) {
+    listError.value = err.response?.data?.detail || 'Failed to resend the confirmation link'
   } finally {
     actionLoading.value = false
   }
