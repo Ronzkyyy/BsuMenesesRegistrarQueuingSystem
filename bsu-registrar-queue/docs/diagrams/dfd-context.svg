@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="960" viewBox="0 0 1800 960"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#374151"/></marker></defs><rect width="100%" height="100%" fill="#ffffff"/><text x="900.0" y="42.0" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">Context Diagram (Level 0 DFD)</text><text x="900.0" y="78.0" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#4b5563">BSU Registrar Queue System — Bulacan State University, Meneses Campus</text><g transform="translate(0,-150)"><rect x="710" y="430" width="380" height="260" rx="28" fill="#e8f0fe" stroke="#1a56db" stroke-width="3"/>
+<line x1="710" y1="472" x2="1090" y2="472" stroke="#1a56db" stroke-width="1.5"/>
+<text x="900" y="451.0" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1a56db">0</text>
+<text x="900" y="550.0" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">BSU Registrar</text>
+<text x="900" y="580.0" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">Queue Management</text>
+<text x="900" y="610.0" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">System</text>
+<rect x="81.0" y="351.0" width="230" height="110" fill="#047857" opacity="0.35"/>
+<rect x="75.0" y="345.0" width="230" height="110" fill="#ecfdf3" stroke="#047857" stroke-width="2.5"/>
+<text x="190" y="400.0" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">Student</text>
+<rect x="81.0" y="771.0" width="230" height="110" fill="#047857" opacity="0.35"/>
+<rect x="75.0" y="765.0" width="230" height="110" fill="#ecfdf3" stroke="#047857" stroke-width="2.5"/>
+<text x="190" y="809.375" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">Display Board</text>
+<text x="190" y="830.625" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">(Public Screen)</text>
+<rect x="1501.0" y="351.0" width="230" height="110" fill="#047857" opacity="0.35"/>
+<rect x="1495.0" y="345.0" width="230" height="110" fill="#ecfdf3" stroke="#047857" stroke-width="2.5"/>
+<text x="1610" y="400.0" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">Registrar Staff</text>
+<rect x="1501.0" y="771.0" width="230" height="110" fill="#047857" opacity="0.35"/>
+<rect x="1495.0" y="765.0" width="230" height="110" fill="#ecfdf3" stroke="#047857" stroke-width="2.5"/>
+<text x="1610" y="820.0" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="#1f2937">Administrator</text>
+<path d="M305,370 L710,470" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M710,520 L305,430" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M710,640 L305,800" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M1495,370 L1090,470" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M1090,520 L1495,430" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M1495,790 L1090,620" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M1090,670 L1495,850" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="450" y="980" width="900" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db"/>
+<rect x="470" y="1000" width="44" height="30" fill="#ecfdf3" stroke="#047857" stroke-width="2"/>
+<text x="524" y="1015.0" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" dominant-baseline="central" fill="#1f2937">External entity</text>
+<rect x="660" y="996" width="44" height="38" rx="8" fill="#e8f0fe" stroke="#1a56db" stroke-width="2"/>
+<text x="714" y="1015.0" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" dominant-baseline="central" fill="#1f2937">Process</text>
+<rect x="810" y="1000" width="60" height="30" fill="#fff7e6"/>
+<path d="M870,1000 H810 V1030 H870" fill="none" stroke="#b45309" stroke-width="2"/>
+<line x1="828" y1="1000" x2="828" y2="1030" stroke="#b45309" stroke-width="1.5"/>
+<text x="880" y="1015.0" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" dominant-baseline="central" fill="#1f2937">Data store</text>
+<path d="M1010,1015 H1070" stroke="#374151" stroke-width="1.6" marker-end="url(#arrow)"/>
+<text x="1080" y="1015.0" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" dominant-baseline="central" fill="#1f2937">Data flow (Gane–Sarson notation)</text><rect x="376.0" y="359.5625" width="248.00000000000003" height="50.875" rx="3" fill="#ffffff" fill-opacity="0.95"/><text x="500" y="369.375" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Student registration details</text>
+<text x="500" y="385.0" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Ticket request / cancellation</text>
+<text x="500" y="400.625" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Appointment booking / cancellation</text>
+<rect x="386.5" y="474.5625" width="227.00000000000003" height="50.875" rx="3" fill="#ffffff" fill-opacity="0.95"/><text x="500" y="484.375" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Ticket number, queue position,</text>
+<text x="500" y="500.0" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">estimated wait time</text>
+<text x="500" y="515.625" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Appointment reference code + QR</text>
+<rect x="397.0" y="664.5625" width="206.00000000000003" height="50.875" rx="3" fill="#ffffff" fill-opacity="0.95"/><text x="500" y="674.375" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Now-serving numbers,</text>
+<text x="500" y="690.0" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">waiting line, announcements,</text>
+<text x="500" y="705.625" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">media playlist</text>
+<rect x="1176.0" y="333.9375" width="248.00000000000003" height="82.125" rx="3" fill="#ffffff" fill-opacity="0.95"/><text x="1300" y="343.75" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Login credentials</text>
+<text x="1300" y="359.375" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Call next / serve / complete /</text>
+<text x="1300" y="375.0" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">skip / recall commands</text>
+<text x="1300" y="390.625" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Check-in QR token / reference code</text>
+<text x="1300" y="406.25" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Queue settings, student updates</text>
+<rect x="1162.0" y="491.75" width="276.0" height="66.5" rx="3" fill="#ffffff" fill-opacity="0.95"/><text x="1300" y="501.5625" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Session (secure cookie)</text>
+<text x="1300" y="517.1875" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Current / next ticket, recallable list</text>
+<text x="1300" y="532.8125" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Issued check-in ticket</text>
+<text x="1300" y="548.4375" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Queue statistics, student records</text>
+<rect x="1204.0" y="621.75" width="192.00000000000003" height="66.5" rx="3" fill="#ffffff" fill-opacity="0.95"/><text x="1300" y="631.5625" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">User accounts, activation</text>
+<text x="1300" y="647.1875" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Announcements, media files</text>
+<text x="1300" y="662.8125" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Student bulk import (CSV)</text>
+<text x="1300" y="678.4375" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Report filters</text>
+<rect x="1187.0" y="794.5625" width="206.00000000000003" height="50.875" rx="3" fill="#ffffff" fill-opacity="0.95"/><text x="1290" y="804.375" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">Transaction history,</text>
+<text x="1290" y="820.0" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">calendar heatmap, CSV export</text>
+<text x="1290" y="835.625" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" text-anchor="middle" dominant-baseline="central" fill="#111827">User list, content list</text></g></svg>
