@@ -24,7 +24,7 @@
       <p class="text-sm text-green-800">{{ notice }}</p>
     </div>
 
-    <div class="panel overflow-hidden">
+    <div class="panel overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-100">
         <thead class="bg-bsu-surface">
           <tr>
@@ -63,46 +63,48 @@
             <td class="px-6 py-4">
               <StatusBadge :status="user.is_active ? 'active' : 'inactive'" />
             </td>
-            <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-              <button
-                @click="openEmailModal(user)"
-                :disabled="actionLoading"
-                class="btn-secondary btn-sm"
-              >
-                {{ user.email ? 'Edit Email' : 'Add Email' }}
-              </button>
-              <button
-                v-if="user.email && !user.email_verified_at"
-                @click="resendVerification(user)"
-                :disabled="actionLoading"
-                class="btn-secondary btn-sm"
-              >
-                Resend Link
-              </button>
-              <button
-                v-if="user.id !== queueStore.currentUser?.id"
-                @click="confirmReset(user)"
-                :disabled="actionLoading"
-                class="btn-secondary btn-sm"
-              >
-                Reset Password
-              </button>
-              <button
-                v-if="user.is_active"
-                @click="deactivate(user.id)"
-                :disabled="actionLoading"
-                class="btn-danger btn-sm"
-              >
-                Deactivate
-              </button>
-              <button
-                v-else
-                @click="activate(user.id)"
-                :disabled="actionLoading"
-                class="btn-success btn-sm"
-              >
-                Activate
-              </button>
+            <td class="px-6 py-4">
+              <div class="flex flex-wrap justify-end gap-2 whitespace-nowrap">
+                <button
+                  @click="openEmailModal(user)"
+                  :disabled="actionLoading"
+                  class="btn-secondary btn-sm"
+                >
+                  {{ user.email ? 'Edit Email' : 'Add Email' }}
+                </button>
+                <button
+                  v-if="user.email && !user.email_verified_at"
+                  @click="resendVerification(user)"
+                  :disabled="actionLoading"
+                  class="btn-secondary btn-sm"
+                >
+                  Resend Link
+                </button>
+                <button
+                  v-if="user.id !== queueStore.currentUser?.id"
+                  @click="confirmReset(user)"
+                  :disabled="actionLoading"
+                  class="btn-secondary btn-sm"
+                >
+                  Reset Password
+                </button>
+                <button
+                  v-if="user.is_active"
+                  @click="deactivate(user.id)"
+                  :disabled="actionLoading"
+                  class="btn-danger btn-sm"
+                >
+                  Deactivate
+                </button>
+                <button
+                  v-else
+                  @click="activate(user.id)"
+                  :disabled="actionLoading"
+                  class="btn-success btn-sm"
+                >
+                  Activate
+                </button>
+              </div>
             </td>
           </tr>
 
