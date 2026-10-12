@@ -8,7 +8,7 @@ celery==5.6.3
 python-multipart==0.0.32
 PyJWT==2.15.1  # replaced python-jose (CVE-2026-85394, unmaintained); HS256 needs no crypto backend
 passlib[bcrypt]==1.7.4
-bcrypt==4.0.1  # passlib 1.7.4 breaks on bcrypt>=4.1 (removed bcrypt.__about__)
+bcrypt==5.0.0  # passlib 1.7.4 breaks on bcrypt>=4.1 (removed bcrypt.__about__)
 python-dotenv==1.2.4
 pytz==2026.4
 pydantic[email]==2.13.5
