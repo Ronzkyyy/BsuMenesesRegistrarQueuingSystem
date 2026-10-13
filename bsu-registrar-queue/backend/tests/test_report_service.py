@@ -4,7 +4,8 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from app.db_models import (
-    AppointmentDB, AppointmentDBStatus, PriorityLevel, TicketDB, TicketDBStatus,
+    AppointmentDB, AppointmentDBStatus, AppointmentDocumentDB, PriorityLevel,
+    TicketDB, TicketDBStatus, TicketDocumentDB,
 )
 from app.services.report_service import ReportService
 
@@ -13,11 +14,13 @@ UTC = timezone.utc
 
 def _ticket(db, student, queue, *, status=TicketDBStatus.COMPLETED,
             created_at, completed_at=None, served_at=None,
-            priority=PriorityLevel.NORMAL, ticket_number=1, document_type=None):
+            priority=PriorityLevel.NORMAL, ticket_number=1, documents=()):
     row = TicketDB(
         ticket_number=ticket_number, student_id=student.id, queue_id=queue.id,
-        priority=priority, document_type=document_type, status=status, position=0,
+        priority=priority, status=status, position=0,
         created_at=created_at, served_at=served_at, completed_at=completed_at,
+        documents=[TicketDocumentDB(document_id=d.id, name=d.name, short_name=d.short_name,
+                                    fee=d.fee, position=d.display_order) for d in documents],
     )
     db.add(row)
     db.commit()
@@ -26,15 +29,16 @@ def _ticket(db, student, queue, *, status=TicketDBStatus.COMPLETED,
 
 
 def _appointment(db, student, queue, *, status=AppointmentDBStatus.CHECKED_IN,
-                 created_at, checked_in_at=None, ref="APT-000001", document_type=None):
+                 created_at, checked_in_at=None, ref="APT-000001", documents=()):
     row = AppointmentDB(
         reference_code=ref, student_id=student.id, queue_id=queue.id,
         appointment_date=created_at.date(),
         slot_start_time=datetime(2000, 1, 1, 9, 0).time(),
         slot_end_time=datetime(2000, 1, 1, 9, 30).time(),
-        document_type=document_type,
         qr_token=f"tok-{ref}", status=status,
         created_at=created_at, checked_in_at=checked_in_at,
+        documents=[AppointmentDocumentDB(document_id=d.id, name=d.name, short_name=d.short_name,
+                                         fee=d.fee, position=d.display_order) for d in documents],
     )
     db.add(row)
     db.commit()
@@ -243,19 +247,33 @@ def test_get_all_transactions_rejects_oversized_export(db_session, make_queue, m
         )
 
 
-def test_document_type_flows_into_transaction_rows(db_session, make_queue, make_student):
+def test_documents_join_in_request_order_and_filter_counts_once(
+        db_session, make_queue, make_student, make_document):
     queue = make_queue()
+    tor = make_document(short_name="TOR-R", display_order=1)
+    cog = make_document(short_name="COG-R", display_order=2)
+    other = make_document(short_name="GM-R", display_order=3)
     _ticket(db_session, make_student(), queue, ticket_number=1,
-            created_at=datetime(2026, 6, 10, 3, 0, tzinfo=UTC), document_type="TOR")
+            created_at=datetime(2026, 6, 10, 3, 0, tzinfo=UTC), documents=[cog, tor])
     _appointment(db_session, make_student(), queue,
-                 created_at=datetime(2026, 6, 10, 4, 0, tzinfo=UTC), document_type="COR")
+                 created_at=datetime(2026, 6, 10, 4, 0, tzinfo=UTC), documents=[tor])
+    _ticket(db_session, make_student(), queue, ticket_number=2,
+            created_at=datetime(2026, 6, 10, 5, 0, tzinfo=UTC), documents=[other])
 
     svc = ReportService(db_session)
-    page = svc.get_transactions(
-        date_from=date(2026, 6, 1), date_to=date(2026, 6, 30),
-        kinds=["ticket", "appointment"], statuses=None, queue_id=None,
-        student_number=None, priority=None, skip=0, limit=50,
-    )
+    common = dict(date_from=date(2026, 6, 1), date_to=date(2026, 6, 30),
+                  kinds=["ticket", "appointment"], statuses=None, queue_id=None,
+                  student_number=None, priority=None)
 
-    by_kind = {r.kind: r.document_type for r in page.items}
-    assert by_kind == {"ticket": "TOR", "appointment": "COR"}
+    page = svc.get_transactions(**common, skip=0, limit=50)
+    by_ref = {(r.kind, r.reference): r.documents for r in page.items}
+    assert by_ref[("ticket", f"{queue.ticket_letter}-001")] == "TOR-R, COG-R"
+    assert by_ref[("appointment", "APT-000001")] == "TOR-R"
+
+    # A two-document ticket matches once, not once per document.
+    filtered = svc.get_transactions(**common, skip=0, limit=50, document_id=tor.id)
+    assert filtered.total == 2
+    assert {r.kind for r in filtered.items} == {"ticket", "appointment"}
+
+    exported = svc.get_all_transactions(**common, document_id=other.id)
+    assert [r.documents for r in exported] == ["GM-R"]

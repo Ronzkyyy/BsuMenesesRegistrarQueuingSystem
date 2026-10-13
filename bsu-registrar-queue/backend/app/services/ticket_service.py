@@ -10,12 +10,13 @@ from ..core import campus_time
 from ..db_models import (
     TicketDB, TicketDBStatus, PriorityLevel,
     StudentDB, QueueDB, QueueDBStatus, QueueDBType,
-    AppointmentDB, AppointmentDBStatus
+    AppointmentDB, AppointmentDBStatus, DocumentDB, TicketDocumentDB
 )
 from ..models.ticket import (
     Ticket, TicketCreate, TicketStatus, PriorityLevel as PydanticPriorityLevel,
-    TicketPublic, DocumentType
+    TicketPublic
 )
+from ..models.document import RequestedDocument, fee_total
 from ..models.student import Student
 from ..models.queue import Queue
 
@@ -24,16 +25,38 @@ def _format_ticket_code(letter: str, ticket_number: int) -> str:
     return f"{letter}-{ticket_number:03d}"
 
 
-def validate_document_type(queue: QueueDB, document_type: Optional[DocumentType]) -> None:
-    """A document_type only makes sense for the Request Documents queue type -
-    required there, and rejected everywhere else so it can't be smuggled onto
-    an unrelated ticket or appointment. Shared by TicketService and
-    AppointmentService so the rule can't drift between the two callers."""
-    if queue.queue_type == QueueDBType.DOCUMENT_REQUEST:
-        if document_type is None:
-            raise ValueError("Select which document you are requesting.")
-    elif document_type is not None:
-        raise ValueError("document_type is only accepted for the Request Documents service.")
+def validate_documents(queue: QueueDB, document_ids: List[int], db: Session) -> List[DocumentDB]:
+    """Documents only make sense for the Request Documents queue type - at
+    least one is required there, and any are rejected everywhere else so
+    they can't be smuggled onto an unrelated ticket or appointment. Every id
+    must be an active catalog entry; unknown and inactive ids get the same
+    message. Shared by TicketService and AppointmentService so the rule
+    can't drift between the two callers.
+
+    Returns the catalog rows in display order, ready to snapshot."""
+    if queue.queue_type != QueueDBType.DOCUMENT_REQUEST:
+        if document_ids:
+            raise ValueError("Documents are only accepted for the Request Documents service.")
+        return []
+    if not document_ids:
+        raise ValueError("Select at least one document you are requesting.")
+    if len(set(document_ids)) != len(document_ids):
+        raise ValueError("Each document can only be selected once.")
+    documents = db.query(DocumentDB).filter(
+        DocumentDB.id.in_(document_ids),
+        DocumentDB.is_active.is_(True),
+    ).order_by(DocumentDB.display_order, DocumentDB.id).all()
+    if len(documents) != len(document_ids):
+        raise ValueError("One or more selected documents are no longer available.")
+    return documents
+
+
+def requested_documents(rows) -> List[RequestedDocument]:
+    """Snapshot rows (ticket_documents / appointment_documents) -> response items."""
+    return [
+        RequestedDocument(document_id=r.document_id, name=r.name, short_name=r.short_name, fee=r.fee)
+        for r in rows
+    ]
 
 
 class TicketService:
@@ -97,7 +120,8 @@ class TicketService:
         return max(base_wait, 0)
 
     def create_ticket(
-        self, ticket_data: TicketCreate, minimum_priority: Optional[PriorityLevel] = None
+        self, ticket_data: TicketCreate, minimum_priority: Optional[PriorityLevel] = None,
+        document_snapshots: Optional[list] = None,
     ) -> Optional[Ticket]:
         """Create a new ticket for a student.
 
@@ -106,6 +130,12 @@ class TicketService:
         guaranteed at least PRIORITY) - it never lowers a priority the
         student already qualifies for, and is ignored if the queue has
         priority handling disabled.
+
+        document_snapshots is for appointment check-in only (never reachable
+        from the API): the appointment's already-validated snapshot rows are
+        copied as-is instead of re-checking ticket_data.document_ids against
+        the live catalog, so a student gets what they booked at the price
+        they saw even if the document was since deactivated or repriced.
         """
         # Verify student exists
         student = self.db.query(StudentDB).filter(StudentDB.id == ticket_data.student_id).first()
@@ -120,7 +150,18 @@ class TicketService:
         if not queue:
             return None
 
-        validate_document_type(queue, ticket_data.document_type)
+        if document_snapshots is None:
+            snapshots = [
+                TicketDocumentDB(document_id=d.id, name=d.name, short_name=d.short_name,
+                                 fee=d.fee, position=d.display_order)
+                for d in validate_documents(queue, ticket_data.document_ids, self.db)
+            ]
+        else:
+            snapshots = [
+                TicketDocumentDB(document_id=d.document_id, name=d.name, short_name=d.short_name,
+                                 fee=d.fee, position=d.position)
+                for d in document_snapshots
+            ]
 
         # A student with a live (booked, not-yet-expired) appointment should
         # check in with it rather than also taking a walk-in ticket - one
@@ -202,10 +243,10 @@ class TicketService:
             student_id=ticket_data.student_id,
             queue_id=ticket_data.queue_id,
             priority=priority,
-            document_type=ticket_data.document_type.value if ticket_data.document_type else None,
             status=TicketDBStatus.WAITING,
             position=position,
             estimated_wait_time_minutes=estimated_wait,
+            documents=snapshots,
         )
         self.db.add(db_ticket)
         self.db.commit()
@@ -639,7 +680,6 @@ class TicketService:
             student_id=db_ticket.student_id,
             queue_id=db_ticket.queue_id,
             priority=PydanticPriorityLevel(db_ticket.priority.value),
-            document_type=DocumentType(db_ticket.document_type) if db_ticket.document_type else None,
             status=TicketStatus(db_ticket.status.value),
             position=db_ticket.position,
             estimated_wait_time_minutes=db_ticket.estimated_wait_time_minutes,
@@ -650,4 +690,6 @@ class TicketService:
             created_at=db_ticket.created_at,
             updated_at=db_ticket.updated_at,
             queue_name=queue.name if queue else None,
+            documents=requested_documents(db_ticket.documents),
+            documents_fee_total=fee_total(db_ticket.documents),
         )

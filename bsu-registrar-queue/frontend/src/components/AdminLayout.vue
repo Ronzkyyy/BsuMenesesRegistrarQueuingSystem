@@ -84,6 +84,14 @@
           </router-link>
           <router-link
             v-if="queueStore.currentUser?.role === 'admin'"
+            to="/admin/documents"
+            class="block px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150"
+            :class="route.path === '/admin/documents' ? 'bg-bsu-primary text-white shadow-sm' : 'text-gray-600 hover:bg-bsu-primary/10 hover:text-bsu-primary-dark'"
+          >
+            Document List
+          </router-link>
+          <router-link
+            v-if="queueStore.currentUser?.role === 'admin'"
             to="/admin/users"
             class="block px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150"
             :class="route.path === '/admin/users' ? 'bg-bsu-primary text-white shadow-sm' : 'text-gray-600 hover:bg-bsu-primary/10 hover:text-bsu-primary-dark'"

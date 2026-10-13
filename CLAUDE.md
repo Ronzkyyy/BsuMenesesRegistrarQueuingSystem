@@ -89,6 +89,16 @@ alembic history                   # Show migration history
 
 ### Key Domain Models
 - **Queue**: Service queues (Enrollment, Document Request, Clearance, Scholarship, Others)
+- **Document**: Admin-managed catalog of what Request Documents offers (name,
+  short name, requirements, processing time, fee, order, active flag). A
+  Request Documents ticket/appointment carries one or more documents in
+  `ticket_documents` / `appointment_documents` - each row a **snapshot**
+  (name, short name, fee) taken at request time, so catalog edits never
+  rewrite history. Check-in copies the appointment's snapshot onto the ticket
+  as-is (`create_ticket(document_snapshots=...)`). Catalog entries are only
+  ever deactivated, never deleted; the last active one can't be. The legacy
+  `tickets.document_type` / `appointments.document_type` columns are no
+  longer written and are due to be dropped by a cleanup migration.
 - **Student**: Student profiles with priority flags (scholar, varsity, graduating)
 - **Ticket**: Queue tickets with priority levels (Normal, Priority, Urgent) and status (Waiting, Serving, Completed, Cancelled, No-Show)
 - **User**: Staff authentication (Admin, Registrar, Staff roles with JWT)
@@ -121,6 +131,11 @@ alembic history                   # Show migration history
 | GET | `/api/reports/transactions` | Admin | Filterable merged ticket+appointment history |
 | GET | `/api/reports/calendar` | Admin | Per-day transaction volume for a month (peak/heatmap) |
 | GET | `/api/reports/transactions.xlsx` | Admin | Branded Excel audit export of the filtered history (`app/services/report_export.py`) |
+| GET | `/api/documents/active` | Public | Active document checklist, in display order |
+| GET | `/api/documents` | Admin | Full document catalog, inactive included |
+| POST | `/api/documents` | Admin | Add a document |
+| PATCH | `/api/documents/{id}` | Admin | Edit a document or (de)activate it (`is_active`) |
+| PUT | `/api/documents/order` | Admin | Save a new display order (must list every id once) |
 
 ### Background Tasks (Celery)
 Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`), Redis broker:
@@ -163,7 +178,9 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   `appointment.staff_cancelled`, `ticket.recalled`, `auth.password_reset`
   (admin route, or `actor="server-cli"`), `auth.email_changed`,
   `auth.email_verified`, `auth.password_reset_requested`,
-  `auth.password_reset_completed` (never the token). Add a `log_security_event` call
+  `auth.password_reset_completed` (never the token), `document.created`,
+  `document.updated` (detail names the changed fields), `document.activated` /
+  `document.deactivated`, `document.reordered`. Add a `log_security_event` call
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.
@@ -242,7 +259,7 @@ not a control.
   `/auth/reset-password`, `/auth/verify-email`),
   student self-service (`POST /students`, `GET /students/search`,
   `POST /tickets`, `GET /tickets/my-ticket`, `POST /tickets/{id}/cancel`,
-  the `/appointments` booking/lookup/cancel routes).
+  the `/appointments` booking/lookup/cancel routes, `GET /documents/active`).
 - **Public student-flow endpoints that read or mutate one student's data must
   verify ownership** by requiring that student's 10-digit `student_id` and
   matching it against the row — never key on the internal numeric id, which is
@@ -316,7 +333,11 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 | | `email` | `EmailStr` (also on `Student`/`StudentInDB`/`StudentPublic` responses) |
 | | *(no `is_scholar`/`is_varsity`/`is_graduating` — see **Avoid Trusting User Input**)* | |
 | `TicketBase` | `student_id`, `queue_id` | `> 0` |
-| | `purpose` | ≤ 500 chars |
+| `TicketCreate` / `AppointmentCreate` | `document_ids` | ≤ 50 ids, each `> 0`; service requires ≥ 1 for Request Documents (none elsewhere), no duplicates, all active |
+| `DocumentBase` / `DocumentUpdate` | `name` / `short_name` | 1–100 / 1–30 chars, unique case-insensitively |
+| | `requirements` / `processing_time` | ≤ 500 / ≤ 50 chars (blank → `null`) |
+| | `fee` | `Decimal`, 0–100000, 2 decimal places; `null` = not listed, `0` = free |
+| `DocumentOrder` | `document_ids` | 1–200 ids, each `> 0` |
 | `QueueBase` | `name` | 1–100 chars, non-blank |
 | | `description` | ≤ 1000 chars |
 | | `max_capacity` / `slot_duration_minutes` / `slot_capacity` / `booking_window_days` | bounded `ge`/`le` (see model) |
@@ -334,10 +355,13 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 | Query params | `student_id` (search/lookup/cancel) | `^\d{10}$` |
 | | `skip` / `limit` (student & queue lists) | `skip ≥ 0`; `limit` bounded (`1–100` students, `1–200` queues) |
 | | `my-ticket` `student_id` / `queue_id` | `> 0` |
-| | id path params (`get`/`update`/`delete` student, `cancel` appointment, `reset-password` user) | `> 0` |
+| | id path params (`get`/`update`/`delete` student, `cancel` appointment, `reset-password` user, `PATCH` document) | `> 0` |
+| | reports `document_id` | `> 0` (filters with EXISTS, so a multi-document transaction counts once) |
 | | appointment `search` `query` | 1–50 chars |
 
 `EmailStr` requires the `email-validator` package (in `requirements.txt`).
+The 422 handler runs errors through `jsonable_encoder`: Pydantic's `ctx` can
+hold a `Decimal` bound (the document `fee`), which plain JSON can't encode.
 Response models keep `EmailStr` too, so a malformed email reaching the DB by
 any other route surfaces as a `500` rather than being served silently.
 

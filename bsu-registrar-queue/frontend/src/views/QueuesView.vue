@@ -161,14 +161,11 @@
           </div>
 
           <div v-if="selectedServiceKey === 'request_documents'" class="mt-6">
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Document Type</label>
-            <select
-              v-model="selectedDocumentType"
-              class="field"
-            >
-              <option value="" disabled>Select a document type</option>
-              <option v-for="dt in DOCUMENT_TYPES" :key="dt.value" :value="dt.value">{{ dt.label }}</option>
-            </select>
+            <DocumentChecklist
+              v-model="selectedDocumentIds"
+              :documents="queueStore.activeDocuments"
+              :loading="loadingDocuments"
+            />
           </div>
 
           <p v-if="selectedServiceKey && !selectedQueueId" class="text-sm text-red-600 mt-4">
@@ -197,8 +194,9 @@
               <p class="font-bold text-bsu-ink">{{ selectedService?.label }}</p>
             </div>
             <div v-if="selectedServiceKey === 'request_documents'">
-              <p class="text-xs font-semibold text-bsu-primary uppercase tracking-wide">Document Type</p>
-              <p class="font-bold text-bsu-ink">{{ selectedDocumentTypeLabel }}</p>
+              <p class="text-xs font-semibold text-bsu-primary uppercase tracking-wide">Documents</p>
+              <p class="font-bold text-bsu-ink">{{ selectedDocumentsLabel }}</p>
+              <p v-if="selectedDocumentsTotal" class="text-sm text-gray-600">{{ selectedDocumentsTotal }}</p>
             </div>
           </div>
 
@@ -319,7 +317,8 @@
             </div>
             <div class="space-y-2 text-sm">
               <div class="flex justify-between"><span class="text-gray-500">Service</span><span class="font-medium text-bsu-ink">{{ selectedService?.label }}</span></div>
-              <div v-if="selectedServiceKey === 'request_documents'" class="flex justify-between"><span class="text-gray-500">Document Type</span><span class="font-medium text-bsu-ink">{{ selectedDocumentTypeLabel }}</span></div>
+              <div v-if="selectedServiceKey === 'request_documents'" class="flex justify-between gap-4"><span class="text-gray-500 shrink-0">Documents</span><span class="font-medium text-bsu-ink text-right">{{ selectedDocumentsLabel }}</span></div>
+              <div v-if="selectedServiceKey === 'request_documents' && selectedDocumentsTotal" class="flex justify-between gap-4"><span class="text-gray-500 shrink-0">Fees</span><span class="font-medium text-bsu-ink text-right">{{ selectedDocumentsTotal }}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Student Number</span><span class="font-medium text-bsu-ink">{{ studentNumberInput }}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Student Name</span><span class="font-medium text-bsu-ink">{{ queueStore.studentFullName }}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Estimated Wait</span><span class="font-medium text-bsu-ink">{{ ticketResult?.estimated_wait_time_minutes || 0 }} min</span></div>
@@ -373,7 +372,8 @@
 
           <div class="text-left space-y-2 text-sm mb-4">
             <div class="flex justify-between"><span class="text-gray-500">Service</span><span class="font-medium text-bsu-ink">{{ selectedService?.label }}</span></div>
-            <div v-if="selectedServiceKey === 'request_documents'" class="flex justify-between"><span class="text-gray-500">Document Type</span><span class="font-medium text-bsu-ink">{{ selectedDocumentTypeLabel }}</span></div>
+            <div v-if="selectedServiceKey === 'request_documents'" class="flex justify-between gap-4"><span class="text-gray-500 shrink-0">Documents</span><span class="font-medium text-bsu-ink text-right">{{ selectedDocumentsLabel }}</span></div>
+            <div v-if="selectedServiceKey === 'request_documents' && selectedDocumentsTotal" class="flex justify-between gap-4"><span class="text-gray-500 shrink-0">Fees</span><span class="font-medium text-bsu-ink text-right">{{ selectedDocumentsTotal }}</span></div>
             <div class="flex justify-between"><span class="text-gray-500">Student Number</span><span class="font-medium text-bsu-ink">{{ studentNumberInput }}</span></div>
             <div class="flex justify-between"><span class="text-gray-500">Student Name</span><span class="font-medium text-bsu-ink">{{ studentFound ? queueStore.studentFullName : `${registrationForm.first_name} ${registrationForm.last_name}` }}</span></div>
           </div>
@@ -414,7 +414,8 @@ import BSUlogo from '@/assets/BSUlogo.png'
 import MENESESlogo from '@/assets/MENESESlogo.png'
 import archBackground from '@/assets/archBackground.png'
 import { SERVICES } from '@/services/studentServices'
-import { DOCUMENT_TYPES } from '@/services/documentTypes'
+import DocumentChecklist from '@/components/DocumentChecklist.vue'
+import { shortNames, totalLabel } from '@/services/documentFees'
 import { digitsOnly } from '@/services/inputFilters'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
@@ -429,7 +430,8 @@ const error = ref('')
 
 const currentStep = ref(1)
 const selectedServiceKey = ref(null)
-const selectedDocumentType = ref('')
+const selectedDocumentIds = ref([])
+const loadingDocuments = ref(false)
 
 const studentNumberInput = ref('')
 const studentLookedUp = ref(false)
@@ -454,10 +456,11 @@ const selectedQueueId = computed(() => {
   const match = queueStore.activeQueues.find(q => q.queue_type === selectedService.value.queueType)
   return match ? match.id : null
 })
-const selectedDocumentTypeLabel = computed(() => {
-  const dt = DOCUMENT_TYPES.find(d => d.value === selectedDocumentType.value)
-  return dt ? dt.label : selectedDocumentType.value
-})
+const selectedDocuments = computed(() =>
+  queueStore.activeDocuments.filter(d => selectedDocumentIds.value.includes(d.id))
+)
+const selectedDocumentsLabel = computed(() => shortNames(selectedDocuments.value))
+const selectedDocumentsTotal = computed(() => totalLabel(selectedDocuments.value))
 const myTicket = computed(() => queueStore.myTicket)
 
 // /tickets/my-ticket only ever returns a WAITING/SERVING ticket - once staff
@@ -492,7 +495,7 @@ const headerSubtitle = computed(() => {
 const canProceedStep1 = computed(() => {
   if (!selectedServiceKey.value) return false
   if (!selectedQueueId.value) return false
-  if (selectedServiceKey.value === 'request_documents') return !!selectedDocumentType.value
+  if (selectedServiceKey.value === 'request_documents') return selectedDocumentIds.value.length > 0
   return true
 })
 
@@ -508,7 +511,21 @@ const canProceedStep2 = computed(() => {
 
 const selectService = (key) => {
   selectedServiceKey.value = key
-  selectedDocumentType.value = ''
+  selectedDocumentIds.value = []
+  if (key === 'request_documents') loadDocuments()
+}
+
+// Fetched fresh each time Request Documents is picked, so a kiosk left
+// open all day still shows the Admin's latest list and fees.
+const loadDocuments = async () => {
+  loadingDocuments.value = true
+  try {
+    await queueStore.fetchActiveDocuments()
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Could not load the document list. Please try again.'
+  } finally {
+    loadingDocuments.value = false
+  }
 }
 
 const checkExistingTicketForSelectedService = async () => {
@@ -594,8 +611,8 @@ const confirmRegistration = async () => {
     if (!queueStore.currentStudent) {
       await queueStore.registerStudent(registrationForm.value)
     }
-    const documentType = selectedServiceKey.value === 'request_documents' ? selectedDocumentType.value : null
-    const ticket = await queueStore.takeTicket(selectedQueueId.value, queueStore.currentStudent.id, documentType)
+    const documentIds = selectedServiceKey.value === 'request_documents' ? selectedDocumentIds.value : []
+    const ticket = await queueStore.takeTicket(selectedQueueId.value, queueStore.currentStudent.id, documentIds)
     ticketResult.value = ticket
     queueStore.startPollingMyTicket(queueStore.currentStudent.student_id, selectedQueueId.value)
     showConfirmModal.value = false
@@ -624,7 +641,7 @@ const takeAnotherTicket = () => {
   ticketResolved.value = false
   resolvedTicketCode.value = ''
   selectedServiceKey.value = null
-  selectedDocumentType.value = ''
+  selectedDocumentIds.value = []
   currentStep.value = 1
 }
 

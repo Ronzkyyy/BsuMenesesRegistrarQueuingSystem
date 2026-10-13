@@ -10,6 +10,7 @@ from .media import router as media_router
 from .announcements import router as announcements_router
 from .appointments import router as appointments_router
 from .reports import router as reports_router
+from .documents import router as documents_router
 
 router = APIRouter()
 
@@ -21,3 +22,4 @@ router.include_router(media_router, prefix="/media", tags=["media"])
 router.include_router(announcements_router, prefix="/announcements", tags=["announcements"])
 router.include_router(appointments_router, prefix="/appointments", tags=["appointments"])
 router.include_router(reports_router, prefix="/reports", tags=["reports"])
+router.include_router(documents_router, prefix="/documents", tags=["documents"])

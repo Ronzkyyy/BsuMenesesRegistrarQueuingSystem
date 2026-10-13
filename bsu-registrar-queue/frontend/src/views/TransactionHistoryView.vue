@@ -74,7 +74,7 @@
 
     <!-- Filters -->
     <div class="panel p-4 mb-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
         <label class="text-sm">
           <span class="block text-gray-600 mb-1">From</span>
           <input v-model="filters.date_from" type="date" class="field" />
@@ -88,6 +88,15 @@
           <select v-model="filters.queue_id" class="field">
             <option :value="null">All queues</option>
             <option v-for="q in queueStore.queues" :key="q.id" :value="q.id">{{ q.name }}</option>
+          </select>
+        </label>
+        <label class="text-sm">
+          <span class="block text-gray-600 mb-1">Document</span>
+          <select v-model="filters.document_id" class="field">
+            <option :value="null">All documents</option>
+            <option v-for="d in queueStore.documents" :key="d.id" :value="d.id">
+              {{ d.short_name }}{{ d.is_active ? '' : ' (inactive)' }}
+            </option>
           </select>
         </label>
         <label class="text-sm">
@@ -141,7 +150,7 @@
               <th class="px-4 py-3 text-left">Type</th>
               <th class="px-4 py-3 text-left">Student</th>
               <th class="px-4 py-3 text-left">Queue</th>
-              <th class="px-4 py-3 text-left">Document Type</th>
+              <th class="px-4 py-3 text-left">Documents</th>
               <th class="px-4 py-3 text-left">Status</th>
               <th class="px-4 py-3 text-left">Priority</th>
               <th class="px-4 py-3 text-left">Created</th>
@@ -157,7 +166,7 @@
                 <div class="text-xs text-gray-400">{{ row.student_number }}</div>
               </td>
               <td class="px-4 py-3">{{ row.queue_name }}</td>
-              <td class="px-4 py-3">{{ row.document_type || '—' }}</td>
+              <td class="px-4 py-3">{{ row.documents || '—' }}</td>
               <td class="px-4 py-3"><StatusBadge :status="row.status" /></td>
               <td class="px-4 py-3 capitalize">{{ row.priority || '—' }}</td>
               <td class="px-4 py-3 text-gray-500">{{ formatDateTime(row.created_at) }}</td>
@@ -220,6 +229,7 @@ const filters = reactive({
   kind: ['ticket', 'appointment'],
   status: [],
   queue_id: null,
+  document_id: null,
   student_number: '',
 })
 
@@ -297,6 +307,7 @@ function buildParams(extra = {}) {
   }
   if (filters.status.length) p.status = filters.status
   if (filters.queue_id) p.queue_id = filters.queue_id
+  if (filters.document_id) p.document_id = filters.document_id
   if (/^\d{10}$/.test(filters.student_number)) p.student_number = filters.student_number
   return p
 }
@@ -351,6 +362,7 @@ function resetFilters() {
   filters.kind = ['ticket', 'appointment']
   filters.status = []
   filters.queue_id = null
+  filters.document_id = null
   filters.student_number = ''
   selectedDay.value = null
   dayHint.value = ''
@@ -370,6 +382,7 @@ function downloadExcel() {
   for (const k of filters.kind) usp.append('kind', k)
   for (const s of filters.status) usp.append('status', s)
   if (filters.queue_id) usp.set('queue_id', filters.queue_id)
+  if (filters.document_id) usp.set('document_id', filters.document_id)
   if (/^\d{10}$/.test(filters.student_number)) usp.set('student_number', filters.student_number)
   window.open(`/api/reports/transactions.xlsx?${usp.toString()}`, '_blank')
 }
@@ -384,6 +397,9 @@ function formatIso(value) {
 onMounted(async () => {
   if (!queueStore.queues.length) {
     queueStore.fetchQueues().catch(() => {})
+  }
+  if (!queueStore.documents.length) {
+    queueStore.fetchAllDocuments().catch(() => {})
   }
   await Promise.all([loadCalendar(), loadHistory(0)])
 })

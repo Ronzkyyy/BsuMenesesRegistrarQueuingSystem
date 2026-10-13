@@ -9,12 +9,12 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, noload
 
 from ..core.config import settings
 from ..db_models import (
-    AppointmentDB, AppointmentDBStatus, PriorityLevel, QueueDB, StudentDB,
-    TicketDB, TicketDBStatus,
+    AppointmentDB, AppointmentDBStatus, AppointmentDocumentDB, PriorityLevel,
+    QueueDB, StudentDB, TicketDB, TicketDBStatus, TicketDocumentDB,
 )
 from ..models.report import (
     CalendarDay, CalendarSummary, TransactionHistoryPage, TransactionRow,
@@ -43,10 +43,25 @@ class ReportService:
 
     # ---- per-source queries --------------------------------------------
 
+    def _documents_by_owner(self, model, owner_col, owner_ids) -> dict:
+        """One query for a whole page: owner id -> "TOR, COG, ..." in
+        request order (not one lazy load per row)."""
+        if not owner_ids:
+            return {}
+        joined: dict[int, list[str]] = defaultdict(list)
+        for owner_id, short_name in (
+                self.db.query(owner_col, model.short_name)
+                .filter(owner_col.in_(owner_ids))
+                .order_by(owner_col, model.position, model.document_id)):
+            joined[owner_id].append(short_name)
+        return {k: ", ".join(v) for k, v in joined.items()}
+
     def _query_tickets(self, start_utc, end_utc, statuses, queue_id,
-                       student_number, priority, cap, count_only=False):
+                       student_number, priority, cap, count_only=False,
+                       document_id=None):
         q = (
             self.db.query(TicketDB, StudentDB, QueueDB)
+            .options(noload(TicketDB.documents))
             .join(StudentDB, TicketDB.student_id == StudentDB.id)
             .join(QueueDB, TicketDB.queue_id == QueueDB.id)
             .filter(TicketDB.created_at >= start_utc, TicketDB.created_at < end_utc)
@@ -64,10 +79,16 @@ class ReportService:
             q = q.filter(StudentDB.student_id == student_number)
         if priority is not None:
             q = q.filter(TicketDB.priority == PriorityLevel(priority))
+        if document_id is not None:
+            # EXISTS, not a join: a three-document ticket is still one row.
+            q = q.filter(TicketDB.documents.any(TicketDocumentDB.document_id == document_id))
         total = q.count()
         if count_only:
             return [], total
         q = q.order_by(TicketDB.created_at.desc(), TicketDB.id.desc()).limit(cap)
+        results = q.all()
+        documents = self._documents_by_owner(
+            TicketDocumentDB, TicketDocumentDB.ticket_id, [t.id for t, _, _ in results])
         rows = [
             TransactionRow(
                 kind="ticket",
@@ -76,21 +97,23 @@ class ReportService:
                 student_number=student.student_id,
                 student_name=f"{student.first_name} {student.last_name}",
                 queue_name=queue.name,
-                document_type=t.document_type,
+                documents=documents.get(t.id),
                 status=t.status.value,
                 priority=t.priority.value if t.priority else None,
                 created_at=t.created_at,
                 occurred_at=(t.completed_at or t.served_at),
                 appointment_date=None,
             )
-            for t, student, queue in q.all()
+            for t, student, queue in results
         ]
         return rows, total
 
     def _query_appointments(self, start_utc, end_utc, statuses, queue_id,
-                            student_number, cap, count_only=False):
+                            student_number, cap, count_only=False,
+                            document_id=None):
         q = (
             self.db.query(AppointmentDB, StudentDB, QueueDB)
+            .options(noload(AppointmentDB.documents))
             .join(StudentDB, AppointmentDB.student_id == StudentDB.id)
             .join(QueueDB, AppointmentDB.queue_id == QueueDB.id)
             .filter(AppointmentDB.created_at >= start_utc,
@@ -108,11 +131,18 @@ class ReportService:
             q = q.filter(AppointmentDB.queue_id == queue_id)
         if student_number is not None:
             q = q.filter(StudentDB.student_id == student_number)
+        if document_id is not None:
+            q = q.filter(AppointmentDB.documents.any(
+                AppointmentDocumentDB.document_id == document_id))
         total = q.count()
         if count_only:
             return [], total
         q = q.order_by(AppointmentDB.created_at.desc(),
                        AppointmentDB.id.desc()).limit(cap)
+        results = q.all()
+        documents = self._documents_by_owner(
+            AppointmentDocumentDB, AppointmentDocumentDB.appointment_id,
+            [a.id for a, _, _ in results])
         rows = [
             TransactionRow(
                 kind="appointment",
@@ -121,19 +151,20 @@ class ReportService:
                 student_number=student.student_id,
                 student_name=f"{student.first_name} {student.last_name}",
                 queue_name=queue.name,
-                document_type=a.document_type,
+                documents=documents.get(a.id),
                 status=a.status.value,
                 priority=None,
                 created_at=a.created_at,
                 occurred_at=a.checked_in_at,
                 appointment_date=a.appointment_date,
             )
-            for a, student, queue in q.all()
+            for a, student, queue in results
         ]
         return rows, total
 
     def _collect_rows(self, start_utc, end_utc, kinds, statuses, queue_id,
-                      student_number, priority, cap, count_only=False):
+                      student_number, priority, cap, count_only=False,
+                      document_id=None):
         """Fetch up to `cap` newest rows from each requested source and their
         true totals. Merging the top-`cap` of each source is enough to slice
         any page whose (skip + limit) <= cap. With `count_only`, skip building
@@ -143,14 +174,14 @@ class ReportService:
         if "ticket" in kinds:
             t_rows, t_total = self._query_tickets(
                 start_utc, end_utc, statuses, queue_id, student_number,
-                priority, cap, count_only=count_only)
+                priority, cap, count_only=count_only, document_id=document_id)
             rows += t_rows
             total += t_total
         # Appointments have no priority - a priority filter excludes them.
         if "appointment" in kinds and priority is None:
             a_rows, a_total = self._query_appointments(
                 start_utc, end_utc, statuses, queue_id, student_number, cap,
-                count_only=count_only)
+                count_only=count_only, document_id=document_id)
             rows += a_rows
             total += a_total
         rows.sort(key=lambda r: (r.created_at, r.id), reverse=True)
@@ -162,13 +193,14 @@ class ReportService:
                          kinds: list[str], statuses: Optional[list[str]],
                          queue_id: Optional[int], student_number: Optional[str],
                          priority: Optional[str], skip: int,
-                         limit: int) -> TransactionHistoryPage:
+                         limit: int,
+                         document_id: Optional[int] = None) -> TransactionHistoryPage:
         if date_from > date_to:
             raise ValueError("date_from must not be after date_to")
         start_utc, end_utc = self._utc_window(date_from, date_to)
         rows, total = self._collect_rows(
             start_utc, end_utc, kinds, statuses, queue_id, student_number,
-            priority, cap=skip + limit)
+            priority, cap=skip + limit, document_id=document_id)
         return TransactionHistoryPage(
             items=rows[skip:skip + limit], total=total, skip=skip, limit=limit)
 
@@ -176,7 +208,8 @@ class ReportService:
                              kinds: list[str], statuses: Optional[list[str]],
                              queue_id: Optional[int],
                              student_number: Optional[str],
-                             priority: Optional[str]) -> list[TransactionRow]:
+                             priority: Optional[str],
+                             document_id: Optional[int] = None) -> list[TransactionRow]:
         if date_from > date_to:
             raise ValueError("date_from must not be after date_to")
         start_utc, end_utc = self._utc_window(date_from, date_to)
@@ -184,14 +217,15 @@ class ReportService:
         # rejected before any TransactionRow objects are built.
         _, total = self._collect_rows(
             start_utc, end_utc, kinds, statuses, queue_id, student_number,
-            priority, cap=MAX_EXPORT_ROWS + 1, count_only=True)
+            priority, cap=MAX_EXPORT_ROWS + 1, count_only=True,
+            document_id=document_id)
         if total > MAX_EXPORT_ROWS:
             raise ValueError(
                 f"Too many rows to export ({total}). "
                 f"Narrow the date range or filters.")
         rows, _ = self._collect_rows(
             start_utc, end_utc, kinds, statuses, queue_id, student_number,
-            priority, cap=MAX_EXPORT_ROWS + 1)
+            priority, cap=MAX_EXPORT_ROWS + 1, document_id=document_id)
         return rows
 
     def get_calendar(self, *, year: int, month: int) -> CalendarSummary:

@@ -3,10 +3,12 @@ Appointment model for QR-based queue booking
 """
 from datetime import date, datetime, time
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from enum import Enum
 
-from .ticket import DocumentType
+from decimal import Decimal
+
+from .document import RequestedDocument
 
 
 class AppointmentStatus(str, Enum):
@@ -23,7 +25,14 @@ class AppointmentCreate(BaseModel):
     queue_id: int = Field(..., gt=0)
     appointment_date: date
     slot_start_time: time
-    document_type: Optional[DocumentType] = None
+    document_ids: List[int] = Field(default_factory=list, max_length=50)
+
+    @field_validator("document_ids")
+    @classmethod
+    def positive_ids(cls, v):
+        if any(i <= 0 for i in v):
+            raise ValueError("Document ids must be positive")
+        return v
 
 
 class Appointment(BaseModel):
@@ -34,7 +43,8 @@ class Appointment(BaseModel):
     appointment_date: date
     slot_start_time: time
     slot_end_time: time
-    document_type: Optional[DocumentType] = None
+    documents: List[RequestedDocument] = []
+    documents_fee_total: Optional[Decimal] = None
     status: AppointmentStatus
     checked_in_at: Optional[datetime] = None
     ticket_id: Optional[int] = None
