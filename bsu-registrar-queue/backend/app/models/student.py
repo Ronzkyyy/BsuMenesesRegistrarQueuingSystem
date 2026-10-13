@@ -102,7 +102,25 @@ class StudentPublic(BaseModel):
     student_id: str
     first_name: str
     last_name: str
-    email: EmailStr
+    # Masked ("j***@gmail.com") - enough for a student to recognise their
+    # address and spot a typo, not enough to harvest addresses by guessing
+    # student numbers. Staff models keep the full address.
+    email_masked: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _mask_email(cls, data):
+        # Built from a StudentDB row: derive email_masked from .email, and
+        # never carry the full address into this public shape.
+        from ..services.email_mask import mask_email
+        if isinstance(data, dict):
+            return {**{k: v for k, v in data.items() if k != "email"},
+                    "email_masked": mask_email(data.get("email", ""))}
+        return {
+            "id": data.id, "student_id": data.student_id,
+            "first_name": data.first_name, "last_name": data.last_name,
+            "email_masked": mask_email(data.email or ""),
+        }
 
 
 class StudentListResponse(BaseModel):

@@ -47,8 +47,9 @@ def search_student(
 ):
     """Search student by student ID number (public endpoint - used by the kiosk ticket flow).
 
-    Returns only the fields the kiosk UI actually needs (name/email to
-    confirm identity before taking a ticket) - not course, year level, or
+    Returns only the fields the kiosk UI actually needs (name and a masked
+    email to confirm identity before taking a ticket) - not the full email,
+    course, year level, or
     the is_scholar/is_varsity/is_graduating flags, since this is reachable
     by anyone who can guess a 10-digit student number, with no login.
     """

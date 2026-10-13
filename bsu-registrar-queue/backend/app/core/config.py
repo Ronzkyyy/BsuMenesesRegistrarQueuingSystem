@@ -2,6 +2,8 @@
 Application configuration settings
 """
 import os
+from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -49,6 +51,11 @@ class Settings(BaseSettings):
     # the per-IP rate limit - stops someone flooding a colleague's inbox.
     MAX_PASSWORD_RESET_EMAILS: int = 3
 
+    # Shared secret for POST /api/internal/appointment-reminders, sent by the
+    # GitHub Actions schedule in an X-Cron-Secret header. Unset = the
+    # endpoint doesn't exist (404). At least 32 characters when set.
+    CRON_SECRET: Optional[str] = None
+
     # Comma-separated list of origins allowed to call the API cross-origin.
     # Set this to the real deployed frontend domain(s) in production.
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
@@ -84,4 +91,11 @@ if not settings.DEBUG and settings.SECRET_KEY == "your-secret-key-here":
     raise RuntimeError(
         "SECRET_KEY is still the placeholder value - set a real secret via "
         "the SECRET_KEY environment variable before running with DEBUG=False."
+    )
+
+# A short cron secret would be guessable by brute force against a public URL.
+if settings.CRON_SECRET is not None and len(settings.CRON_SECRET) < 32:
+    raise RuntimeError(
+        "CRON_SECRET must be at least 32 characters - generate one with "
+        "python -c \"import secrets; print(secrets.token_urlsafe(48))\"."
     )

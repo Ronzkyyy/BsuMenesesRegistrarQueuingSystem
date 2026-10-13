@@ -136,6 +136,8 @@ alembic history                   # Show migration history
 | POST | `/api/documents` | Admin | Add a document |
 | PATCH | `/api/documents/{id}` | Admin | Edit a document or (de)activate it (`is_active`) |
 | PUT | `/api/documents/order` | Admin | Save a new display order (must list every id once) |
+| POST | `/api/appointments/{id}/resend-confirmation` | Staff | Re-send a booked appointment's confirmation email (202, masked address) |
+| POST | `/api/internal/appointment-reminders` | `X-Cron-Secret` | Send today's appointment reminders (called by GitHub Actions) |
 
 ### Background Tasks (Celery)
 Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`), Redis broker:
@@ -146,6 +148,18 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   (`TicketService.expire_previous_day_tickets`). Today's tickets are never
   auto-skipped - staff use Skip/Complete/Recall.
 - `expire_stale_appointments` - Every 5 minutes
+- **Appointment emails** (`app/services/appointment_email.py`): a confirmation
+  after booking (FastAPI `BackgroundTasks`, own `SessionLocal`) and a reminder
+  at **5:00 AM Manila on the appointment day**, both with the check-in QR as an
+  inline CID image (`segno`) and, for Request Documents, the documents, fees
+  and requirements. The reminder is **not** a Celery beat task - Render's free
+  tier sleeps when idle - it's triggered by `.github/workflows/appointment-reminders.yml`
+  (21:00 and 21:30 UTC) calling `POST /api/internal/appointment-reminders`
+  with `X-Cron-Secret`. The batch holds a transaction-scoped advisory lock (works
+  through Supabase's transaction pooler), counts the attempt before sending,
+  and never re-sends (`reminder_sent_at`); max 2 attempts
+  (`REMINDER_MAX_ATTEMPTS`). Subjects carry only the reference code, never
+  the student's name. GitHub pauses the schedule after 60 days without commits.
 - `send_reminder_check` - **Not scheduled** until a real SMS/email channel
   exists (it only logged). `send_ticket_reminder` / `send_ticket_called` remain
   on-demand tasks.
@@ -180,7 +194,9 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   `auth.email_verified`, `auth.password_reset_requested`,
   `auth.password_reset_completed` (never the token), `document.created`,
   `document.updated` (detail names the changed fields), `document.activated` /
-  `document.deactivated`, `document.reordered`. Add a `log_security_event` call
+  `document.deactivated`, `document.reordered`, `appointment.reminders_run`
+  (counts only; `denied` on a bad cron secret), `appointment.confirmation_resent`.
+  Add a `log_security_event` call
   when you add any new sensitive action.
   - `migrations/env.py` calls `fileConfig(..., disable_existing_loggers=False)`
     so running migrations in-process (tests) doesn't switch this logger off.
@@ -260,6 +276,11 @@ not a control.
   student self-service (`POST /students`, `GET /students/search`,
   `POST /tickets`, `GET /tickets/my-ticket`, `POST /tickets/{id}/cancel`,
   the `/appointments` booking/lookup/cancel routes, `GET /documents/active`).
+  `POST /internal/appointment-reminders` has no user session but is gated by
+  `CRON_SECRET` (`hmac.compare_digest`; `404` when unset, `403` when wrong).
+- `GET /students/search` (public) returns `StudentPublic` with
+  `email_masked` ("j***@gmail.com"), never the full address - student numbers
+  are guessable. Staff student models keep the full email.
 - **Public student-flow endpoints that read or mutate one student's data must
   verify ownership** by requiring that student's 10-digit `student_id` and
   matching it against the row — never key on the internal numeric id, which is
@@ -288,7 +309,9 @@ is `DEBUG=False` — see **Secure Defaults** above. `REGISTRAR_NAME` (default
 footer; change it there when the registrar changes. Email: `EMAIL_BACKEND`
 (`console`|`gmail`), `EMAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`,
 `GMAIL_REFRESH_TOKEN`, and `FRONTEND_URL` (base of the links in emails - set
-it to the real https frontend in production). Production deployments may
+it to the real https frontend in production). `CRON_SECRET` (≥ 32 chars,
+fails fast otherwise) gates the reminder endpoint; the same value plus
+`BACKEND_URL` are GitHub repository secrets for the reminder workflow. Production deployments may
 also set `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` to bootstrap the
 first admin account.
 

@@ -252,6 +252,18 @@ describe('ticket actions', () => {
   })
 })
 
+describe('appointment email actions', () => {
+  it('resendAppointmentConfirmation posts to the resend route and returns the notice', async () => {
+    mockApi.post.mockReturnValueOnce(ok({ detail: 'Sending the confirmation to j***@gmail.com.' }))
+    const store = useQueueStore()
+
+    const result = await store.resendAppointmentConfirmation(12)
+
+    expect(mockApi.post).toHaveBeenCalledWith('/appointments/12/resend-confirmation')
+    expect(result.detail).toBe('Sending the confirmation to j***@gmail.com.')
+  })
+})
+
 describe('document catalog actions', () => {
   it('fetchActiveDocuments loads the public checklist', async () => {
     const docs = [{ id: 1, short_name: 'TOR' }]

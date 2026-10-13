@@ -5,6 +5,9 @@
       <p class="mt-2 text-gray-500">See who's booked an appointment, upcoming or past.</p>
     </div>
 
+    <div v-if="notice" class="bg-green-50 border border-green-100 rounded-2xl p-4 mb-6">
+      <p class="text-sm text-green-800">{{ notice }}</p>
+    </div>
     <div v-if="error" class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
       <p class="text-sm text-red-700">{{ error }}</p>
     </div>
@@ -55,6 +58,8 @@
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Documents</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reminder</th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -67,10 +72,25 @@
             <td class="px-6 py-4 text-sm text-gray-600">{{ formatTime(appt.slot_start_time) }}</td>
             <td class="px-6 py-4 text-sm text-gray-600">{{ shortNames(appt.documents || []) || '—' }}</td>
             <td class="px-6 py-4 text-sm"><StatusBadge :status="appt.status" /></td>
+            <td class="px-6 py-4 text-sm">
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold uppercase tracking-wide"
+                :class="reminderBadge(appt.reminder_status).classes"
+              >{{ reminderBadge(appt.reminder_status).label }}</span>
+            </td>
+            <td class="px-6 py-4 text-sm text-right whitespace-nowrap">
+              <button
+                v-if="appt.status === 'booked'"
+                type="button"
+                class="btn-secondary btn-sm"
+                :disabled="resendingId === appt.id"
+                @click="resend(appt)"
+              >{{ resendingId === appt.id ? 'Sending…' : 'Resend' }}</button>
+            </td>
           </tr>
 
           <tr v-if="!loading && queueStore.appointmentsList.length === 0">
-            <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+            <td colspan="10" class="px-6 py-8 text-center text-gray-500">
               {{ upcoming ? 'No upcoming appointments.' : 'No past appointments found.' }}
             </td>
           </tr>
@@ -96,10 +116,27 @@ import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { shortNames } from '@/services/documentFees'
+import { reminderBadge } from '@/services/appointmentEmail'
 
 const queueStore = useQueueStore()
 const loading = computed(() => queueStore.loading)
 const error = ref('')
+const notice = ref('')
+const resendingId = ref(null)
+
+const resend = async (appt) => {
+  error.value = ''
+  notice.value = ''
+  resendingId.value = appt.id
+  try {
+    const result = await queueStore.resendAppointmentConfirmation(appt.id)
+    notice.value = `${appt.reference_code}: ${result.detail}`
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Failed to resend the confirmation'
+  } finally {
+    resendingId.value = null
+  }
+}
 
 const upcoming = ref(true)
 const filters = ref({ date_from: '', date_to: '' })

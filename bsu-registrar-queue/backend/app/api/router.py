@@ -11,6 +11,7 @@ from .announcements import router as announcements_router
 from .appointments import router as appointments_router
 from .reports import router as reports_router
 from .documents import router as documents_router
+from .internal import router as internal_router
 
 router = APIRouter()
 
@@ -23,3 +24,4 @@ router.include_router(announcements_router, prefix="/announcements", tags=["anno
 router.include_router(appointments_router, prefix="/appointments", tags=["appointments"])
 router.include_router(reports_router, prefix="/reports", tags=["reports"])
 router.include_router(documents_router, prefix="/documents", tags=["documents"])
+router.include_router(internal_router, prefix="/internal", tags=["internal"])

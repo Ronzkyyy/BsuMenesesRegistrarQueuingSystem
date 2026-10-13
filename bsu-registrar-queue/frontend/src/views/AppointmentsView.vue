@@ -146,6 +146,15 @@
                 />
               </div>
 
+              <p
+                v-if="selectedSlot && emailHint"
+                class="text-sm text-gray-600 bg-bsu-surface border border-gray-200 rounded-xl px-3 py-2"
+              >
+                We'll email your QR code and a reminder on the morning of your appointment to
+                <span class="font-semibold text-bsu-ink">{{ emailHint }}</span>.
+                Not your email? Ask at the registrar's window to update it.
+              </p>
+
               <button
                 v-if="selectedSlot"
                 @click="submitBooking"
@@ -170,6 +179,9 @@
 
             <p class="text-xs font-medium text-bsu-primary-dark bg-bsu-primary/10 border border-bsu-primary/20 rounded-xl px-3 py-2 mb-4">
               Take a screenshot of this QR code together with your reference code ({{ bookedAppointment.reference_code }}) before leaving this page.
+            </p>
+            <p v-if="emailHint" class="text-xs text-gray-500 mb-4">
+              We've also emailed this to {{ emailHint }}, and we'll send a reminder on the morning of your appointment.
             </p>
 
             <a
@@ -286,6 +298,7 @@ import { useQueueStore } from '@/stores/queue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DocumentChecklist from '@/components/DocumentChecklist.vue'
 import RequestedDocuments from '@/components/RequestedDocuments.vue'
+import { studentEmailHint } from '@/services/appointmentEmail'
 import { digitsOnly } from '@/services/inputFilters'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
@@ -323,6 +336,7 @@ const slots = ref([])
 const selectedSlot = ref(null)
 const checkingAvailability = ref(false)
 const selectedDocumentIds = ref([])
+const emailHint = computed(() => studentEmailHint(student.value))
 const loadingDocuments = ref(false)
 const bookedAppointment = ref(null)
 const qrDataUrl = ref('')

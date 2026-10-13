@@ -45,6 +45,8 @@ class Appointment(BaseModel):
     slot_end_time: time
     documents: List[RequestedDocument] = []
     documents_fee_total: Optional[Decimal] = None
+    # Morning reminder email: sent | failed | pending | not_applicable.
+    reminder_status: Optional[str] = None
     status: AppointmentStatus
     checked_in_at: Optional[datetime] = None
     ticket_id: Optional[int] = None
