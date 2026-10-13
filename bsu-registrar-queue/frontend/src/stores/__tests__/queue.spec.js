@@ -232,23 +232,69 @@ describe('ticket actions', () => {
     expect(mockApi.post).toHaveBeenCalledWith('/tickets', {
       queue_id: 3,
       student_id: 7,
-      document_type: null,
+      document_ids: [],
     })
     expect(store.myTicket).toEqual(ticket)
   })
 
-  it('takeTicket includes the document_type when given', async () => {
+  it('takeTicket sends every checked document id', async () => {
     const ticket = { id: 11, ticket_code: 'D-001' }
     mockApi.post.mockReturnValueOnce(ok(ticket))
     const store = useQueueStore()
 
-    await store.takeTicket(3, 7, 'TOR')
+    await store.takeTicket(3, 7, [4, 2])
 
     expect(mockApi.post).toHaveBeenCalledWith('/tickets', {
       queue_id: 3,
       student_id: 7,
-      document_type: 'TOR',
+      document_ids: [4, 2],
     })
+  })
+})
+
+describe('document catalog actions', () => {
+  it('fetchActiveDocuments loads the public checklist', async () => {
+    const docs = [{ id: 1, short_name: 'TOR' }]
+    mockApi.get.mockReturnValueOnce(ok(docs))
+    const store = useQueueStore()
+
+    await store.fetchActiveDocuments()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/documents/active')
+    expect(store.activeDocuments).toEqual(docs)
+  })
+
+  it('updateDocument patches and replaces the row in place', async () => {
+    const store = useQueueStore()
+    store.documents = [{ id: 1, fee: null }, { id: 2, fee: '10.00' }]
+    mockApi.patch.mockReturnValueOnce(ok({ id: 2, fee: '20.00' }))
+
+    await store.updateDocument(2, { fee: '20.00' })
+
+    expect(mockApi.patch).toHaveBeenCalledWith('/documents/2', { fee: '20.00' })
+    expect(store.documents[1].fee).toBe('20.00')
+  })
+
+  it('reorderDocuments sends the full order and keeps the server result', async () => {
+    const store = useQueueStore()
+    const reordered = [{ id: 2 }, { id: 1 }]
+    mockApi.put.mockReturnValueOnce(ok(reordered))
+
+    await store.reorderDocuments([2, 1])
+
+    expect(mockApi.put).toHaveBeenCalledWith('/documents/order', { document_ids: [2, 1] })
+    expect(store.documents).toEqual(reordered)
+  })
+
+  it('createDocument surfaces the server detail on error', async () => {
+    const store = useQueueStore()
+    mockApi.post.mockReturnValueOnce(Promise.reject({
+      response: { data: { detail: 'Another document already uses this name.' } },
+    }))
+
+    await expect(store.createDocument({ name: 'X', short_name: 'X' })).rejects.toBeTruthy()
+
+    expect(store.error).toBe('Another document already uses this name.')
   })
 })
 

@@ -34,7 +34,7 @@ COLUMNS = [
     ("Student Number", 16),
     ("Student Name", 30),
     ("Queue", 22),
-    ("Document Type", 20),
+    ("Documents", 26),
     ("Status", 13),
     ("Priority", 11),
     ("Date Created", 22),
@@ -63,6 +63,7 @@ class ExportContext:
     student_number: Optional[str]
     generated_by: str
     generated_at: datetime  # aware, campus time
+    document_name: Optional[str] = None
 
 
 def _label(value: Optional[str], labels: Optional[dict] = None) -> str:
@@ -97,6 +98,7 @@ def _filters_summary(ctx: ExportContext) -> str:
         f"Status: {statuses}",
         f"Queue: {ctx.queue_name or 'All'}",
         f"Priority: {_label(ctx.priority) or 'All'}",
+        f"Document: {ctx.document_name or 'All'}",
         f"Student: {ctx.student_number or 'All'}",
     ])
 
@@ -120,6 +122,7 @@ def build_transactions_workbook(rows: list[TransactionRow], ctx: ExportContext) 
         "align": "center", "valign": "vcenter", "text_wrap": True,
     })
     cell = wb.add_format({"border": 1, "valign": "top"})
+    wrapped = wb.add_format({"border": 1, "valign": "top", "text_wrap": True})
     when = wb.add_format({"border": 1, "valign": "top", "num_format": "mmm d, yyyy h:mm AM/PM", "align": "left"})
     day = wb.add_format({"border": 1, "valign": "top", "num_format": "mmm d, yyyy", "align": "left"})
     empty = wb.add_format({"border": 1, "italic": True, "align": "center"})
@@ -185,7 +188,7 @@ def build_transactions_workbook(rows: list[TransactionRow], ctx: ExportContext) 
         ws.write_string(row, 2, r.student_number, cell)
         ws.write_string(row, 3, r.student_name, cell)
         ws.write_string(row, 4, r.queue_name, cell)
-        ws.write_string(row, 5, r.document_type or "", cell)
+        ws.write_string(row, 5, r.documents or "", wrapped)
         ws.write_string(row, 6, _label(r.status, _STATUS_LABELS), cell)
         ws.write_string(row, 7, _label(r.priority), cell)
         ws.write_datetime(row, 8, _campus_naive(r.created_at), when)

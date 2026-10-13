@@ -5,8 +5,9 @@ from .media_service import MediaService
 from .announcement_service import AnnouncementService
 from .appointment_service import AppointmentService, AppointmentWindowError
 from .report_service import ReportService
+from .document_service import DocumentService
 
 __all__ = [
     "QueueService", "TicketService", "StudentService", "MediaService", "AnnouncementService",
-    "AppointmentService", "AppointmentWindowError", "ReportService",
+    "AppointmentService", "AppointmentWindowError", "ReportService", "DocumentService",
 ]

@@ -5,6 +5,7 @@ import logging
 import sys
 from pathlib import Path
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -46,7 +47,10 @@ async def _validation_exception_handler(request: Request, exc: RequestValidation
     # length check (e.g. PasswordChange.new_password, UserCreate.password).
     # Strip it everywhere rather than allowlisting field names one by one.
     errors = [{k: v for k, v in error.items() if k != "input"} for error in exc.errors()]
-    return JSONResponse(status_code=422, content={"detail": errors})
+    # jsonable_encoder, as FastAPI's own handler does: "ctx" can carry
+    # non-JSON values (a Decimal bound like fee's ge=0), which would
+    # otherwise turn the 422 into a 500.
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
 
 
 def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):

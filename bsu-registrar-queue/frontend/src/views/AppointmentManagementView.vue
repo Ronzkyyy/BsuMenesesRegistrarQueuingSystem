@@ -53,7 +53,7 @@
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Service</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Document</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Documents</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
           </tr>
         </thead>
@@ -65,7 +65,7 @@
             <td class="px-6 py-4 text-sm text-gray-600">{{ appt.queue_name }}</td>
             <td class="px-6 py-4 text-sm text-gray-600">{{ formatDate(appt.appointment_date) }}</td>
             <td class="px-6 py-4 text-sm text-gray-600">{{ formatTime(appt.slot_start_time) }}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">{{ appt.document_type || '—' }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ shortNames(appt.documents || []) || '—' }}</td>
             <td class="px-6 py-4 text-sm"><StatusBadge :status="appt.status" /></td>
           </tr>
 
@@ -95,6 +95,7 @@ import { computed, onMounted, ref } from 'vue'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { shortNames } from '@/services/documentFees'
 
 const queueStore = useQueueStore()
 const loading = computed(() => queueStore.loading)

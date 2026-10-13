@@ -139,17 +139,17 @@
               <div v-else-if="selectedDate && !checkingAvailability" class="text-sm text-gray-500">No bookable slots for this date.</div>
 
               <div v-if="selectedSlot && isDocumentRequest">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Document Type</label>
-                <select v-model="selectedDocumentType" class="field">
-                  <option value="" disabled>Select a document type</option>
-                  <option v-for="dt in DOCUMENT_TYPES" :key="dt.value" :value="dt.value">{{ dt.label }}</option>
-                </select>
+                <DocumentChecklist
+                  v-model="selectedDocumentIds"
+                  :documents="queueStore.activeDocuments"
+                  :loading="loadingDocuments"
+                />
               </div>
 
               <button
                 v-if="selectedSlot"
                 @click="submitBooking"
-                :disabled="loading || (isDocumentRequest && !selectedDocumentType)"
+                :disabled="loading || (isDocumentRequest && !selectedDocumentIds.length)"
                 class="btn-primary btn-md w-full py-2.5"
               >
                 Confirm Booking
@@ -165,6 +165,8 @@
             <img v-if="qrDataUrl" :src="qrDataUrl" alt="Appointment QR code" class="mx-auto mb-3 rounded-xl border border-gray-200" />
             <p class="text-2xl font-bold text-bsu-ink tracking-wide mb-1">{{ bookedAppointment.reference_code }}</p>
             <p class="text-xs text-gray-500 mb-3">Show this QR code (or the code above) at the registrar counter.</p>
+
+            <RequestedDocuments :documents="bookedAppointment.documents" class="mb-4" />
 
             <p class="text-xs font-medium text-bsu-primary-dark bg-bsu-primary/10 border border-bsu-primary/20 rounded-xl px-3 py-2 mb-4">
               Take a screenshot of this QR code together with your reference code ({{ bookedAppointment.reference_code }}) before leaving this page.
@@ -218,6 +220,8 @@
           <div v-else class="text-center">
             <h3 class="text-lg font-bold text-bsu-ink mb-1">{{ myAppointment.queue_name }}</h3>
             <p class="text-sm text-gray-500 mb-3">{{ myAppointment.appointment_date }} at {{ formatTime(myAppointment.slot_start_time) }}</p>
+
+            <RequestedDocuments :documents="myAppointment.documents" class="mb-4" />
 
             <!-- Expired: an outcome to explain, not an error to report -->
             <div v-if="isExpired" class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-left">
@@ -280,7 +284,8 @@ import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import { useQueueStore } from '@/stores/queue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import { DOCUMENT_TYPES } from '@/services/documentTypes'
+import DocumentChecklist from '@/components/DocumentChecklist.vue'
+import RequestedDocuments from '@/components/RequestedDocuments.vue'
 import { digitsOnly } from '@/services/inputFilters'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 
@@ -317,7 +322,8 @@ const selectedDate = ref('')
 const slots = ref([])
 const selectedSlot = ref(null)
 const checkingAvailability = ref(false)
-const selectedDocumentType = ref('')
+const selectedDocumentIds = ref([])
+const loadingDocuments = ref(false)
 const bookedAppointment = ref(null)
 const qrDataUrl = ref('')
 
@@ -329,7 +335,7 @@ const hasUnsavedBooking = computed(() => {
   const formEdited = JSON.stringify(registrationForm.value) !== JSON.stringify(emptyRegistrationForm())
   return Boolean(
     studentIdInput.value.trim() || student.value || formEdited ||
-    selectedQueueId.value || selectedDate.value || selectedSlot.value || selectedDocumentType.value
+    selectedQueueId.value || selectedDate.value || selectedSlot.value || selectedDocumentIds.value.length
   )
 })
 const requestReturnHome = () => {
@@ -405,7 +411,19 @@ const onQueueChange = () => {
   selectedDate.value = ''
   slots.value = []
   selectedSlot.value = null
-  selectedDocumentType.value = ''
+  selectedDocumentIds.value = []
+  if (isDocumentRequest.value) loadDocuments()
+}
+
+const loadDocuments = async () => {
+  loadingDocuments.value = true
+  try {
+    await queueStore.fetchActiveDocuments()
+  } catch (err) {
+    error.value = err.response?.data?.detail || 'Could not load the document list. Please try again.'
+  } finally {
+    loadingDocuments.value = false
+  }
 }
 
 const loadAvailability = async () => {
@@ -432,7 +450,7 @@ const submitBooking = async () => {
       queue_id: selectedQueueId.value,
       appointment_date: selectedDate.value,
       slot_start_time: selectedSlot.value.slot_start_time,
-      document_type: isDocumentRequest.value ? selectedDocumentType.value : null,
+      document_ids: isDocumentRequest.value ? selectedDocumentIds.value : [],
     })
     bookedAppointment.value = result
     qrDataUrl.value = await QRCode.toDataURL(result.qr_token, { width: 240, margin: 2 })

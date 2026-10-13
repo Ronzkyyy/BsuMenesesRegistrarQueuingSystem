@@ -9,7 +9,7 @@ from ..core.audit import log_security_event
 from ..core import campus_time
 from ..core.database import get_db
 from ..core.security import require_role
-from ..db_models import QueueDB, UserRole
+from ..db_models import DocumentDB, QueueDB, UserRole
 from ..models.report import (
     CalendarSummary, ReportKind, ReportPriority, ReportStatus,
     TransactionHistoryPage,
@@ -40,6 +40,7 @@ def list_transactions(
     queue_id: Optional[int] = Query(None, gt=0),
     student_number: Optional[str] = Query(None, pattern=r"^\d{10}$"),
     priority: Optional[ReportPriority] = Query(None),
+    document_id: Optional[int] = Query(None, gt=0),
     skip: int = Query(0, ge=0, le=100000),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -55,7 +56,7 @@ def list_transactions(
             statuses=[s.value for s in status] if status else None,
             queue_id=queue_id, student_number=student_number,
             priority=priority.value if priority else None,
-            skip=skip, limit=limit,
+            skip=skip, limit=limit, document_id=document_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -89,6 +90,7 @@ def export_transactions_xlsx(
     queue_id: Optional[int] = Query(None, gt=0),
     student_number: Optional[str] = Query(None, pattern=r"^\d{10}$"),
     priority: Optional[ReportPriority] = Query(None),
+    document_id: Optional[int] = Query(None, gt=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -102,10 +104,15 @@ def export_transactions_xlsx(
             statuses=[s.value for s in status] if status else None,
             queue_id=queue_id, student_number=student_number,
             priority=priority.value if priority else None,
+            document_id=document_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    document_name = None
+    if document_id is not None:
+        document = db.get(DocumentDB, document_id)
+        document_name = document.short_name if document else f"#{document_id}"
     queue_name = None
     if queue_id is not None:
         queue = db.get(QueueDB, queue_id)
@@ -117,6 +124,7 @@ def export_transactions_xlsx(
         queue_name=queue_name,
         priority=priority.value if priority else None,
         student_number=student_number,
+        document_name=document_name,
         generated_by=f"{current_user.full_name} ({current_user.username})",
         generated_at=campus_time.campus_now(),
     ))

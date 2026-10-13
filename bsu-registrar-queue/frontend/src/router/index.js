@@ -99,6 +99,12 @@ const router = createRouter({
           meta: { requiresRegistrarOrAdmin: true }
         },
         {
+          path: 'documents',
+          name: 'admin-documents',
+          component: () => import('../views/DocumentCatalogView.vue'),
+          meta: { requiresAdmin: true }
+        },
+        {
           path: 'users',
           name: 'admin-users',
           component: () => import('../views/UserManagementView.vue'),

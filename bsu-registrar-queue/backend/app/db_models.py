@@ -1,7 +1,7 @@
 """
 SQLAlchemy database models - for actual database tables
 """
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Text, Date, Time
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Text, Date, Time, Numeric, Index
 from datetime import time
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import false, func
@@ -122,6 +122,9 @@ class TicketDB(Base):
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
     queue_id = Column(Integer, ForeignKey("queues.id"), nullable=False)
     priority = Column(Enum(PriorityLevel), default=PriorityLevel.NORMAL)
+    # Legacy single-document column, no longer written - the requested
+    # documents live in ticket_documents. Kept until a cleanup migration
+    # drops it, so old code running against a migrated DB still works.
     document_type = Column(String(30))
     status = Column(Enum(TicketDBStatus), default=TicketDBStatus.WAITING)
     position = Column(Integer)
@@ -137,6 +140,10 @@ class TicketDB(Base):
 
     student = relationship("StudentDB", back_populates="tickets")
     queue = relationship("QueueDB", back_populates="tickets")
+    documents = relationship(
+        "TicketDocumentDB", order_by="TicketDocumentDB.position",
+        cascade="all, delete-orphan", lazy="selectin",
+    )
 
 
 class UserRole(str, enum.Enum):
@@ -247,6 +254,7 @@ class AppointmentDB(Base):
     appointment_date = Column(Date, nullable=False)
     slot_start_time = Column(Time, nullable=False)
     slot_end_time = Column(Time, nullable=False)
+    # Legacy single-document column, no longer written - see TicketDB.
     document_type = Column(String(30))
     qr_token = Column(String(64), unique=True, index=True, nullable=False)
     status = Column(Enum(AppointmentDBStatus), default=AppointmentDBStatus.BOOKED, nullable=False)
@@ -258,3 +266,58 @@ class AppointmentDB(Base):
 
     student = relationship("StudentDB")
     queue = relationship("QueueDB")
+    documents = relationship(
+        "AppointmentDocumentDB", order_by="AppointmentDocumentDB.position",
+        cascade="all, delete-orphan", lazy="selectin",
+    )
+
+
+class DocumentDB(Base):
+    """Admin-managed catalog of documents offered under Request Documents.
+    Never hard-deleted: deactivating hides an entry from students while
+    every ticket/appointment that requested it keeps its snapshot."""
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    short_name = Column(String(30), nullable=False)
+    requirements = Column(String(500))
+    processing_time = Column(String(50))
+    # NULL = no fee listed; 0 = free.
+    fee = Column(Numeric(10, 2))
+    display_order = Column(Integer, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    __table_args__ = (
+        Index("uq_documents_name_lower", func.lower(name), unique=True),
+        Index("uq_documents_short_name_lower", func.lower(short_name), unique=True),
+    )
+
+
+class TicketDocumentDB(Base):
+    """One requested document on a ticket. name/short_name/fee are a
+    snapshot taken at request time, so later catalog edits (rename, new fee)
+    never rewrite what a student asked for."""
+    __tablename__ = "ticket_documents"
+
+    ticket_id = Column(Integer, ForeignKey("tickets.id", ondelete="CASCADE"), primary_key=True)
+    document_id = Column(Integer, ForeignKey("documents.id", ondelete="RESTRICT"), primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    short_name = Column(String(30), nullable=False)
+    fee = Column(Numeric(10, 2))
+    position = Column(Integer, nullable=False)
+
+
+class AppointmentDocumentDB(Base):
+    """One requested document on an appointment - same snapshot shape as
+    TicketDocumentDB, copied onto the ticket at check-in."""
+    __tablename__ = "appointment_documents"
+
+    appointment_id = Column(Integer, ForeignKey("appointments.id", ondelete="CASCADE"), primary_key=True)
+    document_id = Column(Integer, ForeignKey("documents.id", ondelete="RESTRICT"), primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    short_name = Column(String(30), nullable=False)
+    fee = Column(Numeric(10, 2))
+    position = Column(Integer, nullable=False)

@@ -236,3 +236,30 @@ def client(db_session):
     finally:
         limiter.enabled = limiter_was_enabled
         app.dependency_overrides.pop(get_db, None)
+
+
+_document_counter = itertools.count(1)
+
+
+@pytest.fixture()
+def make_document(db_session):
+    """Factory for a persisted catalog DocumentDB. The session-start TRUNCATE
+    wipes the seven documents the migration seeds, so tests make their own."""
+    from app.db_models import DocumentDB
+
+    def _make(**overrides):
+        n = next(_document_counter)
+        defaults = dict(
+            name=f"Test Document {n}",
+            short_name=f"DOC{n}",
+            display_order=n,
+            is_active=True,
+        )
+        defaults.update(overrides)
+        document = DocumentDB(**defaults)
+        db_session.add(document)
+        db_session.commit()
+        db_session.refresh(document)
+        return document
+
+    return _make

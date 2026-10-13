@@ -9,7 +9,8 @@ from app.services.appointment_service import (
     earliest_bookable_date,
 )
 from app.models.appointment import AppointmentCreate
-from app.models.ticket import DocumentType
+from decimal import Decimal
+
 from app.models.queue import QueueType
 from app.db_models import AppointmentDB, AppointmentDBStatus, UserRole
 
@@ -125,21 +126,22 @@ def test_book_appointment_rejects_beyond_booking_window(db_session, make_queue, 
         ))
 
 
-def test_book_appointment_for_document_request_requires_document_type(db_session, make_queue, make_student):
+def test_book_appointment_for_document_request_requires_a_document(db_session, make_queue, make_student):
     queue = _bookable_queue(make_queue, queue_type=QueueType.DOCUMENT_REQUEST)
     student = make_student()
     target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
 
-    with pytest.raises(ValueError, match="Select which document"):
+    with pytest.raises(ValueError, match="Select at least one document"):
         service.create_appointment(AppointmentCreate(
             student_id=student.id, queue_id=queue.id,
             appointment_date=target_date, slot_start_time=slot.slot_start_time,
         ))
 
 
-def test_book_appointment_rejects_document_type_outside_document_request(db_session, make_queue, make_student):
+def test_book_appointment_rejects_documents_outside_document_request(
+        db_session, make_queue, make_student, make_document):
     queue = _bookable_queue(make_queue)  # not Document Request
     student = make_student()
     target_date = campus_today() + timedelta(days=1)
@@ -150,27 +152,37 @@ def test_book_appointment_rejects_document_type_outside_document_request(db_sess
         service.create_appointment(AppointmentCreate(
             student_id=student.id, queue_id=queue.id,
             appointment_date=target_date, slot_start_time=slot.slot_start_time,
-            document_type=DocumentType.TOR,
+            document_ids=[make_document().id],
         ))
 
 
-def test_check_in_carries_document_type_onto_the_created_ticket(db_session, make_queue, make_student):
+def test_check_in_copies_the_booked_snapshot_even_after_catalog_changes(
+        db_session, make_queue, make_student, make_document):
     queue = _bookable_queue(make_queue, queue_type=QueueType.DOCUMENT_REQUEST)
     student = make_student()
+    cor = make_document(short_name="COR-A", fee=Decimal("50.00"), display_order=1)
+    cog = make_document(short_name="COG-A", fee=Decimal("40.00"), display_order=2)
     target_date = campus_today() + timedelta(days=1)
     service = AppointmentService(db_session)
     slot = service.get_availability(queue.id, target_date)[0]
     booked = service.create_appointment(AppointmentCreate(
         student_id=student.id, queue_id=queue.id,
         appointment_date=target_date, slot_start_time=slot.slot_start_time,
-        document_type=DocumentType.COR,
+        document_ids=[cog.id, cor.id],
     ))
 
-    assert booked.document_type == DocumentType.COR
+    assert [d.short_name for d in booked.documents] == ["COR-A", "COG-A"]
+    assert booked.documents_fee_total == Decimal("90.00")
+
+    # Between booking and check-in, one document is retired and one repriced.
+    cor.is_active = False
+    cog.fee = Decimal("500.00")
+    db_session.commit()
 
     ticket = service.check_in(token=booked.qr_token, force=True)
 
-    assert ticket.document_type == DocumentType.COR
+    assert [d.short_name for d in ticket.documents] == ["COR-A", "COG-A"]
+    assert ticket.documents_fee_total == Decimal("90.00")
 
 
 def test_lookup_and_cancel(db_session, make_queue, make_student):

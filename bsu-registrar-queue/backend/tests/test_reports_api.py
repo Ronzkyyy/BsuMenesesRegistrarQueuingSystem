@@ -204,3 +204,39 @@ def test_xlsx_export_with_no_rows_says_so(client, make_user):
 def test_xlsx_export_is_admin_only(client, make_user):
     _login(client, make_user(role=UserRole.REGISTRAR))
     assert client.get("/api/reports/transactions.xlsx").status_code == 403
+
+
+def test_xlsx_export_lists_documents_and_names_the_document_filter(
+        client, db_session, make_user, make_queue, make_student, make_document):
+    from app.db_models import TicketDocumentDB
+
+    admin = make_user(role=UserRole.ADMIN)
+    tor = make_document(short_name="TOR-X", display_order=1)
+    cog = make_document(short_name="=COG-X", display_order=2)  # formula-like: must stay text
+    when = datetime(2026, 6, 10, 3, 0, tzinfo=UTC)
+    row = TicketDB(
+        ticket_number=1, student_id=make_student().id, queue_id=make_queue().id,
+        status=TicketDBStatus.COMPLETED, position=0, created_at=when, completed_at=when,
+        documents=[TicketDocumentDB(document_id=d.id, name=d.name, short_name=d.short_name,
+                                    position=d.display_order) for d in (tor, cog)],
+    )
+    db_session.add(row)
+    db_session.commit()
+    _login(client, admin)
+
+    r = client.get("/api/reports/transactions.xlsx",
+                   params={"date_from": "2026-06-01", "date_to": "2026-06-30",
+                           "document_id": tor.id})
+
+    assert r.status_code == 200
+    cells, sheet_xml, _ = _xlsx_parts(r.content)
+    assert cells["F9"] == "Documents"
+    assert cells["F10"] == "TOR-X, =COG-X"
+    assert "<f>" not in sheet_xml
+    assert any("Document: TOR-X" in v for v in cells.values())
+
+
+def test_transactions_document_filter_must_be_positive(client, make_user):
+    _login(client, make_user(role=UserRole.ADMIN))
+    r = client.get("/api/reports/transactions", params={"document_id": 0})
+    assert r.status_code == 422

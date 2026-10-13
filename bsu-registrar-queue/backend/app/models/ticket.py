@@ -2,9 +2,12 @@
 Ticket model for queue tickets
 """
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field
+from decimal import Decimal
+from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from enum import Enum
+
+from .document import RequestedDocument
 
 
 class TicketStatus(str, Enum):
@@ -21,32 +24,26 @@ class PriorityLevel(str, Enum):
     URGENT = "urgent"
 
 
-class DocumentType(str, Enum):
-    """Documents offered under the Request Documents service. Values are
-    stored verbatim on the ticket/appointment, so they must stay stable -
-    only the enum member name (and any future label lookup) may change
-    wording; changing a value would orphan every historical record already
-    filed under the old one."""
-    TOR = "TOR"
-    COR = "COR"
-    COG = "COG"
-    DIPLOMA = "Diploma"
-    GOOD_MORAL = "Good Moral"
-    GRADUATION_FORM = "Graduation Form"
-    FORM_137 = "Form 137"
-
-
 class TicketBase(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     student_id: int = Field(..., gt=0)
     queue_id: int = Field(..., gt=0)
     priority: PriorityLevel = PriorityLevel.NORMAL
-    document_type: Optional[DocumentType] = None
 
 
 class TicketCreate(TicketBase):
-    pass
+    # Catalog ids for a Request Documents ticket (required there, rejected
+    # elsewhere - see ticket_service.validate_documents). 50 is a sanity
+    # bound well above any real catalog size.
+    document_ids: List[int] = Field(default_factory=list, max_length=50)
+
+    @field_validator("document_ids")
+    @classmethod
+    def positive_ids(cls, v):
+        if any(i <= 0 for i in v):
+            raise ValueError("Document ids must be positive")
+        return v
 
 
 class Ticket(TicketBase):
@@ -63,6 +60,8 @@ class Ticket(TicketBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     queue_name: Optional[str] = None
+    documents: List[RequestedDocument] = []
+    documents_fee_total: Optional[Decimal] = None
 
     class Config:
         from_attributes = True

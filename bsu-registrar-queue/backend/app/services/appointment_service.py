@@ -9,14 +9,16 @@ from typing import List, Optional, Tuple
 
 from ..core import campus_time
 from ..db_models import (
-    AppointmentDB, AppointmentDBStatus, PriorityLevel, QueueDB, StudentDB, TicketDB, TicketDBStatus
+    AppointmentDB, AppointmentDBStatus, AppointmentDocumentDB, PriorityLevel, QueueDB, StudentDB,
+    TicketDB, TicketDBStatus
 )
 from ..models.appointment import (
     Appointment, AppointmentBooked, AppointmentCreate, AppointmentStatus, SlotAvailability
 )
-from ..models.ticket import DocumentType, Ticket, TicketCreate
+from ..models.document import fee_total
+from ..models.ticket import Ticket, TicketCreate
 from .search_utils import LIKE_ESCAPE, escape_like
-from .ticket_service import TicketService, _format_ticket_code, validate_document_type
+from .ticket_service import TicketService, _format_ticket_code, requested_documents, validate_documents
 
 
 class AppointmentWindowError(Exception):
@@ -111,7 +113,7 @@ class AppointmentService:
         if not queue or not queue.booking_enabled:
             raise ValueError("This service is not open for appointment booking")
 
-        validate_document_type(queue, data.document_type)
+        documents = validate_documents(queue, data.document_ids, self.db)
 
         today = campus_time.campus_today()
         earliest = earliest_bookable_date()
@@ -182,9 +184,13 @@ class AppointmentService:
             appointment_date=data.appointment_date,
             slot_start_time=data.slot_start_time,
             slot_end_time=(slot_start_dt + slot_delta).time(),
-            document_type=data.document_type.value if data.document_type else None,
             qr_token=secrets.token_urlsafe(32),
             status=AppointmentDBStatus.BOOKED,
+            documents=[
+                AppointmentDocumentDB(document_id=d.id, name=d.name, short_name=d.short_name,
+                                      fee=d.fee, position=d.display_order)
+                for d in documents
+            ],
         )
         self.db.add(appointment)
         self.db.commit()
@@ -363,10 +369,14 @@ class AppointmentService:
         ticket_data = TicketCreate(
             student_id=appointment.student_id,
             queue_id=appointment.queue_id,
-            document_type=DocumentType(appointment.document_type) if appointment.document_type else None,
         )
         try:
-            ticket = ticket_service.create_ticket(ticket_data, minimum_priority=PriorityLevel.PRIORITY)
+            # Copy the booking's snapshot rather than re-validating against
+            # the live catalog - the student keeps what they booked.
+            ticket = ticket_service.create_ticket(
+                ticket_data, minimum_priority=PriorityLevel.PRIORITY,
+                document_snapshots=list(appointment.documents),
+            )
         except Exception:
             self._revert_check_in(appointment.id)
             raise
@@ -467,7 +477,8 @@ class AppointmentService:
             appointment_date=db_appt.appointment_date,
             slot_start_time=db_appt.slot_start_time,
             slot_end_time=db_appt.slot_end_time,
-            document_type=DocumentType(db_appt.document_type) if db_appt.document_type else None,
+            documents=requested_documents(db_appt.documents),
+            documents_fee_total=fee_total(db_appt.documents),
             status=AppointmentStatus(db_appt.status.value),
             checked_in_at=db_appt.checked_in_at,
             ticket_id=db_appt.ticket_id,

@@ -253,6 +253,10 @@ export const useQueueStore = defineStore('queue', {
     announcements: [],
     activeAnnouncements: [],
 
+    // Document catalog (Request Documents checklist)
+    activeDocuments: [],
+    documents: [],
+
     // UI State
     loading: false,
     error: null,
@@ -707,6 +711,82 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    // ============ DOCUMENT CATALOG ACTIONS ============
+
+    // Public: the active checklist for the kiosk and booking form.
+    async fetchActiveDocuments() {
+      try {
+        const response = await api.get('/documents/active')
+        this.activeDocuments = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to load the document list'
+        throw err
+      }
+    },
+
+    // Admin: the whole catalog, inactive entries included.
+    async fetchAllDocuments() {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.get('/documents')
+        this.documents = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to fetch documents'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createDocument(data) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.post('/documents', data)
+        this.documents.push(response.data)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to create document'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateDocument(documentId, data) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.patch(`/documents/${documentId}`, data)
+        const idx = this.documents.findIndex(d => d.id === documentId)
+        if (idx !== -1) this.documents[idx] = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to update document'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async reorderDocuments(documentIds) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await api.put('/documents/order', { document_ids: documentIds })
+        this.documents = response.data
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to save the new order'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     // ============ QUEUE ACTIONS ============
 
     async fetchQueues() {
@@ -826,14 +906,14 @@ export const useQueueStore = defineStore('queue', {
 
     // ============ TICKET ACTIONS ============
 
-    async takeTicket(queueId, studentId, documentType = null) {
+    async takeTicket(queueId, studentId, documentIds = []) {
       this.loading = true
       this.error = null
       try {
         const response = await api.post('/tickets', {
           queue_id: queueId,
           student_id: studentId,
-          document_type: documentType,
+          document_ids: documentIds,
         })
         this.myTicket = response.data
         return response.data

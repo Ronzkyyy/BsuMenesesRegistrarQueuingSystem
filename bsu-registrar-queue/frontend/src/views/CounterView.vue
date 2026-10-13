@@ -101,13 +101,10 @@
             <div class="text-7xl font-extrabold text-bsu-ink tabular-nums leading-none mb-3">
               {{ servingTicket.ticket_code }}
             </div>
-            <div class="flex items-center gap-2 mb-8 min-h-[1.5rem]">
-              <span
-                v-if="servingTicket.document_type"
-                class="text-sm text-gray-500"
-              >
-                {{ servingTicket.document_type }}
-              </span>
+            <div
+              class="flex items-center gap-2 min-h-[1.5rem]"
+              :class="servingTicket.documents?.length ? 'mb-4' : 'mb-8'"
+            >
               <span
                 v-if="servingTicket.priority && servingTicket.priority !== 'normal'"
                 class="text-xs px-2 py-0.5 rounded-xl"
@@ -122,6 +119,13 @@
                 recalled
               </span>
             </div>
+
+            <RequestedDocuments
+              v-if="servingTicket.documents?.length"
+              :documents="servingTicket.documents"
+              title="Documents to prepare"
+              class="mb-8 max-w-xl"
+            />
 
             <div class="flex flex-wrap gap-3">
               <button
@@ -280,6 +284,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { format } from 'date-fns'
 import { useQueueStore } from '@/stores/queue'
 import { SERVICES } from '@/services/studentServices'
+import RequestedDocuments from '@/components/RequestedDocuments.vue'
 
 const queueStore = useQueueStore()
 
