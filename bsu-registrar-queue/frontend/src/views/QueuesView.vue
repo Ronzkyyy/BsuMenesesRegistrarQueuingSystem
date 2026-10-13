@@ -244,7 +244,7 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-                  <input :value="queueStore.currentStudent?.email" disabled class="field bg-gray-100 text-gray-600" />
+                  <input :value="studentEmailHint(queueStore.currentStudent)" disabled class="field bg-gray-100 text-gray-600" />
                 </div>
               </div>
             </template>
@@ -416,6 +416,7 @@ import archBackground from '@/assets/archBackground.png'
 import { SERVICES } from '@/services/studentServices'
 import DocumentChecklist from '@/components/DocumentChecklist.vue'
 import { shortNames, totalLabel } from '@/services/documentFees'
+import { studentEmailHint } from '@/services/appointmentEmail'
 import { digitsOnly } from '@/services/inputFilters'
 import { BIT_COURSE_VALUE, courseOptions, majorOptions, yearLevelOptions, emptyRegistrationForm } from '@/services/registrationOptions'
 

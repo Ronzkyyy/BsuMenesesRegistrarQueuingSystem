@@ -34,7 +34,11 @@ class EmailNotConfigured(RuntimeError):
     pass
 
 
-def build_message(to: str, subject: str, text: str, html: str | None = None) -> EmailMessage:
+def build_message(to: str, subject: str, text: str, html: str | None = None,
+                  inline_images: list[tuple[str, bytes]] | None = None) -> EmailMessage:
+    """inline_images: (content_id, png_bytes) pairs the HTML shows with
+    src="cid:<content_id>". Attached as related parts of the HTML - mail
+    clients strip data: URI images, but show CID images."""
     msg = EmailMessage()
     msg["To"] = to
     msg["From"] = settings.EMAIL_FROM
@@ -42,6 +46,10 @@ def build_message(to: str, subject: str, text: str, html: str | None = None) -> 
     msg.set_content(text)
     if html:
         msg.add_alternative(html, subtype="html")
+        html_part = msg.get_body(("html",))
+        for content_id, png in inline_images or []:
+            html_part.add_related(png, maintype="image", subtype="png",
+                                  cid=f"<{content_id}>", filename=f"{content_id.split('@')[0]}.png")
     return msg
 
 
@@ -74,12 +82,14 @@ def _send_gmail(msg: EmailMessage) -> None:
         raise RuntimeError(f"Gmail send failed ({resp.status_code}): {resp.text[:200]}")
 
 
-def send_email(to: str, subject: str, text: str, html: str | None = None) -> bool:
+def send_email(to: str, subject: str, text: str, html: str | None = None,
+               inline_images: list[tuple[str, bytes]] | None = None) -> bool:
     """Send one email; True if it was handed to the mail provider."""
     backend = settings.EMAIL_BACKEND.lower()
     if backend == "console":
         if settings.DEBUG:
-            logger.warning("EMAIL (console backend, not sent)\nTo: %s\nSubject: %s\n\n%s", to, subject, text)
+            logger.warning("EMAIL (console backend, not sent)\nTo: %s\nSubject: %s\nInline images: %d\n\n%s",
+                           to, subject, len(inline_images or []), text)
         else:
             logger.error(
                 "EMAIL_BACKEND is 'console' outside DEBUG - '%s' was NOT sent. "
@@ -92,7 +102,7 @@ def send_email(to: str, subject: str, text: str, html: str | None = None) -> boo
         return False
 
     try:
-        _send_gmail(build_message(to, subject, text, html))
+        _send_gmail(build_message(to, subject, text, html, inline_images))
     except Exception:
         logger.exception("Sending '%s' failed", subject)
         return False

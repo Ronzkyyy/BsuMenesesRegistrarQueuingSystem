@@ -2,7 +2,8 @@
 Appointment booking and check-in endpoints
 """
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -10,16 +11,18 @@ from ..core.audit import log_security_event
 from ..core.database import get_db
 from ..core.limiter import limiter
 from ..core.security import require_role
-from ..db_models import UserRole
+from ..db_models import AppointmentDB, AppointmentDBStatus, UserRole
 from ..models.appointment import (
     Appointment, AppointmentBooked, AppointmentCheckInRequest, AppointmentCreate,
     AppointmentListResponse, SlotAvailability
 )
 from ..models.ticket import Ticket
 from ..models.user import User
+from ..services import appointment_email
 from ..services.appointment_service import (
     AppointmentExpiredError, AppointmentService, AppointmentWindowError
 )
+from ..services.email_mask import mask_email
 
 
 router = APIRouter()
@@ -41,14 +44,18 @@ def get_availability(
 def create_appointment(
     request: Request,
     appointment: AppointmentCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Student books an appointment (public endpoint)"""
+    """Student books an appointment (public endpoint). The confirmation email
+    (details + check-in QR) goes out after the response."""
     service = AppointmentService(db)
     try:
-        return service.create_appointment(appointment)
+        booked = service.create_appointment(appointment)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    background_tasks.add_task(appointment_email.send_confirmation, booked.id)
+    return booked
 
 
 @router.get("/lookup", response_model=Appointment)
@@ -147,6 +154,34 @@ def check_in(
         raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{appointment_id}/resend-confirmation", status_code=202)
+def resend_appointment_confirmation(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    appointment_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STAFF))
+):
+    """Re-send the booking confirmation (details + QR) to the student (staff only)."""
+    appointment = db.get(AppointmentDB, appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    if appointment.status != AppointmentDBStatus.BOOKED:
+        raise HTTPException(status_code=400, detail="Only a booked appointment's confirmation can be resent.")
+    if not appointment.student.email:
+        raise HTTPException(status_code=400, detail="This student has no email address on file.")
+
+    background_tasks.add_task(appointment_email.send_confirmation, appointment_id)
+    log_security_event(
+        "appointment.confirmation_resent", outcome="success", request=request,
+        actor=current_user.username, target=f"appointment#{appointment_id}",
+    )
+    # Masked even for staff - the counter screen may be visible to others.
+    return JSONResponse(status_code=202, content={
+        "detail": f"Sending the confirmation to {mask_email(appointment.student.email)}."
+    })
 
 
 @router.patch("/{appointment_id}/staff-cancel", response_model=Appointment)

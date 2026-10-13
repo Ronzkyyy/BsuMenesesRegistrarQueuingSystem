@@ -1,0 +1,43 @@
+# Emails today's appointment reminders at 5:00 AM Manila (retry run 5:30).
+#
+# Render's free tier puts the backend to sleep when idle, so a Celery beat
+# schedule inside it can't be trusted at 5 AM. This request wakes the server
+# and makes it send the reminders. The endpoint is idempotent - a reminder
+# already sent is never sent again - so the retry run and curl's retries are
+# safe.
+#
+# Needs two repository secrets (Settings -> Secrets and variables -> Actions):
+#   CRON_SECRET  - same value as CRON_SECRET on the Render backend
+#   BACKEND_URL  - the Render backend base URL, e.g. https://xxx.onrender.com
+#
+# GitHub pauses scheduled workflows after 60 days with no commits to the repo;
+# re-enable it from the Actions tab if that happens.
+name: Appointment reminders
+
+on:
+  schedule:
+    - cron: "0 21 * * *"    # 05:00 Asia/Manila (UTC+8, no DST)
+    - cron: "30 21 * * *"   # 05:30 retry run
+  workflow_dispatch: {}      # "Run workflow" button, for testing
+
+permissions: {}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Send today's reminders
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$BACKEND_URL" ]; then
+            echo "::error::Set the CRON_SECRET and BACKEND_URL repository secrets."
+            exit 1
+          fi
+          # Retries cover Render's cold start (502/503 for up to ~a minute).
+          curl -fsS --max-time 300 --retry 6 --retry-delay 20 --retry-all-errors \
+            -X POST -H "X-Cron-Secret: $CRON_SECRET" \
+            "${BACKEND_URL%/}/api/internal/appointment-reminders"
+          echo

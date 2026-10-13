@@ -261,6 +261,12 @@ class AppointmentDB(Base):
     checked_in_at = Column(DateTime(timezone=True))
     checked_in_by = Column(Integer, ForeignKey("users.id"))
     ticket_id = Column(Integer, ForeignKey("tickets.id"))
+    # Student emails (app/services/appointment_email.py). reminder_sent_at
+    # non-null means the morning reminder went out and is never sent again;
+    # reminder_attempts caps retries.
+    confirmation_sent_at = Column(DateTime(timezone=True))
+    reminder_sent_at = Column(DateTime(timezone=True))
+    reminder_attempts = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -21,6 +21,19 @@ from .search_utils import LIKE_ESCAPE, escape_like
 from .ticket_service import TicketService, _format_ticket_code, requested_documents, validate_documents
 
 
+def reminder_status(appt: AppointmentDB) -> str:
+    """sent | failed | pending | not_applicable - derived for staff, never stored."""
+    if appt.reminder_sent_at:
+        return "sent"
+    attempts = appt.reminder_attempts or 0
+    today = campus_time.campus_today()
+    if attempts >= REMINDER_MAX_ATTEMPTS or (attempts and appt.appointment_date < today):
+        return "failed"
+    if appt.status == AppointmentDBStatus.BOOKED and appt.appointment_date >= today:
+        return "pending"
+    return "not_applicable"
+
+
 class AppointmentWindowError(Exception):
     """Raised when a check-in is attempted outside the appointment's window and not forced."""
     pass
@@ -56,6 +69,8 @@ def earliest_bookable_date() -> date:
 # staff explicitly overriding via force=True.
 GRACE_MINUTES_BEFORE = 30
 GRACE_MINUTES_AFTER = 30
+# Morning reminder sends tried per appointment (app/services/appointment_email.py).
+REMINDER_MAX_ATTEMPTS = 2
 
 # How long past a slot's end time a still-BOOKED appointment is left alone
 # before expire_stale_appointments marks it EXPIRED - gives a late walk-in a
@@ -479,6 +494,7 @@ class AppointmentService:
             slot_end_time=db_appt.slot_end_time,
             documents=requested_documents(db_appt.documents),
             documents_fee_total=fee_total(db_appt.documents),
+            reminder_status=reminder_status(db_appt),
             status=AppointmentStatus(db_appt.status.value),
             checked_in_at=db_appt.checked_in_at,
             ticket_id=db_appt.ticket_id,

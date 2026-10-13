@@ -1242,6 +1242,18 @@ export const useQueueStore = defineStore('queue', {
       }
     },
 
+    // Staff: re-send the booking confirmation (details + QR) to the student.
+    async resendAppointmentConfirmation(appointmentId) {
+      this.error = null
+      try {
+        const response = await api.post(`/appointments/${appointmentId}/resend-confirmation`)
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to resend the confirmation'
+        throw err
+      }
+    },
+
     // ============ STUDENT ACTIONS ============
 
     async searchStudent(studentId) {
