@@ -3,7 +3,7 @@
     <div class="bg-white rounded-2xl shadow-soft-lg w-full max-w-3xl max-h-full flex flex-col">
       <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
         <h3 class="text-lg font-bold text-bsu-ink">Import Students</h3>
-        <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Close" @click="close">✕</button>
+        <button type="button" class="text-gray-400 hover:text-gray-600 disabled:opacity-50" aria-label="Close" :disabled="busy" @click="close">✕</button>
       </div>
 
       <div class="px-6 py-4 overflow-y-auto space-y-4">
@@ -66,7 +66,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                  <tr v-for="p in report.problems" :key="p.row">
+                  <tr v-for="p in report.problems" :key="`${p.row}-${p.column}`">
                     <td class="px-3 py-2 whitespace-nowrap">{{ p.row }}</td>
                     <td class="px-3 py-2 whitespace-nowrap">{{ p.student_number || '—' }}</td>
                     <td class="px-3 py-2 whitespace-nowrap">{{ p.column }}</td>
@@ -109,7 +109,7 @@
           </button>
           <button type="button" class="btn-primary btn-md" @click="close">Close</button>
         </template>
-        <button v-else type="button" class="btn-secondary btn-md" @click="close">Cancel</button>
+        <button v-else type="button" class="btn-secondary btn-md" :disabled="busy" @click="close">Cancel</button>
       </div>
     </div>
   </div>
@@ -149,6 +149,7 @@ const reset = () => {
 }
 
 const close = () => {
+  if (busy.value) return
   const imported = step.value === 'done'
   reset()
   emit('update:modelValue', false)
