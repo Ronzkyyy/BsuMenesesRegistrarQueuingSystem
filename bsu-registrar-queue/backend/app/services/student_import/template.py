@@ -44,7 +44,8 @@ def build_template() -> bytes:
         ws.write_string(0, col, LABELS[column] + ("*" if column in REQUIRED else ""), head)
         ws.write_string(1, col, EXAMPLE_ROW[column], example)
         if column in _DROPDOWNS:
-            ws.data_validation(1, col, 2001, col, {"validate": "list", "source": _DROPDOWNS[column]})
+            ws.data_validation(1, col, 2001, col, {"validate": "list", "source": _DROPDOWNS[column],
+                                                    "error_type": "warning"})
     ws.write_comment(1, 0, "Example row - delete it before importing.")
     ws.freeze_panes(1, 0)
 

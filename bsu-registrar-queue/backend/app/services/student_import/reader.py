@@ -22,6 +22,7 @@ MAX_UNZIPPED = 25 * 1024 * 1024
 # Stop collecting once this many non-blank rows are seen - enough to know
 # the file is over the limit (header + example + MAX_ROWS + 1).
 _COLLECT_LIMIT = MAX_ROWS + 3
+_MAX_COLS = 50
 
 
 class ImportFileError(ValueError):
@@ -54,7 +55,8 @@ def read_upload(data: bytes) -> ReadResult:
         return _to_result(_read_xlsx(data), "xlsx")
     if data[:4] == b"\xd0\xcf\x11\xe0":
         raise ImportFileError(
-            "This is an old Excel 97–2003 file. Open it in Excel and Save As .xlsx or .csv.")
+            "This is an old Excel 97–2003 file or a password-protected workbook. "
+            "Open it in Excel, remove any password, and Save As .xlsx or .csv.")
     return _to_result(_read_csv(data), "csv")
 
 
@@ -72,15 +74,21 @@ def _cell_text(value) -> str:
     return str(value).strip()
 
 
-def _collect(rows_iter) -> list[list[str]]:
-    table, nonblank = [], 0
-    for row in rows_iter:
-        cells = [_cell_text(v) for v in row]
-        table.append(cells)
-        if any(cells):
-            nonblank += 1
-            if nonblank >= _COLLECT_LIMIT:
-                break
+def _collect(rows_iter) -> list[tuple[int, list[str]]]:
+    """Keep only non-blank rows, each with its true 1-based sheet row number.
+
+    Blank rows are never stored: a sheet can pad millions of empty rows, and
+    a few bytes of file must not turn into hundreds of MB of lists. Columns
+    past _MAX_COLS are dropped for the same reason.
+    """
+    table = []
+    for number, row in enumerate(rows_iter, start=1):
+        row = row[:_MAX_COLS]
+        if not any(v not in (None, "") for v in row):
+            continue
+        table.append((number, [_cell_text(v) for v in row]))
+        if len(table) >= _COLLECT_LIMIT:
+            break
     return table
 
 
@@ -103,7 +111,7 @@ def _measure_unzipped(z: zipfile.ZipFile) -> None:
                     raise ImportFileError(_TOO_LARGE)
 
 
-def _read_xlsx(data: bytes) -> list[list[str]]:
+def _read_xlsx(data: bytes) -> list[tuple[int, list[str]]]:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             # Cheap fast reject on declared sizes; the real check is below.
@@ -112,14 +120,15 @@ def _read_xlsx(data: bytes) -> list[list[str]]:
             _measure_unzipped(z)
     except ImportFileError:
         raise
-    except (zipfile.BadZipFile, zlib.error, EOFError, OSError):
+    except (zipfile.BadZipFile, zlib.error, EOFError, OSError,
+            RuntimeError, NotImplementedError):
         raise ImportFileError(_NOT_XLSX)
     try:
         wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     except Exception:
         raise ImportFileError(_NOT_XLSX)
     try:
-        return _collect(wb.worksheets[0].iter_rows(values_only=True))
+        return _collect(wb.worksheets[0].iter_rows(values_only=True, max_col=_MAX_COLS))
     except ImportFileError:
         raise
     except Exception:
@@ -128,7 +137,7 @@ def _read_xlsx(data: bytes) -> list[list[str]]:
         wb.close()
 
 
-def _read_csv(data: bytes) -> list[list[str]]:
+def _read_csv(data: bytes) -> list[tuple[int, list[str]]]:
     for encoding in ("utf-8-sig", "cp1252"):
         try:
             text = data.decode(encoding)
@@ -149,8 +158,7 @@ def _read_csv(data: bytes) -> list[list[str]]:
         raise ImportFileError("Couldn't read this file as Excel or CSV.")
 
 
-def _to_result(table: list[list[str]], file_type: str) -> ReadResult:
-    numbered = [(i + 1, cells) for i, cells in enumerate(table) if any(cells)]
+def _to_result(numbered: list[tuple[int, list[str]]], file_type: str) -> ReadResult:
     if not numbered:
         raise ImportFileError("The file is empty.")
     _, header = numbered[0]

@@ -14,7 +14,7 @@ from ..models.student import Student, StudentCreate, StudentBase, StudentListRes
 from ..models.student_import import StudentImportReport
 from ..models.user import User
 from ..services import StudentService
-from ..services.student_import.importer import StudentImporter
+from ..services.student_import.importer import ImportConflictError, StudentImporter
 from ..services.student_import.reader import MAX_BYTES, ImportFileError, read_upload
 from ..services.student_import.template import build_template
 
@@ -85,7 +85,12 @@ def import_students(
     except ImportFileError as e:
         raise HTTPException(status_code=e.status, detail=str(e))
 
-    report = StudentImporter(db).run(table, commit=commit)
+    try:
+        report = StudentImporter(db).run(table, commit=commit)
+    except ImportConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail="Some students changed while importing. Nothing was saved - preview the file again.")
     if commit:
         # Counts only - never names, student numbers or the file name.
         log_security_event(

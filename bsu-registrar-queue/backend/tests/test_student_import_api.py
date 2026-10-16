@@ -81,3 +81,16 @@ def test_template_download(client, make_user):
 def test_old_json_bulk_import_is_gone(client, make_user):
     _login(client, make_user(role=UserRole.ADMIN))
     assert client.post("/api/students/bulk-import", json=[]).status_code in (404, 405)
+
+
+def test_concurrent_commit_conflict_is_a_409(client, make_user, monkeypatch):
+    from app.services.student_import.importer import ImportConflictError, StudentImporter
+
+    def conflict(self, to_save):
+        raise ImportConflictError()
+    monkeypatch.setattr(StudentImporter, "_save", conflict)
+    _login(client, make_user(role=UserRole.ADMIN))
+    response = _upload(client, True)
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Some students changed while importing. Nothing was saved - preview the file again.")

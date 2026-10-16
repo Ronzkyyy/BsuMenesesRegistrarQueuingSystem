@@ -2,7 +2,9 @@ import pytest
 
 from app.db_models import Course, StudentDB, StudentDBType, YearLevel
 from app.services import student_service
-from app.services.student_import.importer import StudentImporter
+import sqlalchemy.exc
+
+from app.services.student_import.importer import ImportConflictError, StudentImporter
 from app.services.student_import.reader import RawRow, ReadResult
 
 BASE = {
@@ -121,5 +123,16 @@ def test_commit_is_all_or_nothing(db_session, monkeypatch):
     monkeypatch.setattr(db_session, "commit", boom)
     with pytest.raises(RuntimeError):
         StudentImporter(db_session).run(read(BASE, {**BASE, "student_number": "2031000009"}), commit=True)
+    monkeypatch.undo()
+    assert count(db_session) == 0
+
+
+def test_unique_violation_becomes_a_conflict_without_database_text(db_session, monkeypatch):
+    def dup():
+        raise sqlalchemy.exc.IntegrityError("stmt", {"student_id": "2031000001"}, Exception("dup"))
+    monkeypatch.setattr(db_session, "commit", dup)
+    with pytest.raises(ImportConflictError) as caught:
+        StudentImporter(db_session).run(read(BASE), commit=True)
+    assert "2031000001" not in str(caught.value) and str(caught.value) == ""
     monkeypatch.undo()
     assert count(db_session) == 0

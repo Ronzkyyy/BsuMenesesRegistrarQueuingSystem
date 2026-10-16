@@ -16,6 +16,7 @@ def test_template_has_headers_example_and_dropdowns():
     assert ws.cell(row=2, column=1).number_format == "@"
     sqrefs = " ".join(str(dv.sqref) for dv in ws.data_validations.dataValidation)
     assert "F2" in sqrefs and "H2" in sqrefs            # Course, Year Level dropdowns
+    assert all(dv.errorStyle == "warning" for dv in ws.data_validations.dataValidation)
     assert "Instructions" in wb.sheetnames
 
 

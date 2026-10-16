@@ -140,8 +140,8 @@ def test_counts_real_bytes_not_declared_size(monkeypatch):
             return io.BytesIO(b"0" * (reader.MAX_UNZIPPED + 1))
 
     monkeypatch.setattr(reader.zipfile, "ZipFile", LyingZip)
-    with pytest.raises(reader.ImportFileError, match="too large"):
-        reader.read_upload(b"PK" + b"x" * 100)
+    with pytest.raises(reader.ImportFileError, match="too large once unpacked"):
+        reader.read_upload(b"PK\x03\x04" + b"x" * 100)
 
 
 def test_malformed_sheet_xml_is_a_clean_error():
@@ -161,3 +161,31 @@ def test_csv_field_over_csv_limit_is_a_clean_error():
     data = make_csv([HEADER, [ROW[0], "a" * 140000] + ROW[2:]])
     with pytest.raises(reader.ImportFileError, match="Excel or CSV"):
         reader.read_upload(data)
+
+
+def test_far_away_cell_does_not_blow_up_time_or_memory():
+    import tracemalloc
+    buf = io.BytesIO()
+    wb = xlsxwriter.Workbook(buf, {"in_memory": True})
+    ws = wb.add_worksheet()
+    for c, value in enumerate(HEADER):
+        ws.write(0, c, value)
+    for c, value in enumerate(ROW):
+        ws.write(1, c, value)
+    ws.write(1048574, 0, "x")
+    wb.close()
+    tracemalloc.start()
+    try:
+        result = reader.read_upload(buf.getvalue())
+        peak = tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+    assert peak < 40 * 1024 * 1024
+    assert [r.row for r in result.rows] == [2, 1048575]
+    assert result.rows[0].values["first_name"] == "Juan"
+
+
+def test_csv_of_blank_lines_is_bounded():
+    data = make_csv([HEADER, ROW]) + b"\r\n" * 200_000
+    result = reader.read_upload(data)
+    assert [r.row for r in result.rows] == [2]

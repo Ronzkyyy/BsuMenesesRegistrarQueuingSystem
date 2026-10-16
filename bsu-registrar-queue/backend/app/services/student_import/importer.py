@@ -9,6 +9,7 @@ import re
 from typing import Optional
 
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ...db_models import Course as DBCourse, Major as DBMajor, StudentDB, StudentDBType, YearLevel as DBYear
@@ -29,6 +30,11 @@ _FIELD_MESSAGES = {
     "last_name": ("Last Name", "Required, up to 50 characters."),
     "email": ("Email", "Not a valid email address (up to 100 characters)."),
 }
+
+
+class ImportConflictError(Exception):
+    """A concurrent change broke a unique rule while saving. Carries no
+    database text on purpose: it would include the student data being saved."""
 
 
 class _RowError(Exception):
@@ -175,6 +181,9 @@ class StudentImporter:
                     for f, value in values.items():
                         setattr(current, f, value)
             self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ImportConflictError() from None
         except Exception:
             self.db.rollback()
             raise
