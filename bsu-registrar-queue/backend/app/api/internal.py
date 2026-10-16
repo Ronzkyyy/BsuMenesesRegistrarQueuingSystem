@@ -2,7 +2,7 @@
 Machine-to-machine endpoints - called by scheduled jobs, not people.
 
 POST /internal/appointment-reminders is called by the GitHub Actions
-schedule (.github/workflows/appointment-reminders.yml) at 5:00 and 5:30 AM
+schedule (.github/workflows/appointment-reminders.yml) at 2:00, 3:00 and 4:00 AM
 Manila. Render's free tier sleeps when idle, so this request is also what
 wakes the server; a Celery beat schedule inside it can't be relied on.
 """

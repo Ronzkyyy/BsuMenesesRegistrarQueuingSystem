@@ -152,11 +152,12 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
 - `expire_stale_appointments` - Every 5 minutes
 - **Appointment emails** (`app/services/appointment_email.py`): a confirmation
   after booking (FastAPI `BackgroundTasks`, own `SessionLocal`) and a reminder
-  at **5:00 AM Manila on the appointment day**, both with the check-in QR as an
+  early on **the appointment day (runs 2:00/3:00/4:00 AM Manila)**, both with the check-in QR as an
   inline CID image (`segno`) and, for Request Documents, the documents, fees
   and requirements. The reminder is **not** a Celery beat task - Render's free
   tier sleeps when idle - it's triggered by `.github/workflows/appointment-reminders.yml`
-  (21:00 and 21:30 UTC) calling `POST /api/internal/appointment-reminders`
+  (18:00, 19:00 and 20:00 UTC - GitHub has started these ~2.5 h late, hence
+  the early times) calling `POST /api/internal/appointment-reminders`
   with `X-Cron-Secret`. The batch holds a transaction-scoped advisory lock (works
   through Supabase's transaction pooler), counts the attempt before sending,
   and never re-sends (`reminder_sent_at`); max 2 attempts

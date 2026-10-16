@@ -1,4 +1,4 @@
-"""Appointment emails: booking confirmation, the 5 AM reminder batch, the
+"""Appointment emails: booking confirmation, the early-morning reminder batch, the
 secret-gated cron endpoint, staff resend, and the masked public email."""
 import json
 import logging
@@ -24,7 +24,7 @@ from app.services.appointment_service import reminder_status
 from app.services.email_mask import mask_email
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-# A Wednesday, 5:00 AM on campus - when the reminder workflow runs.
+# A Wednesday, 5:00 AM on campus - inside the window the reminder workflow runs in.
 APPT_DAY = date(2026, 11, 4)
 FIVE_AM = datetime(2026, 11, 4, 5, 0, tzinfo=campus_time.campus_tz())
 SECRET = "s" * 40
@@ -202,7 +202,7 @@ def test_reminders_go_only_to_todays_booked_unsent_appointments(
     assert due.reminder_sent_at is not None and due.reminder_attempts == 1
     assert reminder_status(due) == "sent"
 
-    # The 5:30 run sends nothing new - no student is reminded twice.
+    # A retry run sends nothing new - no student is reminded twice.
     again = appointment_email.send_due_reminders(db_session)
     assert again["sent"] == 0 and len(outbox) == 1
 

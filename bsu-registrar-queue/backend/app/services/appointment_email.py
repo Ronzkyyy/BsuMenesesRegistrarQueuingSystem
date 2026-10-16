@@ -4,7 +4,7 @@ reminder on the morning of the appointment, both carrying the check-in QR.
 
 The reminder batch is triggered by GitHub Actions calling
 POST /api/internal/appointment-reminders (Render's free tier sleeps when
-idle, so a Celery beat schedule inside it can't be relied on at 5 AM).
+idle, so a Celery beat schedule inside it can't be relied on overnight).
 
 Never logs a student's name or address - subjects carry only the
 reference code, because email_sender logs subjects.
@@ -204,7 +204,7 @@ def send_due_reminders(db: Session) -> dict:
     One run at a time: a transaction-scoped advisory lock is held on a
     dedicated connection for the whole run (transaction-scoped so it also
     works through Supabase's transaction-mode pooler). A second, overlapping
-    run (the 5:30 retry, a manual run) returns "already_running" instead of
+    run (a retry run, a manual run) returns "already_running" instead of
     emailing anyone twice."""
     with engine.connect() as lock_conn:
         with lock_conn.begin():

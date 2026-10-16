@@ -1,7 +1,11 @@
-# Emails today's appointment reminders at 5:00 AM Manila (retry run 5:30).
+# Emails today's appointment reminders early on the appointment day: runs at
+# 2:00, 3:00 and 4:00 AM Manila. GitHub starts scheduled jobs late under load
+# (runs here have started ~2.5 h late), so the first run is early enough to
+# land before the 8:00 AM first slot even when delayed; the later runs are
+# retries.
 #
 # Render's free tier puts the backend to sleep when idle, so a Celery beat
-# schedule inside it can't be trusted at 5 AM. This request wakes the server
+# schedule inside it can't be trusted overnight. This request wakes the server
 # and makes it send the reminders. The endpoint is idempotent - a reminder
 # already sent is never sent again - so the retry run and curl's retries are
 # safe.
@@ -16,8 +20,9 @@ name: Appointment reminders
 
 on:
   schedule:
-    - cron: "0 21 * * *"    # 05:00 Asia/Manila (UTC+8, no DST)
-    - cron: "30 21 * * *"   # 05:30 retry run
+    - cron: "0 18 * * *"    # 02:00 Asia/Manila (UTC+8, no DST) - previous UTC day
+    - cron: "0 19 * * *"    # 03:00 retry run
+    - cron: "0 20 * * *"    # 04:00 retry run
   workflow_dispatch: {}      # "Run workflow" button, for testing
 
 permissions: {}
