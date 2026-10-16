@@ -136,6 +136,8 @@ alembic history                   # Show migration history
 | POST | `/api/documents` | Admin | Add a document |
 | PATCH | `/api/documents/{id}` | Admin | Edit a document or (de)activate it (`is_active`) |
 | PUT | `/api/documents/order` | Admin | Save a new display order (must list every id once) |
+| POST | `/api/students/import?commit=` | Admin | Preview (commit=false) or save (commit=true) an .xlsx/.csv student file |
+| GET | `/api/students/import-template.xlsx` | Admin | Student import template |
 | POST | `/api/appointments/{id}/resend-confirmation` | Staff | Re-send a booked appointment's confirmation email (202, masked address) |
 | POST | `/api/internal/appointment-reminders` | `X-Cron-Secret` | Send today's appointment reminders (called by GitHub Actions) |
 
@@ -187,7 +189,7 @@ Beat schedule in `app/worker.py` (tasks live in `app/services/notifications.py`)
   `auth.login` (success / failure / blocked / denied), `auth.account_locked`,
   `auth.portal_denied`, `auth.user_created`, `auth.password_changed`,
   `auth.user_deactivated` / `auth.user_activated`, `authz.denied` (role check
-  failed, from `require_role`), `student.deleted`, `student.bulk_imported`,
+  failed, from `require_role`), `student.deleted`, `student.bulk_imported` (counts + file type only),
   `queue.deleted`, `report.exported`, `security.rate_limited`,
   `appointment.staff_cancelled`, `ticket.recalled`, `auth.password_reset`
   (admin route, or `actor="server-cli"`), `auth.email_changed`,
@@ -375,6 +377,7 @@ never coerce or sanitize-then-accept. Constraints currently enforced:
 | `EmailTokenRequest` / `ResetPasswordWithToken` | `token` / `new_password` | 20–128 chars / 8–72 chars |
 | `AnnouncementBase` | `text` | 1–500 chars, whitespace-stripped |
 | `MediaItemBase` / `MediaItemUpdate` | `url` | ≤ 2048 chars; must start `http://`, `https://`, or `/api/uploads/media/` (blocks `javascript:`/`data:`/`file:` — rendered as `src` on the public display board) |
+| Student import file | upload | ≤ 2 MB, ≤ 2,000 rows, .xlsx (zip ≤ 25 MB unpacked, defusedxml, data_only) or .csv; rows validated with `StudentCreate`; email format only (no MX check) |
 | Query params | `student_id` (search/lookup/cancel) | `^\d{10}$` |
 | | `skip` / `limit` (student & queue lists) | `skip ≥ 0`; `limit` bounded (`1–100` students, `1–200` queues) |
 | | `my-ticket` `student_id` / `queue_id` | `> 0` |
@@ -408,7 +411,7 @@ trusted to set. One real case fixed here:
   public endpoint accepts — sending the flags there is a `422`, not a
   silently-ignored claim. `StudentCreate` adds the three flags back for
   trusted callers only: the registrar-gated `PATCH /students/{id}` and the
-  admin-only `POST /students/bulk-import`. `StudentService.create_student`
+  admin-only file import (`POST /students/import`, `app/services/student_import/`). `StudentService.create_student`
   reads them via `getattr(student_data, "is_scholar", False)` etc., so a
   caller passing bare `StudentBase` (no such attribute at all) always gets
   `False` — never a value it tried to supply.
