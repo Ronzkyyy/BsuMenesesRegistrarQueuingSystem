@@ -9,6 +9,7 @@ import csv
 import datetime as dt
 import io
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 
 import openpyxl
@@ -83,19 +84,46 @@ def _collect(rows_iter) -> list[list[str]]:
     return table
 
 
+_TOO_LARGE = "This Excel file is too large once unpacked."
+_NOT_XLSX = "This file isn't a valid Excel (.xlsx) file."
+_CHUNK = 64 * 1024
+
+
+def _measure_unzipped(z: zipfile.ZipFile) -> None:
+    """Count the bytes each member actually decompresses to, not the declared sizes."""
+    total = 0
+    for info in z.infolist():
+        with z.open(info) as member:
+            while True:
+                chunk = member.read(_CHUNK)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_UNZIPPED:
+                    raise ImportFileError(_TOO_LARGE)
+
+
 def _read_xlsx(data: bytes) -> list[list[str]]:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
+            # Cheap fast reject on declared sizes; the real check is below.
             if sum(info.file_size for info in z.infolist()) > MAX_UNZIPPED:
-                raise ImportFileError("This Excel file is too large once unpacked.")
-    except zipfile.BadZipFile:
-        raise ImportFileError("This file isn't a valid Excel (.xlsx) file.")
+                raise ImportFileError(_TOO_LARGE)
+            _measure_unzipped(z)
+    except ImportFileError:
+        raise
+    except (zipfile.BadZipFile, zlib.error, EOFError, OSError):
+        raise ImportFileError(_NOT_XLSX)
     try:
         wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     except Exception:
-        raise ImportFileError("This file isn't a valid Excel (.xlsx) file.")
+        raise ImportFileError(_NOT_XLSX)
     try:
         return _collect(wb.worksheets[0].iter_rows(values_only=True))
+    except ImportFileError:
+        raise
+    except Exception:
+        raise ImportFileError(_NOT_XLSX)
     finally:
         wb.close()
 
@@ -115,7 +143,10 @@ def _read_csv(data: bytes) -> list[list[str]]:
         dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;\t")
     except csv.Error:
         dialect = csv.excel
-    return _collect(csv.reader(io.StringIO(text), dialect))
+    try:
+        return _collect(csv.reader(io.StringIO(text), dialect))
+    except csv.Error:
+        raise ImportFileError("Couldn't read this file as Excel or CSV.")
 
 
 def _to_result(table: list[list[str]], file_type: str) -> ReadResult:

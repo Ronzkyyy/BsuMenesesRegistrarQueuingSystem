@@ -119,3 +119,45 @@ def test_zip_bomb_is_rejected():
         z.writestr("xl/huge.xml", b"0" * (reader.MAX_UNZIPPED + 1))
     with pytest.raises(reader.ImportFileError, match="too large"):
         reader.read_upload(buf.getvalue())
+
+
+def test_counts_real_bytes_not_declared_size(monkeypatch):
+    """A member whose declared size is tiny but whose data is huge must still be caught."""
+
+    class LyingZip(zipfile.ZipFile):
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def close(self):
+            pass
+
+        def infolist(self):
+            info = zipfile.ZipInfo("xl/huge.xml")
+            info.file_size = 1024
+            return [info]
+
+        def open(self, name, mode="r", pwd=None, *, force_zip64=False):
+            return io.BytesIO(b"0" * (reader.MAX_UNZIPPED + 1))
+
+    monkeypatch.setattr(reader.zipfile, "ZipFile", LyingZip)
+    with pytest.raises(reader.ImportFileError, match="too large"):
+        reader.read_upload(b"PK" + b"x" * 100)
+
+
+def test_malformed_sheet_xml_is_a_clean_error():
+    src = zipfile.ZipFile(io.BytesIO(make_xlsx([HEADER, ROW])))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
+        for info in src.infolist():
+            body = src.read(info)
+            if info.filename == "xl/worksheets/sheet1.xml":
+                body = b"<not-xml"
+            dst.writestr(info.filename, body)
+    with pytest.raises(reader.ImportFileError, match="valid Excel"):
+        reader.read_upload(out.getvalue())
+
+
+def test_csv_field_over_csv_limit_is_a_clean_error():
+    data = make_csv([HEADER, [ROW[0], "a" * 140000] + ROW[2:]])
+    with pytest.raises(reader.ImportFileError, match="Excel or CSV"):
+        reader.read_upload(data)
