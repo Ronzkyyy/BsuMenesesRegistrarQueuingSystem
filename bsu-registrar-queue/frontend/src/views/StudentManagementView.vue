@@ -1,20 +1,28 @@
 <template>
   <div>
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
       <div>
         <h2 class="text-3xl font-bold text-bsu-ink">Student Management</h2>
         <p class="mt-2 text-gray-500">View and edit student records</p>
       </div>
-      <button
-        v-if="canEdit"
-        @click="openCreateModal"
-        class="btn-primary btn-md"
-      >
-        <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Add Student
-      </button>
+      <div class="flex flex-wrap gap-2">
+        <button v-if="isAdmin" type="button" class="btn-secondary btn-md" @click="showImport = true">
+          <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4" />
+          </svg>
+          Import Students
+        </button>
+        <button
+          v-if="canEdit"
+          @click="openCreateModal"
+          class="btn-primary btn-md"
+        >
+          <svg class="mr-2 -ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Student
+        </button>
+      </div>
     </div>
 
     <div class="panel p-4 mb-6 flex flex-wrap gap-3">
@@ -262,6 +270,8 @@
       @confirm="handleConfirm"
       @cancel="confirmError = ''"
     />
+
+    <StudentImportModal v-model="showImport" @imported="loadStudents" />
   </div>
 </template>
 
@@ -270,6 +280,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useQueueStore } from '@/stores/queue'
 import { digitsOnly } from '@/services/inputFilters'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import StudentImportModal from '@/components/StudentImportModal.vue'
 
 const BIT_COURSE = 'Bachelor of Industrial Technology'
 
@@ -303,6 +314,8 @@ const yearLevelLabel = (value) => yearLevels.find((y) => y.value === value)?.lab
 const queueStore = useQueueStore()
 
 const canEdit = computed(() => ['admin', 'registrar'].includes(queueStore.currentUser?.role))
+const isAdmin = computed(() => queueStore.currentUser?.role === 'admin')
+const showImport = ref(false)
 const canDelete = computed(() => queueStore.currentUser?.role === 'admin')
 
 const listError = ref('')
