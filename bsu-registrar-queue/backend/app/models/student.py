@@ -44,7 +44,7 @@ class StudentBase(BaseModel):
     kiosk self-registration endpoint (POST /students uses this model) - a
     self-declared "Graduating Student" checkbox would let anyone jump every
     queue. Only StudentCreate (below) - used by the registrar-gated PATCH and
-    the admin-only bulk-import - can set them."""
+    the admin-only file import - can set them."""
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     student_id: str = Field(..., pattern=r"^\d{10}$", description="10-digit student number, e.g. 2020201163")

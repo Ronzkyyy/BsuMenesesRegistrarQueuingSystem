@@ -1,9 +1,9 @@
 """
 Student management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Request, Response, UploadFile
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Optional
 
 from ..core.audit import log_security_event
 from ..core.database import get_db
@@ -11,8 +11,12 @@ from ..core.limiter import limiter
 from ..core.security import get_current_active_user, require_role
 from ..db_models import UserRole, Course, YearLevel, StudentDBType
 from ..models.student import Student, StudentCreate, StudentBase, StudentListResponse, StudentPublic
+from ..models.student_import import StudentImportReport
 from ..models.user import User
 from ..services import StudentService
+from ..services.student_import.importer import StudentImporter
+from ..services.student_import.reader import MAX_BYTES, ImportFileError, read_upload
+from ..services.student_import.template import build_template
 
 
 router = APIRouter()
@@ -58,6 +62,51 @@ def search_student(
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     return student
+
+
+@router.post("/import", response_model=StudentImportReport)
+@limiter.limit("20/minute")
+def import_students(
+    request: Request,
+    file: UploadFile = File(...),
+    commit: bool = Query(False, description="false: preview only; true: save the valid rows"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Import students from an .xlsx/.csv file (admin only).
+
+    The same file is sent twice: commit=false returns the preview and saves
+    nothing; commit=true re-checks it and saves the valid rows."""
+    data = file.file.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise HTTPException(status_code=413, detail="The file is larger than 2 MB.")
+    try:
+        table = read_upload(data)
+    except ImportFileError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+
+    report = StudentImporter(db).run(table, commit=commit)
+    if commit:
+        # Counts only - never names, student numbers or the file name.
+        log_security_event(
+            "student.bulk_imported", outcome="success", request=request,
+            actor=current_user.username,
+            detail=(f"new={report.new}, updated={report.updated}, unchanged={report.unchanged}, "
+                    f"invalid={report.invalid}, file={report.file_type}"),
+        )
+    return report
+
+
+@router.get("/import-template.xlsx")
+def download_import_template(
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """The student import template (admin only)."""
+    return Response(
+        content=build_template(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="students_import_template.xlsx"'},
+    )
 
 
 @router.get("/{student_id}", response_model=Student)
@@ -145,35 +194,3 @@ def get_student_stats(
     """Get student statistics"""
     service = StudentService(db)
     return service.get_student_stats()
-
-
-@router.post("/bulk-import")
-def bulk_import_students(
-    request: Request,
-    students: List[StudentCreate],
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.ADMIN))
-):
-    """Bulk import students (admin only)"""
-    service = StudentService(db)
-    results = []
-    errors = []
-
-    for i, student_data in enumerate(students):
-        try:
-            student = service.create_student(student_data)
-            results.append(student)
-        except ValueError as e:
-            errors.append({"index": i, "error": str(e)})
-
-    log_security_event(
-        "student.bulk_imported", outcome="success", request=request,
-        actor=current_user.username,
-        detail=f"imported={len(results)} errors={len(errors)}",
-    )
-    return {
-        "imported": len(results),
-        "errors": len(errors),
-        "results": results,
-        "errors_detail": errors
-    }

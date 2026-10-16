@@ -1,7 +1,7 @@
 """Priority flags (is_scholar/is_varsity/is_graduating) drive queue priority
 (see TicketService.calculate_priority) and must never be settable by the
 public, unauthenticated kiosk self-registration endpoint - only by
-staff (PATCH, registrar-gated) or an admin bulk-import.
+staff (PATCH, registrar-gated) or the admin file import.
 """
 from app.db_models import UserRole
 
