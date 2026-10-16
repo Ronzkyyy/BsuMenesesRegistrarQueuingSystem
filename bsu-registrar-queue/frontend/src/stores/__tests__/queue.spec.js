@@ -708,3 +708,29 @@ describe('email + self-service reset actions', () => {
     expect(mockApi.post).toHaveBeenCalledWith('/auth/users/2/resend-verification')
   })
 })
+
+describe('student import actions', () => {
+  it('previewStudentImport posts the file with commit=false and a long timeout', async () => {
+    mockApi.post.mockReturnValueOnce(ok({ new: 2 }))
+    const store = useQueueStore()
+    const file = new File(['a,b'], 'students.csv', { type: 'text/csv' })
+
+    const report = await store.previewStudentImport(file)
+
+    const [url, body, config] = mockApi.post.mock.calls.at(-1)
+    expect(url).toBe('/students/import')
+    expect(body).toBeInstanceOf(FormData)
+    expect(body.get('file').name).toBe('students.csv')
+    expect(config).toEqual({ params: { commit: false }, timeout: 120000 })
+    expect(report.new).toBe(2)
+  })
+
+  it('commitStudentImport sends commit=true and surfaces the detail on error', async () => {
+    mockApi.post.mockReturnValueOnce(Promise.reject({ response: { data: { detail: 'The file is larger than 2 MB.' } } }))
+    const store = useQueueStore()
+
+    await expect(store.commitStudentImport(new File(['x'], 's.csv'))).rejects.toBeTruthy()
+    expect(mockApi.post.mock.calls.at(-1)[2].params.commit).toBe(true)
+    expect(store.error).toBe('The file is larger than 2 MB.')
+  })
+})

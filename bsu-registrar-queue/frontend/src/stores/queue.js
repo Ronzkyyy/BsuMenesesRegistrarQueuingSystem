@@ -1256,6 +1256,33 @@ export const useQueueStore = defineStore('queue', {
 
     // ============ STUDENT ACTIONS ============
 
+    // Admin student file import. The same file is sent twice: commit=false
+    // previews (nothing saved), commit=true saves the valid rows. 2,000 rows
+    // can take longer than the client's default 10 s timeout.
+    async _uploadStudentImport(file, commit) {
+      this.error = null
+      const form = new FormData()
+      form.append('file', file)
+      try {
+        const response = await api.post('/students/import', form, {
+          params: { commit },
+          timeout: 120000,
+        })
+        return response.data
+      } catch (err) {
+        this.error = err.response?.data?.detail || 'Failed to read the student file'
+        throw err
+      }
+    },
+
+    previewStudentImport(file) {
+      return this._uploadStudentImport(file, false)
+    },
+
+    commitStudentImport(file) {
+      return this._uploadStudentImport(file, true)
+    },
+
     async searchStudent(studentId) {
       this.loading = true
       this.error = null
